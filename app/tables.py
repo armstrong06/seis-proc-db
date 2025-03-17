@@ -1,23 +1,12 @@
-import os
-from sqlalchemy import create_engine, text, String, Float, Integer, SmallInteger, DateTime, MetaData, func, Enum
+from sqlalchemy import String, Integer, SmallInteger, DateTime
 from sqlalchemy.types import TIMESTAMP, Double, Date, Boolean, JSON
-from sqlalchemy.orm import Session, Mapped, mapped_column, relationship
-from sqlalchemy.orm import MappedAsDataclass, DeclarativeBase
+from sqlalchemy.orm import  Mapped, mapped_column, relationship
 from typing import List, Optional
 from sqlalchemy.schema import UniqueConstraint, CheckConstraint, ForeignKey
 import datetime
 import enum
 
-metadata_obj = MetaData(naming_convention={
-    "uq": "uq_%(table_name)s_%(constraint_name)s",
-    "ck": "ck_%(table_name)s_%(constraint_name)s",
-    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
-    "pk": "pk_%(table_name)s",
-})
-
-# Create a new Decorative Base 
-class Base(MappedAsDataclass, DeclarativeBase):
-    metadata=metadata_obj
+from .database import Base
 
 class FMEnum(enum.Enum):
     """Define ENUM for FirstMotion class"""
@@ -30,8 +19,8 @@ class ISAMethod(Base):
     __abstract__ = True
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     name: Mapped[str] = mapped_column(String(50))
-    desc: Mapped[str] = mapped_column(String(255))
-    path: Mapped[str] = mapped_column(String(255))
+    desc: Mapped[Optional[str]] = mapped_column(String(255))
+    path: Mapped[Optional[str]] = mapped_column(String(255))
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(TIMESTAMP,
                                   default=datetime.datetime.now,
@@ -48,7 +37,7 @@ class Station(Base):
     lat: Mapped[float] = mapped_column(Double)
     lon: Mapped[float] = mapped_column(Double)
     elev: Mapped[float] = mapped_column(Double)
-    offdate = mapped_column(DateTime)
+    offdate = mapped_column(DateTime, nullable=True)
     # define 'last_modified' to use the SQL current_timestamp MySQL function on update
     # last_modified = mapped_column(DateTime, onupdate=func.utc_timestamp())
     # define 'last_updated' to be populated with datetime.now()
@@ -78,18 +67,18 @@ class Channel(Base):
     ondate = mapped_column(DateTime, nullable=False)
     ##
     samp_rate: Mapped[float] = mapped_column(Double)
-    sensor_name: Mapped[str] = mapped_column(String(50))
     clock_drift: Mapped[float] = mapped_column(Double)
+    sensor_name: Mapped[Optional[str]] = mapped_column(String(50))
     sensitivity_units: Mapped[str] = mapped_column(String(10))
     sensitivity_val: Mapped[float] = mapped_column(Double)
-    overall_gain_vel: Mapped[float] = mapped_column(Double)
+    overall_gain_vel: Mapped[Optional[float]] = mapped_column(Double)
     lat: Mapped[float] = mapped_column(Double)
     lon: Mapped[float] = mapped_column(Double)
     elev: Mapped[float] = mapped_column(Double)
     depth: Mapped[float] = mapped_column(Double)
     azimuth: Mapped[float] = mapped_column(Double)
     dip: Mapped[int] = mapped_column(SmallInteger)
-    offdate = mapped_column(DateTime)
+    offdate = mapped_column(DateTime, nullable=True)
     last_modified = mapped_column(TIMESTAMP,
                                   default=datetime.datetime.now,
                                   onupdate=datetime.datetime.now)
@@ -123,13 +112,14 @@ class DailyContDataInfo(Base):
     samprate: Mapped[float] = mapped_column(Double)
     dt: Mapped[float] = mapped_column(Double)    
     org_npts: Mapped[int] = mapped_column(Integer)
-    org_start = mapped_column(DateTime)
-    org_end = mapped_column(DateTime)
-    proc_npts: Mapped[int] = mapped_column(Integer)
-    proc_start = mapped_column(DateTime)
-    proc_end = mapped_column(DateTime)
-    prev_appended: Mapped[bool] = mapped_column(Boolean(create_constraint=True, name="prev_app_bool"))
-    error: Mapped[str] = mapped_column(String(20))
+    org_start = mapped_column(DateTime, nullable=False)
+    org_end = mapped_column(DateTime, nullable=False)
+    proc_npts: Mapped[Optional[int]] = mapped_column(Integer)
+    proc_start = mapped_column(DateTime, nullable=True)
+    proc_end = mapped_column(DateTime, nullable=True)
+    prev_appended: Mapped[bool] = mapped_column(Boolean(create_constraint=True, name="prev_app_bool"),
+                                                nullable=True)
+    error: Mapped[Optional[str]] = mapped_column(String(20))
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(TIMESTAMP,
                                   default=datetime.datetime.now,
@@ -218,10 +208,10 @@ class Pick(Base):
     auth: Mapped[str] = mapped_column(String(10), nullable=False)
     ##
     # From waveform info
-    snr: Mapped[float] = mapped_column(Double)
-    amp: Mapped[float] = mapped_column(Double)
+    snr: Mapped[Optional[float]] = mapped_column(Double)
+    amp: Mapped[Optional[float]] = mapped_column(Double)
     # FK from Detections
-    detid = mapped_column(ForeignKey("detections.id"))
+    detid = mapped_column(ForeignKey("dldetection.id"), nullable=True)
 
     # Many-to-one relationship with Station
     station: Mapped["Station"] = relationship("station.id", back_populates="pick")
@@ -236,8 +226,7 @@ class Pick(Base):
 
     __table_args__ = (UniqueConstraint(sta_id, chan_pref, phase, pick_time, auth, name="simplify_pk"),
                       UniqueConstraint(detid, name="detid"),
-                      CheckConstraint("amp > 0", name="positive_amp"),
-                       CheckConstraint("cal_lb < cal_ub", name="cal_order"))
+                      CheckConstraint("amp > 0", name="positive_amp"))
     
 class PickCorrection(Base):
     __tablename__ = "pick_corr"
@@ -254,6 +243,7 @@ class PickCorrection(Base):
     if_high: Mapped[float] = mapped_column(Double)
     trim_median: Mapped[float] = mapped_column(Double)
     trim_mean: Mapped[float] = mapped_column(Double)
+    # TODO: Figure out what I am going to store here
     preds_path: Mapped[str] = mapped_column(String(100))
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(TIMESTAMP,
@@ -269,7 +259,7 @@ class PickCorrection(Base):
 
     __table_args__ = (UniqueConstraint(pid, method_id, name="simplify_pk"),
                       CheckConstraint("if_low < if_high", name="if_order"),
-                      CheckConstraint("corr_std > 0", name="positive_std"),)
+                      CheckConstraint("std > 0", name="positive_std"),)
 
 class FirstMotion(Base):
     __tablename__ = "fm"
@@ -279,9 +269,10 @@ class FirstMotion(Base):
     method_id = mapped_column(ForeignKey("fm_method.id"), nullable=False)
     ##
     fm: Mapped[FMEnum]
-    prob_up: Mapped[float] = mapped_column(Double)
-    prob_dn: Mapped[float] = mapped_column(Double)
-    preds_path: Mapped[str] = mapped_column(String(100))
+    prob_up: Mapped[Optional[float]] = mapped_column(Double)
+    prob_dn: Mapped[Optional[float]] = mapped_column(Double)
+    # TODO: Figure out what I am going to store here
+    preds_path: Mapped[Optional[str]] = mapped_column(String(100))
 
     # Many-to-one relationship with Pick
     pick: Mapped["Pick"] = relationship("pick.id", back_populates="fms")
@@ -320,7 +311,7 @@ class Gap(Base):
     chan_id = mapped_column(ForeignKey("channel.id"), nullable=False)
     start = mapped_column(DateTime, nullable=False)
     ##
-    end = mapped_column(DateTime)
+    end = mapped_column(DateTime, nullable=False)
     startsamp: Mapped[int] = mapped_column(Integer)
     endsamp: Mapped[int] = mapped_column(Integer)
     avail_sig_sec: Mapped[float] = mapped_column(Double)
@@ -334,7 +325,7 @@ class Gap(Base):
                       CheckConstraint("start < end", name="times_order"),
                       CheckConstraint("startsamp >= 0", name="nonneg_startsamp"),
                       CheckConstraint("endsamp >= 1", name="pos_startsamp"),
-                      CheckConstraint("startsamp < endsamp", names="samps_order"),
+                      CheckConstraint("startsamp < endsamp", name="samps_order"),
                       CheckConstraint("avail_sig_sec >= 0", name="nonneg_avail_sig"))
     
 class Waveform(Base):
@@ -345,13 +336,13 @@ class Waveform(Base):
     chan_id = mapped_column(ForeignKey("channel.id"), nullable=False)
     pick_id = mapped_column(ForeignKey("pick.id"), nullable=False)
     ##
-    filt_low: Mapped[float] = mapped_column(Double)
-    filt_high: Mapped[float] = mapped_column(Double)
+    filt_low: Mapped[Optional[float]] = mapped_column(Double)
+    filt_high: Mapped[Optional[float]] = mapped_column(Double)
     # TODO: Figure out the type I am going to use....
-    data = mapped_column(JSON)
-    start = mapped_column(DateTime)
-    end = mapped_column(DateTime)
-    proc_notes: Mapped[str] = mapped_column(String(255))
+    data = mapped_column(JSON, nullable=False)
+    start = mapped_column(DateTime, nullable=False)
+    end = mapped_column(DateTime, nullable=False)
+    proc_notes: Mapped[Optional[str]] = mapped_column(String(255))
 
     # Many-to-one relationship with DailyContDataInfo
     contdatainfo: Mapped["DailyContDataInfo"] = relationship("contdatainfo.id", back_populates="wfs")
