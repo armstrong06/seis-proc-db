@@ -1,6 +1,11 @@
-from ..app import database
+# Have to import tables or Base doesn't register them
+from app import database, tables
 
 """Create all tables defined in app.tables
 """
-metadata = database.Base.metadata
-metadata.create_all(database.engine)
+
+if __name__ == "__main__":
+    metadata = database.Base.metadata
+    # for name, table in metadata.tables.items():
+    #     print("Table:", name)
+    metadata.create_all(database.engine)
