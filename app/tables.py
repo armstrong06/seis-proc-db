@@ -46,11 +46,11 @@ class Station(Base):
                                   onupdate=datetime.now)
 
     # One-to-Many relationship with Channel
-    channels: Mapped[List["Channel"]] = relationship("channel.id", back_populates="station")
-    # One-to-Many relationship with DLDetection
-    dldetections: Mapped[List["DLDetection"]] = relationship("dldetection.id", back_populates="station")
+    channels: Mapped[List["Channel"]] = relationship(back_populates="station")
+    # One-to-Many relationship with Pick
+    picks: Mapped[List["Pick"]] = relationship(back_populates="station")
     # One-to-Many relation with DailyContDataInfo
-    contdatainfo: Mapped[List["DailyContDataInfo"]] = relationship("contdatainfo.id", back_populates="station")
+    contdatainfo: Mapped[List["DailyContDataInfo"]] = relationship(back_populates="station")
 
     __table_args__ = (UniqueConstraint(net, sta, ondate, name="simplify_pk"), 
                       CheckConstraint("lat >= -90 AND lon <= 90", name="valid_lat"),
@@ -84,11 +84,11 @@ class Channel(Base):
                                   onupdate=datetime.now)
     
     # Many-to-One relation with Station
-    station: Mapped["Station"] = relationship("station.id", back_populates="channels")
+    station: Mapped["Station"] = relationship(back_populates="channels")
     # One-to-Many relationship with Gaps
-    gaps: Mapped[List["Gap"]] = relationship("gap.id", back_populates="channel")
+    gaps: Mapped[List["Gap"]] = relationship(back_populates="channel")
     # One-to-Many relationship with Waveform
-    wfs: Mapped[List["Waveform"]] = relationship("waveform.id", back_populates="channel")
+    wfs: Mapped[List["Waveform"]] = relationship(back_populates="channel")
 
     __table_args__ = (UniqueConstraint(sta_id, seed_code, loc, ondate, name="simplify_pk"), 
                       CheckConstraint("samp_rate > 0", name="positive_samp_rate"),
@@ -126,13 +126,13 @@ class DailyContDataInfo(Base):
                                   onupdate=datetime.now)
     
     # Many-to-One relation with Station
-    station: Mapped["Station"] = relationship("station.id", back_populates="contdatainfo")
+    station: Mapped["Station"] = relationship(back_populates="contdatainfo")
     # One-to-Many relationship with DLDetection
-    dldets: Mapped[List["DLDetection"]] = relationship("dldetection.id", back_populates="contdatainfo")
+    dldets: Mapped[List["DLDetection"]] = relationship(back_populates="contdatainfo")
     # One-to-Many relationship with Gaps
-    gaps: Mapped[List["Gap"]] = relationship("gap.id", back_populates="contdatainfo")
+    gaps: Mapped[List["Gap"]] = relationship(back_populates="contdatainfo")
     # One-to-Many relationship with Waveform
-    wfs: Mapped[List["Waveform"]] = relationship("waveform.id", back_populates="contdatainfo")
+    wfs: Mapped[List["Waveform"]] = relationship(back_populates="contdatainfo")
 
     __table_args__ = (UniqueConstraint(sta_id, chan_pref, ncomps, date, name="simplify_pk"),
                       CheckConstraint("samprate > 0", name="positive_samprate"),
@@ -147,26 +147,26 @@ class RepickerMethod(ISAMethod):
     __tablename__ = "repicker_method"
 
     # One-to-Many relationship with PickCorrection
-    corrs: Mapped[List["PickCorrection"]] = relationship("pick_corr.id", back_populates="method")
+    corrs: Mapped[List["PickCorrection"]] = relationship(back_populates="method")
 
 class CalibrationMethod(ISAMethod):
     __tablename__ = "calibration_method"
 
     # One-to-Many relationship with CredibleIntervals
-    cis: Mapped[List["CredibleInterval"]] = relationship("ci.id", back_populates="method")
+    cis: Mapped[List["CredibleInterval"]] = relationship(back_populates="method")
 
 class FMMethod(ISAMethod):
     __tablename__ = "fm_method"
 
     # One-to-Many relationship with FM
-    fms: Mapped[List["FirstMotion"]] = relationship("fm.id", back_populates="method")
+    fms: Mapped[List["FirstMotion"]] = relationship(back_populates="method")
 
 class DetectionMethod(ISAMethod):
     __tablename__ = "detection_method"
     phase: Mapped[str] = mapped_column(String(4))
 
     # One to Many relationship with DLDetection
-    dldets: Mapped[List["DLDetection"]] = relationship("dldetection.id", back_populates="method")
+    dldets: Mapped[List["DLDetection"]] = relationship(back_populates="method")
 
 class DLDetection(Base):
     __tablename__ = "dldetection"
@@ -185,11 +185,11 @@ class DLDetection(Base):
                                   onupdate=datetime.now)
     
     # Many-to-one relationship with ContData
-    contdatainfo: Mapped["DailyContDataInfo"] = relationship("contdatainfo.id", back_populates="dldets")
+    contdatainfo: Mapped["DailyContDataInfo"] = relationship(back_populates="dldets")
     # One-to-one relationship with Pick
-    pick: Mapped["Pick"] = relationship("pick.id", back_populates="dldet")
+    pick: Mapped["Pick"] = relationship(back_populates="dldet")
     # Many-to-one relationship with DetectionMethod
-    method: Mapped["DetectionMethod"] = relationship("detection_method.id", back_populates="dldets")
+    method: Mapped["DetectionMethod"] = relationship(back_populates="dldets")
 
     __table_args__ = (UniqueConstraint(data_id, method_id, sample, name="simplify_pk"),
                       CheckConstraint("sample >= 0", name="nonneg_sample"),
@@ -215,15 +215,15 @@ class Pick(Base):
     detid = mapped_column(ForeignKey("dldetection.id"), nullable=True)
 
     # Many-to-one relationship with Station
-    station: Mapped["Station"] = relationship("station.id", back_populates="pick")
+    station: Mapped["Station"] = relationship(back_populates="picks")
     # One-to-one relationship with Detection
-    dldet: Mapped["DLDetection"] = relationship("dldetection.id", back_populates="pick")
+    dldet: Mapped["DLDetection"] = relationship(back_populates="pick")
     # One-to-many relationship with PickCorrection
-    corrs: Mapped[List["PickCorrection"]] = relationship("pick_corr.id", back_populates="pick")
+    corrs: Mapped[List["PickCorrection"]] = relationship(back_populates="pick")
     # One-to-many relationship with FM
-    fms: Mapped[List["FirstMotion"]] = relationship("fm.id", back_populates="pick")
+    fms: Mapped[List["FirstMotion"]] = relationship(back_populates="pick")
     # One-to-many relationship with Waveform
-    wfs: Mapped[List["Waveform"]] = relationship("wf.id", back_populates="pick")
+    wfs: Mapped[List["Waveform"]] = relationship(back_populates="pick")
 
     __table_args__ = (UniqueConstraint(sta_id, chan_pref, phase, pick_time, auth, name="simplify_pk"),
                       UniqueConstraint(detid, name="detid"),
@@ -252,11 +252,11 @@ class PickCorrection(Base):
                                   onupdate=datetime.now)
     
     # Many-to-one relationship with Pick
-    pick: Mapped["Pick"] = relationship("pick.id", back_populates="corrs")
+    pick: Mapped["Pick"] = relationship(back_populates="corrs")
     # Many-to-one relationship with RepickerMethod
-    method: Mapped["RepickerMethod"] = relationship("repicker_method.id", back_populates="corrs")
+    method: Mapped["RepickerMethod"] = relationship(back_populates="corrs")
     # One-to-Many relationship with CredibleIntervals
-    cis: Mapped[List["CredibleInterval"]] = relationship("ci.id", back_populates="corr")
+    cis: Mapped[List["CredibleInterval"]] = relationship(back_populates="corr")
 
     __table_args__ = (UniqueConstraint(pid, method_id, name="simplify_pk"),
                       CheckConstraint("if_low < if_high", name="if_order"),
@@ -276,9 +276,9 @@ class FirstMotion(Base):
     preds_path: Mapped[Optional[str]] = mapped_column(String(100))
 
     # Many-to-one relationship with Pick
-    pick: Mapped["Pick"] = relationship("pick.id", back_populates="fms")
+    pick: Mapped["Pick"] = relationship(back_populates="fms")
     # Many-to-one relationship with RepickerMethod
-    method: Mapped["FMMethod"] = relationship("fm_method.id", back_populates="fms")
+    method: Mapped["FMMethod"] = relationship(back_populates="fms")
 
     __table_args__ = (UniqueConstraint(pid, method_id, name="simplify_pk"),
                       CheckConstraint("prob_up >= 0", name="nonneg_prob_up"),
@@ -296,9 +296,9 @@ class CredibleInterval(Base):
     ub: Mapped[float] = mapped_column(Double)
 
     # Many-to-one relationship with PickCorrection
-    corr: Mapped["PickCorrection"] = relationship("pick_corr.id", back_populates="cis")
+    corr: Mapped["PickCorrection"] = relationship(back_populates="cis")
     # Many-to-one relationship with CalibrationMethod
-    method: Mapped["CalibrationMethod"] = relationship("calibration_method.id", back_populates="cis")
+    method: Mapped["CalibrationMethod"] = relationship(back_populates="cis")
 
     __table_args__ = (UniqueConstraint(corr_id, method_id, percent, name="simplify_pk"),
                       CheckConstraint("lb < ub", name="bound_order"),
@@ -318,9 +318,9 @@ class Gap(Base):
     avail_sig_sec: Mapped[float] = mapped_column(Double)
 
     # Many-to-one relationship with DailyContDataInfo
-    contdatainfo: Mapped["DailyContDataInfo"] = relationship("contdatainfo.id", back_populates="gaps")
+    contdatainfo: Mapped["DailyContDataInfo"] = relationship(back_populates="gaps")
     # Many-to-one relationship with Channel
-    channel: Mapped["Channel"] = relationship("channel.id", back_populates="gaps")
+    channel: Mapped["Channel"] = relationship(back_populates="gaps")
 
     __table_args__ = (UniqueConstraint(data_id, chan_id, start, name="simplify_pk"),
                       CheckConstraint("start < end", name="times_order"),
@@ -346,11 +346,11 @@ class Waveform(Base):
     proc_notes: Mapped[Optional[str]] = mapped_column(String(255))
 
     # Many-to-one relationship with DailyContDataInfo
-    contdatainfo: Mapped["DailyContDataInfo"] = relationship("contdatainfo.id", back_populates="wfs")
+    contdatainfo: Mapped["DailyContDataInfo"] = relationship(back_populates="wfs")
     # Many-to-one relationship with Channel
-    channel: Mapped["Channel"] = relationship("channel.id", back_populates="wfs")
+    channel: Mapped["Channel"] = relationship(back_populates="wfs")
     # Many-to-one relationship with Pick
-    pick: Mapped["Pick"] = relationship("pick.id", back_populates="wfs")
+    pick: Mapped["Pick"] = relationship(back_populates="wfs")
 
     __table_args__ = (UniqueConstraint(data_id, chan_id, pick_id, name="simplify_pk"),
                       CheckConstraint("filt_low > 0", name="pos_filt_low"), 
