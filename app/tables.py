@@ -3,7 +3,7 @@ from sqlalchemy.types import TIMESTAMP, Double, Date, Boolean, JSON
 from sqlalchemy.orm import  Mapped, mapped_column, relationship
 from typing import List, Optional
 from sqlalchemy.schema import UniqueConstraint, CheckConstraint, ForeignKey
-import datetime
+from datetime import datetime
 import enum
 
 from .database import Base
@@ -23,8 +23,8 @@ class ISAMethod(Base):
     path: Mapped[Optional[str]] = mapped_column(String(255))
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(TIMESTAMP,
-                                  default=datetime.datetime.now,
-                                  onupdate=datetime.datetime.now)
+                                  default=datetime.now,
+                                  onupdate=datetime.now)
     
 class Station(Base):
     __tablename__ = "station"
@@ -32,18 +32,18 @@ class Station(Base):
     ## PK (not simplified)
     net: Mapped[str] = mapped_column(String(2), nullable=False)
     sta: Mapped[str] = mapped_column(String(4), nullable=False)
-    ondate = mapped_column(DateTime, nullable=False)
+    ondate: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     ## 
     lat: Mapped[float] = mapped_column(Double)
     lon: Mapped[float] = mapped_column(Double)
     elev: Mapped[float] = mapped_column(Double)
-    offdate = mapped_column(DateTime, nullable=True)
+    offdate: Mapped[datetime] = mapped_column(DateTime, nullable=True)
     # define 'last_modified' to use the SQL current_timestamp MySQL function on update
     # last_modified = mapped_column(DateTime, onupdate=func.utc_timestamp())
     # define 'last_updated' to be populated with datetime.now()
     last_modified = mapped_column(TIMESTAMP,
-                                  default=datetime.datetime.now,
-                                  onupdate=datetime.datetime.now)
+                                  default=datetime.now,
+                                  onupdate=datetime.now)
 
     # One-to-Many relationship with Channel
     channels: Mapped[List["Channel"]] = relationship("channel.id", back_populates="station")
@@ -80,8 +80,8 @@ class Channel(Base):
     dip: Mapped[int] = mapped_column(SmallInteger)
     offdate = mapped_column(DateTime, nullable=True)
     last_modified = mapped_column(TIMESTAMP,
-                                  default=datetime.datetime.now,
-                                  onupdate=datetime.datetime.now)
+                                  default=datetime.now,
+                                  onupdate=datetime.now)
     
     # Many-to-One relation with Station
     station: Mapped["Station"] = relationship("station.id", back_populates="channels")
@@ -122,8 +122,8 @@ class DailyContDataInfo(Base):
     error: Mapped[Optional[str]] = mapped_column(String(20))
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(TIMESTAMP,
-                                  default=datetime.datetime.now,
-                                  onupdate=datetime.datetime.now)
+                                  default=datetime.now,
+                                  onupdate=datetime.now)
     
     # Many-to-One relation with Station
     station: Mapped["Station"] = relationship("station.id", back_populates="contdatainfo")
@@ -181,8 +181,8 @@ class DLDetection(Base):
     height: Mapped[int] = mapped_column(SmallInteger)
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(TIMESTAMP,
-                                  default=datetime.datetime.now,
-                                  onupdate=datetime.datetime.now)
+                                  default=datetime.now,
+                                  onupdate=datetime.now)
     
     # Many-to-one relationship with ContData
     contdatainfo: Mapped["DailyContDataInfo"] = relationship("contdatainfo.id", back_populates="dldets")
@@ -248,8 +248,8 @@ class PickCorrection(Base):
     preds_path: Mapped[str] = mapped_column(String(100))
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(TIMESTAMP,
-                                  default=datetime.datetime.now,
-                                  onupdate=datetime.datetime.now)
+                                  default=datetime.now,
+                                  onupdate=datetime.now)
     
     # Many-to-one relationship with Pick
     pick: Mapped["Pick"] = relationship("pick.id", back_populates="corrs")
