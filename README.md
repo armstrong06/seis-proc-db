@@ -2,19 +2,20 @@
 
 ## Database for Yellowstone earthquake information, primarily from deep-learning methods.
 
-## Structure (from ChatGPT)
+## Structure
 seis_proc_db/  
 │  
 ├── app/                  # Main app code (models, services, etc.)  
 │   ├── __init__.py  
-│   ├── models.py         # Database models (tables)  
+│   ├── tables.py         # Database tables 
 │   ├── services.py       # Business logic  
 │   └── database.py       # Engine, session, base setup  
 │  
-├── db/                   # Database-related scripts  
+├── scripts/              # Database-related scripts  
 │   ├── build_tables.py   # Script to create tables  
 │   └── drop_tables.py    # Script to drop tables  
 │   
+├── tests/                # Database-related pytests 
+│   
 ├── config.py             # Configuration file  
-├── requirements.txt      # Dependencies  
 └── README.md             # Documentation  
