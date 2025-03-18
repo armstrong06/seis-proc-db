@@ -13,7 +13,7 @@ seis_proc_db/
 │  
 ├── db/                   # Database-related scripts  
 │   ├── build_tables.py   # Script to create tables  
-|   └── drop_tables.py    # Script to drop tables  
+│   └── drop_tables.py    # Script to drop tables  
 │   
 ├── config.py             # Configuration file  
 ├── requirements.txt      # Dependencies  
