@@ -2,7 +2,7 @@ from sqlalchemy import MetaData
 from sqlalchemy import create_engine
 from sqlalchemy.orm import MappedAsDataclass, DeclarativeBase, sessionmaker
 from contextlib import contextmanager
-from ..config import DB_URL
+from config import DB_URL
 
 
 metadata_obj = MetaData(naming_convention={
