@@ -175,6 +175,7 @@ class DLDetection(Base):
     data_id = mapped_column(ForeignKey("contdatainfo.id"), nullable=False)
     method_id = mapped_column(ForeignKey("detection_method.id"), nullable=False)
     sample: Mapped[int] = mapped_column(Integer)
+    phase: Mapped[str] = mapped_column(String(4))
     ##
     width: Mapped[float] = mapped_column(Double)
     height: Mapped[int] = mapped_column(SmallInteger)
