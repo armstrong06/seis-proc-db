@@ -13,7 +13,7 @@ metadata_obj = MetaData(naming_convention={
 })
 
 # Create a new Decorative Base 
-class Base(MappedAsDataclass, DeclarativeBase):
+class Base(DeclarativeBase):
     metadata=metadata_obj
 
 # create the database engine
