@@ -6,7 +6,7 @@ from sqlalchemy.schema import UniqueConstraint, CheckConstraint, ForeignKey
 from datetime import datetime
 import enum
 
-from .database import Base
+from app.database import Base
 
 class FMEnum(enum.Enum):
     """Define ENUM for FirstMotion class"""
@@ -27,6 +27,19 @@ class ISAMethod(Base):
                                   onupdate=datetime.now)
     
 class Station(Base):
+    """Stores a station's information. Unique station is defined by the net, sta, and ondate.
+
+        id: Not meaningful identifier for the station, used as the PK
+        net: Network abbreviation 
+        sta: Station code
+        ondate: The datetime in UTC that the station was turned on 
+        lat: station latitude
+        lon: station longitude
+        elev: station elevation in m
+        offdate: Optional. The datetime in UTC that the station was turned off 
+        last_modified: Automatic field that keeps track of when a station was added to
+        or modified in the database in local time. 
+    """
     __tablename__ = "station"
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
@@ -57,7 +70,17 @@ class Station(Base):
                       CheckConstraint("lon >= -180 AND lon <= 180", name="valid_lon"),
                       CheckConstraint("elev >= 0", name="positive_elev"),)
     
+    def __repr__(self) -> str:
+         return (f"Station(id={self.id!r}, net={self.net!r}, sta={self.sta!r}, ondate={self.ondate!r}, " 
+                 f"lat={self.lat!r}, lon={self.lon!r}, elev={self.elev!r}, offdate={self.offdate!r}, " 
+                 f"last_modified={self.last_modified!r})")
+    
 class Channel(Base):
+    """Stores a channel's information.
+
+    Args:
+        Base (_type_): _description_
+    """
     __tablename__ = "channel"
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
@@ -98,8 +121,21 @@ class Channel(Base):
                       CheckConstraint("azimuth >= 0 AND azimuth <= 360", name="valid_azimuth"),
                       CheckConstraint("dip >= -90 AND dip <= 90", name="valid_dip")
                       )
+    def __repr__(self) -> str:
+         return (f"Channel(id={self.id!r}, sta_id={self.sta_id!r}, seed_code={self.seed_code!r}, "
+                 f"loc={self.loc!r}, ondate={self.ondate!r}, samp_rate={self.samp_rate!r}, " 
+                 f"clock_drift={self.clock_drift!r}, sensor_name={self.sensor_name!r}, "
+                 f"sensitivity_units={self.sensitivity_units!r}, sensitivity_val={self.sensitivity_val!r}, "
+                 f"overall_gain_vel={self.overall_gain_vel!r}, lat={self.lat!r}, lon={self.lon!r}, "
+                 f"elev={self.elev!r}, depth={self.depth!r}, azimuth={self.azimuth!r}, dip={self.dip!r}, " 
+                 f"offdate={self.offdate!r}, last_modified={self.last_modified!r})")
     
 class DailyContDataInfo(Base):
+    """Keep track of information relating to daily continuous data files used in algorithms.
+
+    Args:
+        Base (_type_): _description_
+    """
     __tablename__ = "contdatainfo"
 
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
@@ -142,6 +178,13 @@ class DailyContDataInfo(Base):
                       CheckConstraint("proc_end > proc_start", name="valid_proc_times"),
                       CheckConstraint("org_end > org_start", name="valid_org_times")
                       )
+    
+    def __repr__(self) -> str:
+         return (f"DailyContDataInfo(id={self.id!r}, sta_id={self.sta_id!r}, chan_pref={self.chan_pref!r}, ",
+                 f"ncomps={self.ncomps!r}, date={self.date!r}, samprate={self.samprate!r}, dt={self.dt!r}, "
+                 f"org_npts={self.org_npts!r}, org_start={self.org_start!r}, org_end={self.org_end!r}, "
+                 f"proc_npts={self.proc_npts!r}, proc_start={self.proc_start!r}, proc_end={self.proc_end!r}, "
+                 f"prev_appended={self.prev_appended!r}, error={self.error!r}, last_modified={self.last_modified!r}")
     
 class RepickerMethod(ISAMethod):
     __tablename__ = "repicker_method"
