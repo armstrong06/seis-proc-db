@@ -121,6 +121,9 @@ class Channel(Base):
     ##
     samp_rate: Mapped[float] = mapped_column(Double)
     clock_drift: Mapped[float] = mapped_column(Double)
+    sensor_desc: Mapped[Optional[str]] = mapped_column(String(50))
+    sensit_units: Mapped[str] = mapped_column(String(10))
+    sensit_val: Mapped[float] = mapped_column(Double)
     sensit_freq: Mapped[float] = mapped_column(Double)
     overall_gain_vel: Mapped[Optional[float]] = mapped_column(Double)
     lat: Mapped[float] = mapped_column(Double)
@@ -152,8 +155,8 @@ class Channel(Base):
     def __repr__(self) -> str:
          return (f"Channel(id={self.id!r}, sta_id={self.sta_id!r}, seed_code={self.seed_code!r}, "
                  f"loc={self.loc!r}, ondate={self.ondate!r}, samp_rate={self.samp_rate!r}, " 
-                 f"clock_drift={self.clock_drift!r}, sensor_name={self.sensor_name!r}, "
-                 f"sensitivity_units={self.sensitivity_units!r}, sensitivity_val={self.sensitivity_val!r}, "
+                 f"clock_drift={self.clock_drift!r}, sensor_desc={self.sensor_desc!r}, "
+                 f"sensit_units={self.sensit_units!r}, sensit_freq={self.sensit_freq!r}, sensit_val={self.sensit_val!r}, "
                  f"overall_gain_vel={self.overall_gain_vel!r}, lat={self.lat!r}, lon={self.lon!r}, "
                  f"elev={self.elev!r}, depth={self.depth!r}, azimuth={self.azimuth!r}, dip={self.dip!r}, " 
                  f"offdate={self.offdate!r}, last_modified={self.last_modified!r})")
@@ -196,8 +199,10 @@ class DailyContDataInfo(Base):
     ncomps: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     date = mapped_column(Date, nullable=False)
     ##
-    samprate: Mapped[float] = mapped_column(Double)
-    dt: Mapped[float] = mapped_column(Double)    
+    samp_rate: Mapped[float] = mapped_column(Double)
+    # TODO: Decide if need to store this... 
+    dt: Mapped[float] = mapped_column(Double)  
+    # TODO: Decided whether to remove npts 
     org_npts: Mapped[int] = mapped_column(Integer)
     org_start: Mapped[datetime] = mapped_column(DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False)
     org_end: Mapped[datetime] = mapped_column(DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False)
@@ -224,7 +229,7 @@ class DailyContDataInfo(Base):
     wfs: Mapped[List["Waveform"]] = relationship(back_populates="contdatainfo")
 
     __table_args__ = (UniqueConstraint(sta_id, chan_pref, ncomps, date, name="simplify_pk"),
-                      CheckConstraint("samprate > 0", name="positive_samprate"),
+                      CheckConstraint("samp_rate > 0", name="positive_samp_rate"),
                       CheckConstraint("dt <= 1", name="dt_lt_1"),
                       CheckConstraint("proc_npts >= 1", name="proc_npts_gt_1"),
                       CheckConstraint("org_npts >= 0", name="nonneg_org_npts"),
@@ -233,11 +238,11 @@ class DailyContDataInfo(Base):
                       )
     
     def __repr__(self) -> str:
-         return (f"DailyContDataInfo(id={self.id!r}, sta_id={self.sta_id!r}, chan_pref={self.chan_pref!r}, ",
-                 f"ncomps={self.ncomps!r}, date={self.date!r}, samprate={self.samprate!r}, dt={self.dt!r}, "
+         return (f"DailyContDataInfo(id={self.id!r}, sta_id={self.sta_id!r}, chan_pref={self.chan_pref!r}, "
+                 f"ncomps={self.ncomps!r}, date={self.date!r}, samp_rate={self.samp_rate!r}, dt={self.dt!r}, "
                  f"org_npts={self.org_npts!r}, org_start={self.org_start!r}, org_end={self.org_end!r}, "
                  f"proc_npts={self.proc_npts!r}, proc_start={self.proc_start!r}, proc_end={self.proc_end!r}, "
-                 f"prev_appended={self.prev_appended!r}, error={self.error!r}, last_modified={self.last_modified!r}")
+                 f"prev_appended={self.prev_appended!r}, error={self.error!r}, last_modified={self.last_modified!r})")
     
 class RepickerMethod(ISAMethod):
     """Stores some info about the type/version of phase repicking model or technique used. 
@@ -419,7 +424,7 @@ class PickCorrection(Base):
     trim_median: Mapped[float] = mapped_column(Double)
     trim_mean: Mapped[float] = mapped_column(Double)
     # TODO: Figure out what I am going to store here
-    preds_path: Mapped[str] = mapped_column(String(100))
+    preds: Mapped[str] = mapped_column(String(100))
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(TIMESTAMP,
                                   default=datetime.now,
@@ -462,8 +467,8 @@ class FirstMotion(Base):
     prob_up: Mapped[Optional[float]] = mapped_column(Double)
     prob_dn: Mapped[Optional[float]] = mapped_column(Double)
     # TODO: Figure out what I am going to store here
-    preds_path: Mapped[Optional[str]] = mapped_column(String(100))
-
+    preds: Mapped[Optional[str]] = mapped_column(String(100))
+    # Keep track of when the row was inserted/updated
     # Many-to-one relationship with Pick
     pick: Mapped["Pick"] = relationship(back_populates="fms")
     # Many-to-one relationship with RepickerMethod
@@ -581,11 +586,13 @@ class Waveform(Base):
     filt_high: Mapped[Optional[float]] = mapped_column(Double)
     start: Mapped[datetime] = mapped_column(DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False)
     end: Mapped[datetime] = mapped_column(DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False)
+    proc_notes: Mapped[Optional[str]] = mapped_column(String(255))
     # TODO: Figure out the type I am going to use....
     data = mapped_column(JSON, nullable=False)
-    start = mapped_column(DateTime, nullable=False)
-    end = mapped_column(DateTime, nullable=False)
-    proc_notes: Mapped[Optional[str]] = mapped_column(String(255))
+    # Keep track of when the row was inserted/updated
+    last_modified = mapped_column(TIMESTAMP,
+                                  default=datetime.now,
+                                  onupdate=datetime.now)
 
     # Many-to-one relationship with DailyContDataInfo
     contdatainfo: Mapped["DailyContDataInfo"] = relationship(back_populates="wfs")
