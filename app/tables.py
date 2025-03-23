@@ -11,6 +11,7 @@ from app.database import Base
 MYSQL_DATETIME_FSP = 6
 
 class FMEnum(enum.Enum):
+    # Not using this currently, but maybe would be useful if I wanted to make directly from 0/1
     """Define ENUM for FirstMotion class"""
     UK = "uk"
     UP = "up"
@@ -462,8 +463,8 @@ class FirstMotion(Base):
     ## PK (not simplified)
     pid = mapped_column(ForeignKey("pick.id"), nullable=False)
     method_id = mapped_column(ForeignKey("fm_method.id"), nullable=False)
-    ##
-    fm: Mapped[FMEnum]
+    #TODO: Get this constraint to work.. 
+    clsf: Mapped[Enum] = mapped_column(Enum('uk', 'up', 'dn', create_constraint=True, name="fm_enum")) #Mapped[FMEnum] = mapped_column(Enum(FMEnum))
     prob_up: Mapped[Optional[float]] = mapped_column(Double)
     prob_dn: Mapped[Optional[float]] = mapped_column(Double)
     # TODO: Figure out what I am going to store here
