@@ -1,6 +1,7 @@
-from sqlalchemy import String, Integer, SmallInteger, DateTime
+from sqlalchemy import String, Integer, SmallInteger, DateTime, Enum
 from sqlalchemy.types import TIMESTAMP, Double, Date, Boolean, JSON
 from sqlalchemy.orm import  Mapped, mapped_column, relationship
+from sqlalchemy.dialects.mysql import DATETIME
 from typing import List, Optional
 from sqlalchemy.schema import UniqueConstraint, CheckConstraint, ForeignKey
 from datetime import datetime
@@ -163,7 +164,7 @@ class Channel(Base):
                  f"offdate={self.offdate!r}, last_modified={self.last_modified!r})")
     
 class DailyContDataInfo(Base):
-    """Keep track of information relating to daily continuous data files used in algorithms.
+    """Keep track of information relating to daily (24 hr) continuous data files used in algorithms.
 
     Args:
         id: Not meaningful identifier that is used as the PK
@@ -256,8 +257,13 @@ class RepickerMethod(ISAMethod):
     """
     __tablename__ = "repicker_method"
 
+    phase: Mapped[Optional[str]] = mapped_column(String(4))
+
     # One-to-Many relationship with PickCorrection
     corrs: Mapped[List["PickCorrection"]] = relationship(back_populates="method")
+
+    def __repr__(self) -> str:
+         return (f"RepickerMethod(id={self.id!r}, name={self.name!r}, desc={self.desc!r}, path={self.path!r}, last_modified={self.last_modified!r})")
 
 class CalibrationMethod(ISAMethod):
     """Stores some info about the type/version of calibration model or technique used. 
@@ -270,8 +276,13 @@ class CalibrationMethod(ISAMethod):
     """
     __tablename__ = "calibration_method"
 
+    phase: Mapped[Optional[str]] = mapped_column(String(4))
+
     # One-to-Many relationship with CredibleIntervals
     cis: Mapped[List["CredibleInterval"]] = relationship(back_populates="method")
+
+    def __repr__(self) -> str:
+         return (f"CalibrationMethod(id={self.id!r}, name={self.name!r}, desc={self.desc!r}, path={self.path!r}, last_modified={self.last_modified!r})")
 
 class FMMethod(ISAMethod):
     """Stores some info about the type/version of first motion classifier used. 
@@ -284,6 +295,9 @@ class FMMethod(ISAMethod):
     # One-to-Many relationship with FM
     fms: Mapped[List["FirstMotion"]] = relationship(back_populates="method")
 
+    def __repr__(self) -> str:
+         return (f"FMMethod(id={self.id!r}, name={self.name!r}, desc={self.desc!r}, path={self.path!r}, last_modified={self.last_modified!r})")
+
 class DetectionMethod(ISAMethod):
     """Stores some info about the type/version of phase Detection algorithm used. 
 
@@ -294,10 +308,14 @@ class DetectionMethod(ISAMethod):
 
     """
     __tablename__ = "detection_method"
-    phase: Mapped[str] = mapped_column(String(4))
+    phase: Mapped[Optional[str]] = mapped_column(String(4))
 
     # One to Many relationship with DLDetection
     dldets: Mapped[List["DLDetection"]] = relationship(back_populates="method")
+
+    def __repr__(self) -> str:
+        return (f"DetectioNMethod(id={self.id!r}, name={self.name!r}, desc={self.desc!r}, "
+                f"path={self.path!r}, phase={self.phase!r} last_modified={self.last_modified!r})")
 
 class DLDetection(Base):
     """Store Deep-Learning (DL) phase detections from a certain continuous data file and detection method.
@@ -320,9 +338,9 @@ class DLDetection(Base):
     ## PK (not simplified)
     data_id = mapped_column(ForeignKey("contdatainfo.id"), nullable=False)
     method_id = mapped_column(ForeignKey("detection_method.id"), nullable=False)
-    sample: Mapped[int] = mapped_column(Integer)
-    phase: Mapped[str] = mapped_column(String(4))
+    sample: Mapped[int] = mapped_column(Integer, nullable=False)
     ##
+    phase: Mapped[str] = mapped_column(String(4))
     width: Mapped[float] = mapped_column(Double)
     height: Mapped[int] = mapped_column(SmallInteger)
     # Keep track of when the row was inserted/updated
@@ -341,6 +359,10 @@ class DLDetection(Base):
                       CheckConstraint("sample >= 0", name="nonneg_sample"),
                       CheckConstraint("width > 0", name="positive_width"),
                       CheckConstraint("height > 0 AND height <= 100", name="valid_height"))
+    
+    def __repr__(self) -> str:
+        return (f"DLDetection(id={self.id!r}, data_id={self.data_id!r}, method_id={self.method_id!r}, sample={self.sample!r}, "
+                f"phase={self.phase!r}, width={self.width!r}, height={self.height!r}, last_modified={self.last_modified!r})")
 
 class Pick(Base):
     """Describe a pick, which may be derived from a DLDetection.
@@ -366,6 +388,7 @@ class Pick(Base):
     ## PK (not simplified)
     sta_id = mapped_column(ForeignKey("station.id"), nullable=False)
     chan_pref: Mapped[str] = mapped_column(String(2), nullable=False)
+    # TODO: Should phase be removed from the PK, in the case it was unknown?
     phase: Mapped[str] = mapped_column(String(4), nullable=False)
     ptime: Mapped[datetime] = mapped_column(DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False)
     auth: Mapped[str] = mapped_column(String(10), nullable=False)
@@ -375,6 +398,10 @@ class Pick(Base):
     amp: Mapped[Optional[float]] = mapped_column(Double)
     # FK from Detections
     detid = mapped_column(ForeignKey("dldetection.id"), nullable=True)
+    # Keep track of when the row was inserted/updated
+    last_modified = mapped_column(TIMESTAMP,
+                                  default=datetime.now,
+                                  onupdate=datetime.now)
 
     # Many-to-one relationship with Station
     station: Mapped["Station"] = relationship(back_populates="picks")
@@ -387,10 +414,14 @@ class Pick(Base):
     # One-to-many relationship with Waveform
     wfs: Mapped[List["Waveform"]] = relationship(back_populates="pick")
 
-    __table_args__ = (UniqueConstraint(sta_id, chan_pref, phase, pick_time, auth, name="simplify_pk"),
+    __table_args__ = (UniqueConstraint(sta_id, chan_pref, phase, ptime, auth, name="simplify_pk"),
                       UniqueConstraint(detid, name="detid"),
                       CheckConstraint("amp > 0", name="positive_amp"))
     
+    def __repr__(self) -> str:
+        return (f"Pick(id={self.id!r}, sta_id={self.sta_id!r}, chan_pref={self.chan_pref!r}, phase={self.phase!r}, ptime={self.ptime!r}, "
+                f"auth={self.auth!r}, snr={self.snr!r}, amp={self.amp!r}, det_id={self.detid}, last_modified={self.last_modified!r})")
+
 class PickCorrection(Base):
     """Correction to a Pick to improve the arrival time estimate. Basically assumes some sampling method.
 
@@ -441,6 +472,12 @@ class PickCorrection(Base):
     __table_args__ = (UniqueConstraint(pid, method_id, name="simplify_pk"),
                       CheckConstraint("if_low < if_high", name="if_order"),
                       CheckConstraint("std > 0", name="positive_std"),)
+    
+    def __repr__(self) -> str:
+        return (f"PickCorrection(id={self.id!r}, pid={self.pid!r}, method_id={self.method_id!r}, "
+                f"median={self.median!r}, mean={self.mean!r}, std={self.std!r}, if_low={self.if_low!r}, "
+                f"if_high={self.if_high!r}, trim_mean={self.trim_mean!r}, trim_median={self.trim_median!r}, "
+                f"preds={self.preds!r}, last_modified={self.last_modified!r})")
 
 class FirstMotion(Base):
     """First motion information associated with a P pick
@@ -470,14 +507,24 @@ class FirstMotion(Base):
     # TODO: Figure out what I am going to store here
     preds: Mapped[Optional[str]] = mapped_column(String(100))
     # Keep track of when the row was inserted/updated
+    last_modified = mapped_column(TIMESTAMP,
+                                default=datetime.now,
+                                onupdate=datetime.now)
+    
     # Many-to-one relationship with Pick
     pick: Mapped["Pick"] = relationship(back_populates="fms")
     # Many-to-one relationship with RepickerMethod
     method: Mapped["FMMethod"] = relationship(back_populates="fms")
+    
 
     __table_args__ = (UniqueConstraint(pid, method_id, name="simplify_pk"),
                       CheckConstraint("prob_up >= 0", name="nonneg_prob_up"),
                       CheckConstraint("prob_dn >= 0", name="nonneg_prob_dn"))
+    
+    def __repr__(self) -> str:
+        return (f"FirstMotion(id={self.id!r}, pid={self.pid!r}, method_id={self.method_id!r}, "
+                f"clsf={self.clsf!r}, prob_up={self.prob_up!r}, prob_dn={self.prob_dn!r}, preds={self.preds!r}, "
+                f"last_modified={self.last_modified!r})")
     
 class CredibleInterval(Base):
     """Credible Intervals associated with a pick correction.
@@ -503,15 +550,23 @@ class CredibleInterval(Base):
     ##
     lb: Mapped[float] = mapped_column(Double)
     ub: Mapped[float] = mapped_column(Double)
-
+    # Keep track of when the row was inserted/updated
+    last_modified = mapped_column(TIMESTAMP,
+                                  default=datetime.now,
+                                  onupdate=datetime.now)
+    
     # Many-to-one relationship with PickCorrection
     corr: Mapped["PickCorrection"] = relationship(back_populates="cis")
     # Many-to-one relationship with CalibrationMethod
     method: Mapped["CalibrationMethod"] = relationship(back_populates="cis")
 
+
     __table_args__ = (UniqueConstraint(corr_id, method_id, percent, name="simplify_pk"),
                       CheckConstraint("lb < ub", name="bound_order"),
                       CheckConstraint("percent > 0 AND percent <= 100", name="valid_percent"))
+    def __repr__(self) -> str:
+        return (f"CredibleInterval(id={self.id!r}, corr_id={self.corr_id!r}, method_id={self.method_id!r}, "
+                f"percent={self.percent!r}, lb={self.lb!r}, ub={self.ub!r}, last_modified={self.last_modified!r})")
     
 class Gap(Base):
     """Information on gaps in the DailyContinuousData for a Channel. Many small gaps may be represented as one 
@@ -540,9 +595,13 @@ class Gap(Base):
     start: Mapped[datetime] = mapped_column(DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False)
     ##
     end: Mapped[datetime] = mapped_column(DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False)
-    startsamp: Mapped[int] = mapped_column(Integer)
-    endsamp: Mapped[int] = mapped_column(Integer)
-    avail_sig_sec: Mapped[float] = mapped_column(Double)
+    startsamp: Mapped[Optional[int]] = mapped_column(Integer)
+    endsamp: Mapped[Optional[int]] = mapped_column(Integer)
+    avail_sig_sec: Mapped[float] = mapped_column(Double, default=0.0)
+    # Keep track of when the row was inserted/updated
+    last_modified = mapped_column(TIMESTAMP,
+                                  default=datetime.now,
+                                  onupdate=datetime.now)
 
     # Many-to-one relationship with DailyContDataInfo
     contdatainfo: Mapped["DailyContDataInfo"] = relationship(back_populates="gaps")
@@ -555,6 +614,12 @@ class Gap(Base):
                       CheckConstraint("endsamp >= 1", name="pos_startsamp"),
                       CheckConstraint("startsamp < endsamp", name="samps_order"),
                       CheckConstraint("avail_sig_sec >= 0", name="nonneg_avail_sig"))
+    
+    def __repr__(self) -> str:
+        return (f"Gap(id={self.id!r}, data_id={self.data_id!r}, chan_id={self.chan_id!r}, "
+                f"start={self.start!r}, end={self.end!r}, startsamp={self.startsamp!r}, "
+                f"avail_sig_sec={self.avail_sig_sec!r}, endsamp={self.endsamp!r}, "
+                f"last_modified={self.last_modified!r})")
     
 class Waveform(Base):
     """Waveform snippet recorded on a Channel, around a Pick, extracted from continuous data described in 
@@ -583,6 +648,7 @@ class Waveform(Base):
     chan_id = mapped_column(ForeignKey("channel.id"), nullable=False)
     pick_id = mapped_column(ForeignKey("pick.id"), nullable=False)
     ##
+    # TODO: Add more fields to PK if needed (storing processed and unprocessed wfs, diff durations)
     filt_low: Mapped[Optional[float]] = mapped_column(Double)
     filt_high: Mapped[Optional[float]] = mapped_column(Double)
     start: Mapped[datetime] = mapped_column(DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False)
@@ -608,3 +674,8 @@ class Waveform(Base):
                       CheckConstraint("filt_low < filt_high", name="filt_order"),
                       CheckConstraint("start < end", name="times_order"),
                       )
+    def __repr__(self) -> str:
+        return (f"Waveform(id={self.id!r}, data_id={self.data_id!r}, chan_id={self.chan_id!r}, "
+                f"pick_id={self.pick_id!r}, filt_low={self.filt_low!r}, filt_high={self.filt_high!r}, "
+                f"start={self.start!r}, end={self.end!r}, proc_notes={self.proc_notes!r}, "
+                f"data={self.data[0:3]!r}, last_modified={self.last_modified!r})")
