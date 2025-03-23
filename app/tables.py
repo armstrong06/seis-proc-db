@@ -8,6 +8,8 @@ import enum
 
 from app.database import Base
 
+MYSQL_DATETIME_FSP = 6
+
 class FMEnum(enum.Enum):
     """Define ENUM for FirstMotion class"""
     UK = "uk"
@@ -115,7 +117,7 @@ class Channel(Base):
     sta_id = mapped_column(ForeignKey("station.id"), nullable=False)
     seed_code: Mapped[str] = mapped_column(String(3), nullable=False)
     loc: Mapped[str] = mapped_column(String(2), nullable=False)
-    ondate = mapped_column(DateTime, nullable=False)
+    ondate: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     ##
     samp_rate: Mapped[float] = mapped_column(Double)
     clock_drift: Mapped[float] = mapped_column(Double)
@@ -129,7 +131,7 @@ class Channel(Base):
     depth: Mapped[float] = mapped_column(Double)
     azimuth: Mapped[float] = mapped_column(Double)
     dip: Mapped[int] = mapped_column(SmallInteger)
-    offdate = mapped_column(DateTime, nullable=True)
+    offdate: Mapped[datetime] = mapped_column(DateTime, nullable=True)
     last_modified = mapped_column(TIMESTAMP,
                                   default=datetime.now,
                                   onupdate=datetime.now)
@@ -199,11 +201,13 @@ class DailyContDataInfo(Base):
     samprate: Mapped[float] = mapped_column(Double)
     dt: Mapped[float] = mapped_column(Double)    
     org_npts: Mapped[int] = mapped_column(Integer)
-    org_start = mapped_column(DateTime, nullable=False)
-    org_end = mapped_column(DateTime, nullable=False)
+    org_start: Mapped[datetime] = mapped_column(DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False)
+    org_end: Mapped[datetime] = mapped_column(DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False)
+    # TODO: Decide if proc_* values should be stored in a different table
     proc_npts: Mapped[Optional[int]] = mapped_column(Integer)
-    proc_start = mapped_column(DateTime, nullable=True)
-    proc_end = mapped_column(DateTime, nullable=True)
+    proc_start: Mapped[datetime] = mapped_column(DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=True)
+    proc_end: Mapped[datetime] = mapped_column(DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=True)
+    # TODO: Should this be nullable or have a default value (i.e., 0)
     prev_appended: Mapped[bool] = mapped_column(Boolean(create_constraint=True, name="prev_app_bool"),
                                                 nullable=True)
     error: Mapped[Optional[str]] = mapped_column(String(20))
@@ -359,8 +363,7 @@ class Pick(Base):
     sta_id = mapped_column(ForeignKey("station.id"), nullable=False)
     chan_pref: Mapped[str] = mapped_column(String(2), nullable=False)
     phase: Mapped[str] = mapped_column(String(4), nullable=False)
-    # TODO: Check this has fractional seconds
-    pick_time = mapped_column(DateTime, nullable=False)
+    ptime: Mapped[datetime] = mapped_column(DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False)
     auth: Mapped[str] = mapped_column(String(10), nullable=False)
     ##
     # From waveform info
@@ -530,9 +533,9 @@ class Gap(Base):
     ## PK (not simplified)
     data_id = mapped_column(ForeignKey("contdatainfo.id"), nullable=False)
     chan_id = mapped_column(ForeignKey("channel.id"), nullable=False)
-    start = mapped_column(DateTime, nullable=False)
+    start: Mapped[datetime] = mapped_column(DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False)
     ##
-    end = mapped_column(DateTime, nullable=False)
+    end: Mapped[datetime] = mapped_column(DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False)
     startsamp: Mapped[int] = mapped_column(Integer)
     endsamp: Mapped[int] = mapped_column(Integer)
     avail_sig_sec: Mapped[float] = mapped_column(Double)
@@ -578,6 +581,8 @@ class Waveform(Base):
     ##
     filt_low: Mapped[Optional[float]] = mapped_column(Double)
     filt_high: Mapped[Optional[float]] = mapped_column(Double)
+    start: Mapped[datetime] = mapped_column(DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False)
+    end: Mapped[datetime] = mapped_column(DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False)
     # TODO: Figure out the type I am going to use....
     data = mapped_column(JSON, nullable=False)
     start = mapped_column(DateTime, nullable=False)
