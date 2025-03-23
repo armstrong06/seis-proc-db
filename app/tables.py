@@ -121,9 +121,7 @@ class Channel(Base):
     ##
     samp_rate: Mapped[float] = mapped_column(Double)
     clock_drift: Mapped[float] = mapped_column(Double)
-    sensor_name: Mapped[Optional[str]] = mapped_column(String(50))
-    sensitivity_units: Mapped[str] = mapped_column(String(10))
-    sensitivity_val: Mapped[float] = mapped_column(Double)
+    sensit_freq: Mapped[float] = mapped_column(Double)
     overall_gain_vel: Mapped[Optional[float]] = mapped_column(Double)
     lat: Mapped[float] = mapped_column(Double)
     lon: Mapped[float] = mapped_column(Double)
