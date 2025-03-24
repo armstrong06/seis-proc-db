@@ -437,7 +437,7 @@ class PickCorrection(Base):
         if_high: Upper inner fence value for all samples
         trim_median: Median value of samples within the inner fence
         trim_mean: Mean value of samples within the inner fence
-        preds: #TODO: Some representation of the predictions, either actually storing them or a path to them... 
+        preds: JSON object storing the sampled pick correction values
         last_modified: Automatic field that keeps track of when a row was added to
                 or modified in the database in local time. Does not include microseconds. 
     """
@@ -455,8 +455,7 @@ class PickCorrection(Base):
     if_high: Mapped[float] = mapped_column(Double)
     trim_median: Mapped[float] = mapped_column(Double)
     trim_mean: Mapped[float] = mapped_column(Double)
-    # TODO: Figure out what I am going to store here
-    preds: Mapped[str] = mapped_column(String(100))
+    preds: Mapped[JSON] = mapped_column(JSON)
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(TIMESTAMP,
                                   default=datetime.now,
@@ -477,7 +476,7 @@ class PickCorrection(Base):
         return (f"PickCorrection(id={self.id!r}, pid={self.pid!r}, method_id={self.method_id!r}, "
                 f"median={self.median!r}, mean={self.mean!r}, std={self.std!r}, if_low={self.if_low!r}, "
                 f"if_high={self.if_high!r}, trim_mean={self.trim_mean!r}, trim_median={self.trim_median!r}, "
-                f"preds={self.preds!r}, last_modified={self.last_modified!r})")
+                f"preds={self.preds[0:3]!r}..., last_modified={self.last_modified!r})")
 
 class FirstMotion(Base):
     """First motion information associated with a P pick
@@ -491,7 +490,7 @@ class FirstMotion(Base):
         clsf: First motion classification, must be "uk" (unknown), "up" or "dn" (down) 
         prob_up: Optional. Probability of the fm being up.
         prob_dn: Optional. Probability of the fm being down.
-        preds: #TODO: Some representation of the predictions, either actually storing them or a path to them...
+        preds: Optional. JSON object storing the sampled first motion values.
         last_modified: Automatic field that keeps track of when a row was added to
                 or modified in the database in local time. Does not include microseconds.
     """
@@ -504,8 +503,7 @@ class FirstMotion(Base):
     clsf: Mapped[Enum] = mapped_column(Enum('uk', 'up', 'dn', create_constraint=True, name="fm_enum")) #Mapped[FMEnum] = mapped_column(Enum(FMEnum))
     prob_up: Mapped[Optional[float]] = mapped_column(Double)
     prob_dn: Mapped[Optional[float]] = mapped_column(Double)
-    # TODO: Figure out what I am going to store here
-    preds: Mapped[Optional[str]] = mapped_column(String(100))
+    preds: Mapped[Optional[JSON]] = mapped_column(JSON)
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(TIMESTAMP,
                                 default=datetime.now,
@@ -523,8 +521,8 @@ class FirstMotion(Base):
     
     def __repr__(self) -> str:
         return (f"FirstMotion(id={self.id!r}, pid={self.pid!r}, method_id={self.method_id!r}, "
-                f"clsf={self.clsf!r}, prob_up={self.prob_up!r}, prob_dn={self.prob_dn!r}, preds={self.preds!r}, "
-                f"last_modified={self.last_modified!r})")
+                f"clsf={self.clsf!r}, prob_up={self.prob_up!r}, prob_dn={self.prob_dn!r}, "
+                f"preds={self.preds[0:3]!r}..., last_modified={self.last_modified!r})")
     
 class CredibleInterval(Base):
     """Credible Intervals associated with a pick correction.
@@ -633,7 +631,6 @@ class Waveform(Base):
         pick_id: ID of the Pick the waveform is centered on. 
         filt_low: Optional. Lower end of the filter applied. 
         filt_high: Optional. Upper end of the filter applied.
-        # TODO: Figure out what to store here
         data: Waveform data in some format of path to data...
         start: Start time of the waveform in UTC. Should include fractional seconds.
         end: End time of the waveform in UTC. Should include fractional seconds.
@@ -654,7 +651,6 @@ class Waveform(Base):
     start: Mapped[datetime] = mapped_column(DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False)
     end: Mapped[datetime] = mapped_column(DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False)
     proc_notes: Mapped[Optional[str]] = mapped_column(String(255))
-    # TODO: Figure out the type I am going to use....
     data = mapped_column(JSON, nullable=False)
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(TIMESTAMP,
