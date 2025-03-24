@@ -1,5 +1,5 @@
 # Have to import tables or Base doesn't register them
-from app import database, tables
+from seis_proc_db import database, tables
 
 """Create all tables defined in app.tables
 """

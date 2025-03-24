@@ -5,7 +5,7 @@ from sqlalchemy import select
 import pytest 
 import numpy as np
 
-from app import tables
+from seis_proc_db import tables
 
 dateformat = "%Y-%m-%dT%H:%M:%S.%f"
 

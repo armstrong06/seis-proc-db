@@ -7,7 +7,7 @@ from sqlalchemy.schema import UniqueConstraint, CheckConstraint, ForeignKey
 from datetime import datetime
 import enum
 
-from app.database import Base
+from seis_proc_db.database import Base
 
 MYSQL_DATETIME_FSP = 6
 

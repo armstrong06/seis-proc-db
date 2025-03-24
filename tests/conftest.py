@@ -2,7 +2,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 import pytest
 
-from app.database import engine
+from seis_proc_db.database import engine
 
 # global application scope.  create Session class, engine
 Session = sessionmaker()
