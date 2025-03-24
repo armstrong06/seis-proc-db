@@ -3,13 +3,15 @@
 ## Database for Yellowstone earthquake information, primarily from deep-learning methods.
 
 ## Structure
-seis_proc_db/  
+seis-proc-db/  
 │  
-├── app/                  # Main app code (models, services, etc.)  
-│   ├── __init__.py  
-│   ├── tables.py         # Database tables 
-│   ├── services.py       # Business logic  
-│   └── database.py       # Engine, session, base setup  
+├── src/                  # use src layout 
+|   └──seic_proc_db       # Main app code (models, services, etc.)
+│       ├── __init__.py  
+│       ├── config.py         # Configuration file 
+│       ├── tables.py         # Database tables 
+│       ├── services.py       # Business logic  
+│       └── database.py       # Engine, session, base setup  
 │  
 ├── scripts/              # Database-related scripts  
 │   ├── build_tables.py   # Script to create tables  
@@ -17,5 +19,4 @@ seis_proc_db/
 │   
 ├── tests/                # Database-related pytests 
 │   
-├── config.py             # Configuration file  
 └── README.md             # Documentation  
