@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "seis-proc-db"
+dynamic = ["version"]
+dependencies = [
+    "sqlalchemy~=2.0.0"
+]
+requires-python = ">= 3.11"
+authors = [
+    {name="Alysha Armstrong", email="aa.armstrong6@gmail.com"}
+]
+description = "SQL Database code for enhanced Yellowstone earthquake catalog"
+readme = "README.md"
+
+[project.optional-dependencies]
+test = ["pytest~=8.3.5"]
+
+[tool.pytest.ini_options]
+minversion = "8.3.5"
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+]
