@@ -383,7 +383,7 @@ def test_pick_correction(db_session_with_pick):
         "if_high": 2.2,
         "trim_mean": 1.01, 
         "trim_median": 1.02,
-        "preds": "/preds/are/stored/here",
+        "preds": np.zeros((300)).tolist(),
     }
 
     icorr = tables.PickCorrection(pid=ipick.id, method_id=imeth.id, **d)
@@ -396,7 +396,7 @@ def test_pick_correction(db_session_with_pick):
     assert icorr.method is not None, "PickCorrection.method should not be None"
     assert len(icorr.cis) == 0, "PickCorrection.cis should have no values"
     assert icorr.trim_mean == 1.01, "invalud trim_mean"
-
+    assert np.array_equal(icorr.preds, np.zeros((300))), "Invalid preds"
     assert icorr.last_modified.year == datetime.now().year, "invalid last_modified year"
     assert icorr.last_modified.month == datetime.now().month, "invalid last_modified year"
     assert icorr.last_modified.day == datetime.now().day, "invalid last_modified year"
@@ -421,7 +421,7 @@ def test_firstmotion(db_session_with_pick):
         "clsf": "dn",
         "prob_up": 9.5,
         "prob_dn": 90.5,
-        "preds": "fms/are/stored/here"
+        "preds": np.zeros((300)).tolist()
     }
 
     ifm = tables.FirstMotion(pid=ipick.id, method_id=imeth.id, **d)
@@ -432,7 +432,7 @@ def test_firstmotion(db_session_with_pick):
     assert len(imeth.fms) == 1, "fm_method.fms should have 1 value"
     assert ifm.pick is not None, "fm.pick should exist"
     assert ifm.method is not None, "fm.method should exist"
-
+    assert np.array_equal(ifm.preds, np.zeros((300))), "Invalid preds"
     assert ifm.clsf == "dn", "fm.clsf wrong"
     assert ifm.prob_up == 9.5, "fm.prob_up is wrong"
     assert ifm.prob_dn == 90.5, "fm.prob_up is wrong"
@@ -467,7 +467,7 @@ def db_session_with_corr(db_session_with_pick):
         "if_high": 2.2,
         "trim_mean": 1.01, 
         "trim_median": 1.02,
-        "preds": "/preds/are/stored/here",
+        "preds": np.zeros((300)).tolist(),
     }
 
     icorr = tables.PickCorrection(pid=ipick.id, method_id=imeth.id,  **d)
