@@ -13,7 +13,7 @@ MYSQL_DATETIME_FSP = 6
 
 
 class FMEnum(enum.Enum):
-    # Not using this currently, but maybe would be useful if I wanted to make directly from 0/1
+    # Not using this currently, might be useful if I wanted to make directly from 0/1
     """Define ENUM for FirstMotion class"""
     UK = "uk"
     UP = "up"
@@ -43,18 +43,21 @@ class ISAMethod(Base):
 
 
 class Station(Base):
-    """Stores a station's information. Unique station is defined by the net, sta, and ondate.
+    """Stores a station's information. Unique station is defined by the net, sta, and
+    ondate.
 
     id: Not meaningful identifier for the station, used as the PK
     net: Network abbreviation
     sta: Station code
-    ondate: The datetime in UTC that the station was turned on. Does not include fractional seconds.
+    ondate: The datetime in UTC that the station was turned on. Does not include
+        fractional seconds.
     lat: station latitude
     lon: station longitude
     elev: station elevation in m
-    offdate: Optional. The datetime in UTC that the station was turned off. Does not include fractional seconds.
+    offdate: Optional. The datetime in UTC that the station was turned off. Does not
+        include fractional seconds.
     last_modified: Automatic field that keeps track of when a station was added to
-    or modified in the database in local time. Does not include fractional seconds.
+        or modified in the database in local time. Does not include fractional seconds.
     """
 
     __tablename__ = "station"
@@ -93,8 +96,9 @@ class Station(Base):
 
     def __repr__(self) -> str:
         return (
-            f"Station(id={self.id!r}, net={self.net!r}, sta={self.sta!r}, ondate={self.ondate!r}, "
-            f"lat={self.lat!r}, lon={self.lon!r}, elev={self.elev!r}, offdate={self.offdate!r}, "
+            f"Station(id={self.id!r}, net={self.net!r}, sta={self.sta!r}, "
+            f"ondate={self.ondate!r}, lat={self.lat!r}, lon={self.lon!r}, "
+            f"elev={self.elev!r}, offdate={self.offdate!r}, "
             f"last_modified={self.last_modified!r})"
         )
 
@@ -107,7 +111,7 @@ class Channel(Base):
         sta_id: id of a Station
         seed_code: SEED Channel name
         loc: Location code
-        ondate: Datetime the channel was turned on in UTC. Does not include fractional seconds.
+        ondate: Datetime the channel was turned on in UTC. Does not include frac secs.
         samp_rate: Instrument sampling rate
         clock_drift: Instrument clock drift
         sensit_units: Instrument sensitivity input units
@@ -119,9 +123,10 @@ class Channel(Base):
         depth: Instrument depth in m
         azimuth: Instrument orientation azimuth
         dip: Instrument orientation dip
-        offdate: Optional. The datetime the channel was turned off in UTC. Does not include fractional seconds.
+        offdate: Optional. The datetime the channel was turned off in UTC. Does not
+            include fractional seconds.
         overall_gain_vel: Optional. The overall gain of the instrument computed in M/S
-        sensor_desc: Optional. The short description of the sensor, usually including the brand
+        sensor_desc: Optional. The short description of the sensor, usually including the brand.
         last_modified: Automatic field that keeps track of when a row was added to
                 or modified in the database in local time. Does not include microseconds.
     """
@@ -174,15 +179,17 @@ class Channel(Base):
             f"Channel(id={self.id!r}, sta_id={self.sta_id!r}, seed_code={self.seed_code!r}, "
             f"loc={self.loc!r}, ondate={self.ondate!r}, samp_rate={self.samp_rate!r}, "
             f"clock_drift={self.clock_drift!r}, sensor_desc={self.sensor_desc!r}, "
-            f"sensit_units={self.sensit_units!r}, sensit_freq={self.sensit_freq!r}, sensit_val={self.sensit_val!r}, "
-            f"overall_gain_vel={self.overall_gain_vel!r}, lat={self.lat!r}, lon={self.lon!r}, "
-            f"elev={self.elev!r}, depth={self.depth!r}, azimuth={self.azimuth!r}, dip={self.dip!r}, "
+            f"sensit_units={self.sensit_units!r}, sensit_freq={self.sensit_freq!r}, "
+            f"sensit_val={self.sensit_val!r}, overall_gain_vel={self.overall_gain_vel!r}, "
+            f"lat={self.lat!r}, lon={self.lon!r}, elev={self.elev!r}, "
+            f"depth={self.depth!r}, azimuth={self.azimuth!r}, dip={self.dip!r}, "
             f"offdate={self.offdate!r}, last_modified={self.last_modified!r})"
         )
 
 
 class DailyContDataInfo(Base):
-    """Keep track of information relating to daily (24 hr) continuous data files used in algorithms.
+    """Keep track of information relating to daily (24 hr) continuous data files used in
+    algorithms.
 
     Args:
         id: Not meaningful identifier that is used as the PK
@@ -204,9 +211,9 @@ class DailyContDataInfo(Base):
         proc_end: Optional. Endtime (UTC) of the file after processing in ApplyDetectors.
             This will be the same for the saved posterior probabilities files.
             DOES include fractional seconds.
-        prev_appended: Optional. Boolean value that stores whether data from the end of the previous
-            day was appended to the start of this file when processing in ApplyDetectors.
-        error: Optional. Short error string or message indicating why this data was not used in ApplyDetectors.
+        prev_appended: Optional. Boolean value that stores whether data from the end of
+            the previous day was appended to the start of this file when processing in ApplyDetectors.
+        error: Optional. Short error message indicating why this data was not used in ApplyDetectors.
         last_modified: Automatic field that keeps track of when a row was added to
                 or modified in the database in local time. Does NOT include fractional seconds.
     """
@@ -270,11 +277,13 @@ class DailyContDataInfo(Base):
 
     def __repr__(self) -> str:
         return (
-            f"DailyContDataInfo(id={self.id!r}, sta_id={self.sta_id!r}, chan_pref={self.chan_pref!r}, "
-            f"ncomps={self.ncomps!r}, date={self.date!r}, samp_rate={self.samp_rate!r}, dt={self.dt!r}, "
-            f"org_npts={self.org_npts!r}, org_start={self.org_start!r}, org_end={self.org_end!r}, "
-            f"proc_npts={self.proc_npts!r}, proc_start={self.proc_start!r}, proc_end={self.proc_end!r}, "
-            f"prev_appended={self.prev_appended!r}, error={self.error!r}, last_modified={self.last_modified!r})"
+            f"DailyContDataInfo(id={self.id!r}, sta_id={self.sta_id!r}, "
+            f"chan_pref={self.chan_pref!r}, ncomps={self.ncomps!r}, date={self.date!r}, "
+            f"samp_rate={self.samp_rate!r}, dt={self.dt!r}, org_npts={self.org_npts!r}, "
+            f"org_start={self.org_start!r}, org_end={self.org_end!r}, "
+            f"proc_npts={self.proc_npts!r}, proc_start={self.proc_start!r}, "
+            f"proc_end={self.proc_end!r}, prev_appended={self.prev_appended!r}, "
+            f"error={self.error!r}, last_modified={self.last_modified!r})"
         )
 
 
@@ -296,7 +305,10 @@ class RepickerMethod(ISAMethod):
     corrs: Mapped[List["PickCorrection"]] = relationship(back_populates="method")
 
     def __repr__(self) -> str:
-        return f"RepickerMethod(id={self.id!r}, name={self.name!r}, desc={self.desc!r}, path={self.path!r}, last_modified={self.last_modified!r})"
+        return (
+            f"RepickerMethod(id={self.id!r}, name={self.name!r}, desc={self.desc!r}, "
+            f"path={self.path!r}, last_modified={self.last_modified!r})"
+        )
 
 
 class CalibrationMethod(ISAMethod):
@@ -317,7 +329,10 @@ class CalibrationMethod(ISAMethod):
     cis: Mapped[List["CredibleInterval"]] = relationship(back_populates="method")
 
     def __repr__(self) -> str:
-        return f"CalibrationMethod(id={self.id!r}, name={self.name!r}, desc={self.desc!r}, path={self.path!r}, last_modified={self.last_modified!r})"
+        return (
+            f"CalibrationMethod(id={self.id!r}, name={self.name!r}, desc={self.desc!r}, "
+            f"path={self.path!r}, last_modified={self.last_modified!r})"
+        )
 
 
 class FMMethod(ISAMethod):
@@ -333,7 +348,10 @@ class FMMethod(ISAMethod):
     fms: Mapped[List["FirstMotion"]] = relationship(back_populates="method")
 
     def __repr__(self) -> str:
-        return f"FMMethod(id={self.id!r}, name={self.name!r}, desc={self.desc!r}, path={self.path!r}, last_modified={self.last_modified!r})"
+        return (
+            f"FMMethod(id={self.id!r}, name={self.name!r}, desc={self.desc!r}, "
+            f"path={self.path!r}, last_modified={self.last_modified!r})"
+        )
 
 
 class DetectionMethod(ISAMethod):
@@ -360,18 +378,21 @@ class DetectionMethod(ISAMethod):
 
 
 class DLDetection(Base):
-    """Store Deep-Learning (DL) phase detections from a certain continuous data file and detection method.
+    """Store Deep-Learning (DL) phase detections from a certain continuous data file
+    and detection method.
 
     Args:
         Base (_type_): _description_
         id: Not meaningful detection identifier that is used as the PK.
         data_id: ID of DailyContDataInfo the detection comes from.
         method_id: ID of the DetectionMethod used.
-        sample: Sample in the continous data file defined by DailyContDateInfo the detection is assigned to.
-            A pick time can be derived for a given detection using the sample and DailyContDateInfo.proc_start
+        sample: Sample in the continous data file defined by DailyContDateInfo the
+            detection is assigned to. A pick time can be derived for a given detection
+            using the sample and DailyContDateInfo.proc_start
         phase: Presumed phase type of the detection.
         width: Width of the spike in the posterior probabilities the detection is associated with.
-        height: Posterior probability value at the detection sample. Value is expected between 1 and 100 (not 0 and 1).
+        height: Posterior probability value at the detection sample. Value is expected to
+            be between 1 and 100 (not 0 and 1).
         last_modified: Automatic field that keeps track of when a row was added to
                 or modified in the database in local time. Does not include microseconds.
     """
@@ -407,8 +428,9 @@ class DLDetection(Base):
 
     def __repr__(self) -> str:
         return (
-            f"DLDetection(id={self.id!r}, data_id={self.data_id!r}, method_id={self.method_id!r}, sample={self.sample!r}, "
-            f"phase={self.phase!r}, width={self.width!r}, height={self.height!r}, last_modified={self.last_modified!r})"
+            f"DLDetection(id={self.id!r}, data_id={self.data_id!r}, method_id={self.method_id!r}, "
+            f"sample={self.sample!r}, phase={self.phase!r}, width={self.width!r}, "
+            f"height={self.height!r}, last_modified={self.last_modified!r})"
         )
 
 
@@ -421,8 +443,8 @@ class Pick(Base):
         sta_id: Identifier for the Station the pick was made at
         chan_pref: First two letters of the SEED code for the channels used
         phase: Presumed phase type of the pick
-        ptime: DateTime of the pick in UTC. DOES include fractional seconds. If a pick has a PickCorrection,
-            it is NOT included in the ptime value.
+        ptime: DateTime of the pick in UTC. DOES include fractional seconds. If a pick
+            has a PickCorrection, it is NOT included in the ptime value.
         auth: Short identifier for the author/creator of the pick (i.e., SPDL, UUSS)
         snr: Single to noise ratio of pick. TODO: Define a clear method for measuring this
         amp: Amplitude value of pick. TODO: Define a clear method for measuring this
@@ -473,13 +495,15 @@ class Pick(Base):
 
     def __repr__(self) -> str:
         return (
-            f"Pick(id={self.id!r}, sta_id={self.sta_id!r}, chan_pref={self.chan_pref!r}, phase={self.phase!r}, ptime={self.ptime!r}, "
-            f"auth={self.auth!r}, snr={self.snr!r}, amp={self.amp!r}, det_id={self.detid}, last_modified={self.last_modified!r})"
+            f"Pick(id={self.id!r}, sta_id={self.sta_id!r}, chan_pref={self.chan_pref!r},  "
+            f"phase={self.phase!r}, ptime={self.ptime!r},auth={self.auth!r}, snr={self.snr!r}, "
+            f"amp={self.amp!r}, det_id={self.detid}, last_modified={self.last_modified!r})"
         )
 
 
 class PickCorrection(Base):
-    """Correction to a Pick to improve the arrival time estimate. Basically assumes some sampling method.
+    """Correction to a Pick to improve the arrival time estimate. Basically assumes some
+    sampling method.
 
     Args:
         Base (_type_):
@@ -636,14 +660,15 @@ class CredibleInterval(Base):
 
     def __repr__(self) -> str:
         return (
-            f"CredibleInterval(id={self.id!r}, corr_id={self.corr_id!r}, method_id={self.method_id!r}, "
-            f"percent={self.percent!r}, lb={self.lb!r}, ub={self.ub!r}, last_modified={self.last_modified!r})"
+            f"CredibleInterval(id={self.id!r}, corr_id={self.corr_id!r}, "
+            f"method_id={self.method_id!r}, percent={self.percent!r}, lb={self.lb!r},"
+            f" ub={self.ub!r}, last_modified={self.last_modified!r})"
         )
 
 
 class Gap(Base):
-    """Information on gaps in the DailyContinuousData for a Channel. Many small gaps may be represented as one
-    large gap and, if so, avail_sig_sec will be > 0.
+    """Information on gaps in the DailyContinuousData for a Channel. Many small gaps may
+      be represented as one large gap and, if so, avail_sig_sec will be > 0.
 
     Args:
         Base (_type_): _description_
@@ -654,11 +679,11 @@ class Gap(Base):
         start: Start time of the gap in UTC. Should include fractional seconds.
         end: End time of the gap in UTC. Should include fractional seconds.
         # TODO: Am I going to put entire missing days as a gap?
-        startsamp: Optional. Start sample of the gap in the processed DailyContDataInfo (i.e., the Post Probs)
-        endsamp: Optional. End sample of the gap in the processed DailyContDataInfo (i.e., the Post Probs)
-        avail_sig_sec: If the gap is not continuous, stores the amount of signal (in seconds) that are available.
+        startsamp: Optional. Start sample of the gap in the processed DailyContDataInfo (i.e., Post Probs)
+        endsamp: Optional. End sample of the gap in the processed DailyContDataInfo (i.e., Post Probs)
+        avail_sig_sec: If the gap is not continuous, stores the amount of available signal (in seconds)
         last_modified: Automatic field that keeps track of when a row was added to
-                        or modified in the database in local time. Does not include microseconds.
+            or modified in the database in local time. Does not include microseconds.
     """
 
     __tablename__ = "gap"
@@ -705,8 +730,8 @@ class Gap(Base):
 
 
 class Waveform(Base):
-    """Waveform snippet recorded on a Channel, around a Pick, extracted from continuous data described in
-    DailyContDataInfo.
+    """Waveform snippet recorded on a Channel, around a Pick, extracted from continuous
+    data described in DailyContDataInfo.
 
     Args:
         Base (_type_): _description_
@@ -721,7 +746,7 @@ class Waveform(Base):
         end: End time of the waveform in UTC. Should include fractional seconds.
         proc_notes: Optional. Brief notes about waveform processing.
         last_modified: Automatic field that keeps track of when a row was added to
-                        or modified in the database in local time. Does not include microseconds.
+            or modified in the database in local time. Does not include microseconds.
     """
 
     __tablename__ = "waveform"
