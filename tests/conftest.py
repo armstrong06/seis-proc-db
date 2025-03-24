@@ -7,6 +7,7 @@ from seis_proc_db.database import engine
 # global application scope.  create Session class, engine
 Session = sessionmaker()
 
+
 @pytest.fixture(autouse=True)
 def db_session():
     """From https://docs.sqlalchemy.org/en/20/orm/session_transaction.html#joining-a-session-into-an-external-transaction-such-as-for-test-suites"""
@@ -19,9 +20,7 @@ def db_session():
 
     # bind an individual Session to the connection, selecting
     # "create_savepoint" join_transaction_mode
-    session = Session(
-        bind=connection, join_transaction_mode="create_savepoint"
-    )
+    session = Session(bind=connection, join_transaction_mode="create_savepoint")
 
     yield session
 

@@ -5,22 +5,27 @@ from contextlib import contextmanager
 from config import DB_URL
 
 
-metadata_obj = MetaData(naming_convention={
-    "uq": "uq_%(table_name)s_%(constraint_name)s",
-    "ck": "ck_%(table_name)s_%(constraint_name)s",
-    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
-    "pk": "pk_%(table_name)s",
-})
+metadata_obj = MetaData(
+    naming_convention={
+        "uq": "uq_%(table_name)s_%(constraint_name)s",
+        "ck": "ck_%(table_name)s_%(constraint_name)s",
+        "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+        "pk": "pk_%(table_name)s",
+    }
+)
 
-# Create a new Decorative Base 
+
+# Create a new Decorative Base
 class Base(DeclarativeBase):
-    metadata=metadata_obj
+    metadata = metadata_obj
+
 
 # create the database engine
 engine = create_engine(DB_URL, echo=True)
 
 # create a factory for Session objects with a fixed configuration
 Session = sessionmaker(engine)
+
 
 @contextmanager
 def get_db():

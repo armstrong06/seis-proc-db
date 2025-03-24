@@ -2,24 +2,27 @@
 
 from datetime import datetime
 from sqlalchemy import select
-import pytest 
+import pytest
 import numpy as np
 
 from seis_proc_db import tables
 
 dateformat = "%Y-%m-%dT%H:%M:%S.%f"
 
+
 def test_station(db_session):
-    d = {"ondate": datetime.strptime("1993-10-26T00:00:00.00", dateformat),
-    "net": "WY",
-    "sta": "YNR",
-    "lat": 44.7155,
-    "lon": -110.67917,
-    "elev": 2336,}
+    d = {
+        "ondate": datetime.strptime("1993-10-26T00:00:00.00", dateformat),
+        "net": "WY",
+        "sta": "YNR",
+        "lat": 44.7155,
+        "lon": -110.67917,
+        "elev": 2336,
+    }
     istat = tables.Station(**d)
     db_session.add(istat)
     db_session.commit()
-    #rstat = db_session.scalars(select(tables.Station)).first()#
+    # rstat = db_session.scalars(select(tables.Station)).first()#
     # Use this approach incase there are existing entries in the DB
     rstat = db_session.get(tables.Station, istat.id)
     assert rstat.ondate.year == d["ondate"].year, "invalid ondate year"
@@ -33,22 +36,29 @@ def test_station(db_session):
     assert abs(rstat.elev - d["elev"]) < 1e-1, "invalud elev"
     assert rstat.offdate is None, "invalid offdate"
     assert rstat.last_modified.year == datetime.now().year, "invalid last_modified year"
-    assert rstat.last_modified.month == datetime.now().month, "invalid last_modified year"
+    assert (
+        rstat.last_modified.month == datetime.now().month
+    ), "invalid last_modified year"
     assert rstat.last_modified.day == datetime.now().day, "invalid last_modified year"
-    assert rstat.last_modified.microsecond == 0, "last_modified does not include microseconds"
+    assert (
+        rstat.last_modified.microsecond == 0
+    ), "last_modified does not include microseconds"
+
 
 def test_station_offdate(db_session):
-    d = {"ondate": datetime.strptime("1993-10-26T00:00:00.00", dateformat),
-         "offdate": datetime.strptime("2023-08-25T00:00:00.0", dateformat),
+    d = {
+        "ondate": datetime.strptime("1993-10-26T00:00:00.00", dateformat),
+        "offdate": datetime.strptime("2023-08-25T00:00:00.0", dateformat),
         "net": "WY",
         "sta": "YNR",
         "lat": 44.7155,
         "lon": -110.67917,
-        "elev": 2336,}
+        "elev": 2336,
+    }
     istat = tables.Station(**d)
     db_session.add(istat)
     db_session.commit()
-    #rstat = db_session.scalars(select(tables.Station)).first()#
+    # rstat = db_session.scalars(select(tables.Station)).first()#
     # Use this approach incase there are existing entries in the DB
     rstat = db_session.get(tables.Station, istat.id)
     assert rstat.offdate.year == d["offdate"].year, "invalid offdate year"
@@ -56,19 +66,23 @@ def test_station_offdate(db_session):
     assert rstat.offdate.day == d["offdate"].day, "invalid offdate day"
     assert rstat.offdate.microsecond == 0, "offdate does include microseconds"
 
+
 @pytest.fixture
 def db_session_with_stat(db_session):
-    d = {"ondate": datetime.strptime("1993-10-26T00:00:00.00", dateformat),
+    d = {
+        "ondate": datetime.strptime("1993-10-26T00:00:00.00", dateformat),
         "net": "WY",
         "sta": "YNR",
         "lat": 44.7155,
         "lon": -110.67917,
-        "elev": 2336,}
-    
+        "elev": 2336,
+    }
+
     istat = tables.Station(**d)
     db_session.add(istat)
     db_session.commit()
     return db_session, istat
+
 
 def test_channel(db_session_with_stat):
     # Make a station to associate with the channel
@@ -76,24 +90,26 @@ def test_channel(db_session_with_stat):
     assert istat.id is not None
     assert len(istat.channels) == 0, "stat.channels before adding"
 
-    d = {"seed_code": "HHE",
+    d = {
+        "seed_code": "HHE",
         "loc": "01",
         "ondate": istat.ondate,
         "samp_rate": 100.0,
-        "clock_drift": 1E-5,
+        "clock_drift": 1e-5,
         "sensor_desc": "Nanometrics something or other",
         "sensit_units": "M/S",
-        "sensit_val": 9E9,
+        "sensit_val": 9e9,
         "sensit_freq": 5,
         "lat": istat.lat,
         "lon": istat.lon,
         "elev": istat.elev,
         "depth": 100,
         "azimuth": 90,
-        "dip": -90,}
+        "dip": -90,
+    }
 
     ichan = tables.Channel(sta_id=istat.id, **d)
-    
+
     db_session.add(ichan)
     db_session.commit()
     rchan = db_session.get(tables.Channel, ichan.id)
@@ -103,6 +119,7 @@ def test_channel(db_session_with_stat):
     assert rchan.dip == d["dip"]
     assert rchan.clock_drift == d["clock_drift"]
     assert rchan.ondate.microsecond == 0, "ondate does include microseconds"
+
 
 def test_dailycontdatainfo(db_session_with_stat):
     # Make a station to associate with the contdata
@@ -129,7 +146,7 @@ def test_dailycontdatainfo(db_session_with_stat):
 
     rcd = db_session.get(tables.DailyContDataInfo, icd.id)
     # # rcd is being retrieved from the IdentidyMap, which only stores a unique instance
-    # # of a Python object per database identity and within a session scope. 
+    # # of a Python object per database identity and within a session scope.
     assert rcd == icd, "rcd and icd are not actually the same"
     assert rcd.date.day == 1, "day incorrect for Date obj"
     assert rcd.org_start.microsecond == 50000, "org_start microseconds incorrect"
@@ -143,14 +160,19 @@ def test_dailycontdatainfo(db_session_with_stat):
     assert rcd.last_modified.year == datetime.now().year, "invalid last_modified year"
     assert rcd.last_modified.month == datetime.now().month, "invalid last_modified year"
     assert rcd.last_modified.day == datetime.now().day, "invalid last_modified year"
-    assert rcd.last_modified.microsecond == 0, "last_modified does not include microseconds"
+    assert (
+        rcd.last_modified.microsecond == 0
+    ), "last_modified does not include microseconds"
+
 
 def test_repicker_method(db_session):
-    d = {"name": "MSWAG-v1.0",
-         "phase": "S",
-         "desc": "MultiSWAG models trained on 01/01/01 using M1 epoch 1, M2 epoch 2, M3 epoch 3",
-         "path": "the/model/files/are/stored/here"}
-    
+    d = {
+        "name": "MSWAG-v1.0",
+        "phase": "S",
+        "desc": "MultiSWAG models trained on 01/01/01 using M1 epoch 1, M2 epoch 2, M3 epoch 3",
+        "path": "the/model/files/are/stored/here",
+    }
+
     irpm = tables.RepickerMethod(**d)
     db_session.add(irpm)
     db_session.commit()
@@ -162,16 +184,23 @@ def test_repicker_method(db_session):
     assert irpm.desc is not None, "desc is not defined"
     assert irpm.path is not None, "path is not defined"
     assert irpm.last_modified.year == datetime.now().year, "invalid last_modified year"
-    assert irpm.last_modified.month == datetime.now().month, "invalid last_modified year"
+    assert (
+        irpm.last_modified.month == datetime.now().month
+    ), "invalid last_modified year"
     assert irpm.last_modified.day == datetime.now().day, "invalid last_modified year"
-    assert irpm.last_modified.microsecond == 0, "last_modified does not include microseconds"
+    assert (
+        irpm.last_modified.microsecond == 0
+    ), "last_modified does not include microseconds"
+
 
 def test_calibration_method(db_session):
-    d = {"name": "kolosov-m1",
-         "phase": "P",
-         "desc": "Calibration model using all data and Repicker Method 1",
-         "path": "the/model/files/are/stored/here"}
-    
+    d = {
+        "name": "kolosov-m1",
+        "phase": "P",
+        "desc": "Calibration model using all data and Repicker Method 1",
+        "path": "the/model/files/are/stored/here",
+    }
+
     imeth = tables.CalibrationMethod(**d)
     db_session.add(imeth)
     db_session.commit()
@@ -183,15 +212,22 @@ def test_calibration_method(db_session):
     assert imeth.desc is not None, "desc is not defined"
     assert imeth.path is not None, "path is not defined"
     assert imeth.last_modified.year == datetime.now().year, "invalid last_modified year"
-    assert imeth.last_modified.month == datetime.now().month, "invalid last_modified year"
+    assert (
+        imeth.last_modified.month == datetime.now().month
+    ), "invalid last_modified year"
     assert imeth.last_modified.day == datetime.now().day, "invalid last_modified year"
-    assert imeth.last_modified.microsecond == 0, "last_modified does not include microseconds"
+    assert (
+        imeth.last_modified.microsecond == 0
+    ), "last_modified does not include microseconds"
+
 
 def test_fm_method(db_session):
-    d = {"name": "MSWAG-v1.0",
-         "desc": "MWAG models trained with data from 2012 - 2024",
-         "path": "the/model/files/are/stored/here"}
-    
+    d = {
+        "name": "MSWAG-v1.0",
+        "desc": "MWAG models trained with data from 2012 - 2024",
+        "path": "the/model/files/are/stored/here",
+    }
+
     imeth = tables.FMMethod(**d)
     db_session.add(imeth)
     db_session.commit()
@@ -202,16 +238,23 @@ def test_fm_method(db_session):
     assert imeth.desc is not None, "desc is not defined"
     assert imeth.path is not None, "path is not defined"
     assert imeth.last_modified.year == datetime.now().year, "invalid last_modified year"
-    assert imeth.last_modified.month == datetime.now().month, "invalid last_modified year"
+    assert (
+        imeth.last_modified.month == datetime.now().month
+    ), "invalid last_modified year"
     assert imeth.last_modified.day == datetime.now().day, "invalid last_modified year"
-    assert imeth.last_modified.microsecond == 0, "last_modified does not include microseconds"
+    assert (
+        imeth.last_modified.microsecond == 0
+    ), "last_modified does not include microseconds"
+
 
 def test_detection_method(db_session):
-    d = {"name": "P-UNET-v1",
-         "phase": "P",
-         "desc": "For P picks, from Armstrong 2023 BSSA paper",
-         "path": "the/model/files/are/stored/here"}
-    
+    d = {
+        "name": "P-UNET-v1",
+        "phase": "P",
+        "desc": "For P picks, from Armstrong 2023 BSSA paper",
+        "path": "the/model/files/are/stored/here",
+    }
+
     imeth = tables.DetectionMethod(**d)
     db_session.add(imeth)
     db_session.commit()
@@ -223,9 +266,14 @@ def test_detection_method(db_session):
     assert imeth.desc is not None, "desc is not defined"
     assert imeth.path is not None, "path is not defined"
     assert imeth.last_modified.year == datetime.now().year, "invalid last_modified year"
-    assert imeth.last_modified.month == datetime.now().month, "invalid last_modified year"
+    assert (
+        imeth.last_modified.month == datetime.now().month
+    ), "invalid last_modified year"
     assert imeth.last_modified.day == datetime.now().day, "invalid last_modified year"
-    assert imeth.last_modified.microsecond == 0, "last_modified does not include microseconds"
+    assert (
+        imeth.last_modified.microsecond == 0
+    ), "last_modified does not include microseconds"
+
 
 @pytest.fixture
 def db_session_with_contdata(db_session_with_stat):
@@ -255,28 +303,26 @@ def db_session_with_contdata(db_session_with_stat):
 
     return db_session, icd
 
+
 def test_dldetection(db_session_with_contdata):
     db_session, icd = db_session_with_contdata
     assert len(icd.dldets) == 0, "contdateinfo.dldets before adding det"
 
     # Add detection method #
-    d = {"name": "P-UNET-v1",
-         "phase": "P",
-         "desc": "For P picks, from Armstrong 2023 BSSA paper",
-         "path": "the/model/files/are/stored/here"}
-    
+    d = {
+        "name": "P-UNET-v1",
+        "phase": "P",
+        "desc": "For P picks, from Armstrong 2023 BSSA paper",
+        "path": "the/model/files/are/stored/here",
+    }
+
     imeth = tables.DetectionMethod(**d)
     db_session.add(imeth)
     db_session.commit()
     assert len(imeth.dldets) == 0, "detection_method.dldets before adding det"
     #
 
-    d = {
-        "sample": 1000,
-        "phase": "P",
-        "width": 40,
-        "height": 90
-    }
+    d = {"sample": 1000, "phase": "P", "width": 40, "height": 90}
 
     idet = tables.DLDetection(data_id=icd.id, method_id=imeth.id, **d)
     db_session.add(idet)
@@ -291,10 +337,15 @@ def test_dldetection(db_session_with_contdata):
     assert idet.width == 40
     assert idet.height == 90
     assert idet.last_modified.year == datetime.now().year, "invalid last_modified year"
-    assert idet.last_modified.month == datetime.now().month, "invalid last_modified year"
+    assert (
+        idet.last_modified.month == datetime.now().month
+    ), "invalid last_modified year"
     assert idet.last_modified.day == datetime.now().day, "invalid last_modified year"
-    assert idet.last_modified.microsecond == 0, "last_modified does not include microseconds"
-    
+    assert (
+        idet.last_modified.microsecond == 0
+    ), "last_modified does not include microseconds"
+
+
 def test_pick(db_session_with_stat):
     db_session, istat = db_session_with_stat
     assert istat.id is not None
@@ -306,7 +357,7 @@ def test_pick(db_session_with_stat):
         "ptime": datetime.strptime("2024-01-02T10:11:12.13", dateformat),
         "auth": "SPDL",
         "snr": 40.5,
-        "amp":10.22,
+        "amp": 10.22,
     }
 
     ipick = tables.Pick(sta_id=istat.id, **d)
@@ -325,15 +376,20 @@ def test_pick(db_session_with_stat):
     assert ipick.snr == 40.5, "invalid snr"
     assert ipick.amp == 10.22, "invalid amp"
 
-    assert len(istat.picks) == 1, "stat.pick after adding" 
+    assert len(istat.picks) == 1, "stat.pick after adding"
     assert ipick.dldet is None, "dldet should not be defined"
     assert len(ipick.corrs) == 0, "should be 0 corrs assigned to the pick"
     assert len(ipick.wfs) == 0, "should be 0 wfs assigned to the pick"
     assert len(ipick.fms) == 0, "should be 0 fms assigned to the pick"
     assert ipick.last_modified.year == datetime.now().year, "invalid last_modified year"
-    assert ipick.last_modified.month == datetime.now().month, "invalid last_modified year"
+    assert (
+        ipick.last_modified.month == datetime.now().month
+    ), "invalid last_modified year"
     assert ipick.last_modified.day == datetime.now().day, "invalid last_modified year"
-    assert ipick.last_modified.microsecond == 0, "last_modified does not include microseconds"
+    assert (
+        ipick.last_modified.microsecond == 0
+    ), "last_modified does not include microseconds"
+
 
 @pytest.fixture
 def db_session_with_pick(db_session_with_stat):
@@ -347,7 +403,7 @@ def db_session_with_pick(db_session_with_stat):
         "ptime": datetime.strptime("2024-01-02T10:11:12.13", dateformat),
         "auth": "SPDL",
         "snr": 40.5,
-        "amp":10.22,
+        "amp": 10.22,
     }
 
     ipick = tables.Pick(sta_id=istat.id, **d)
@@ -359,16 +415,19 @@ def db_session_with_pick(db_session_with_stat):
 
     return db_session, ipick
 
+
 def test_pick_correction(db_session_with_pick):
     db_session, ipick = db_session_with_pick
     assert len(ipick.corrs) == 0, "Pick.corrs should have 0 values before making"
 
     # Add repicker method #
-    d = {"name": "SWAG-v1",
-         "phase": "P",
-         "desc": "For P picks, from Armstrong 2023 BSSA paper",
-         "path": "the/model/files/are/stored/here"}
-    
+    d = {
+        "name": "SWAG-v1",
+        "phase": "P",
+        "desc": "For P picks, from Armstrong 2023 BSSA paper",
+        "path": "the/model/files/are/stored/here",
+    }
+
     imeth = tables.RepickerMethod(**d)
     db_session.add(imeth)
     db_session.commit()
@@ -381,7 +440,7 @@ def test_pick_correction(db_session_with_pick):
         "std": 1.1,
         "if_low": 0.1,
         "if_high": 2.2,
-        "trim_mean": 1.01, 
+        "trim_mean": 1.01,
         "trim_median": 1.02,
         "preds": np.zeros((300)).tolist(),
     }
@@ -398,19 +457,26 @@ def test_pick_correction(db_session_with_pick):
     assert icorr.trim_mean == 1.01, "invalud trim_mean"
     assert np.array_equal(icorr.preds, np.zeros((300))), "Invalid preds"
     assert icorr.last_modified.year == datetime.now().year, "invalid last_modified year"
-    assert icorr.last_modified.month == datetime.now().month, "invalid last_modified year"
+    assert (
+        icorr.last_modified.month == datetime.now().month
+    ), "invalid last_modified year"
     assert icorr.last_modified.day == datetime.now().day, "invalid last_modified year"
-    assert icorr.last_modified.microsecond == 0, "last_modified does not include microseconds"
+    assert (
+        icorr.last_modified.microsecond == 0
+    ), "last_modified does not include microseconds"
+
 
 def test_firstmotion(db_session_with_pick):
     db_session, ipick = db_session_with_pick
     assert len(ipick.fms) == 0, "Pick.fms should have 0 values before adding"
 
     # Add fm method #
-    d = {"name": "MSWAG-v1.0",
-         "desc": "MWAG models trained with data from 2012 - 2024",
-         "path": "the/model/files/are/stored/here"}
-    
+    d = {
+        "name": "MSWAG-v1.0",
+        "desc": "MWAG models trained with data from 2012 - 2024",
+        "path": "the/model/files/are/stored/here",
+    }
+
     imeth = tables.FMMethod(**d)
     db_session.add(imeth)
     db_session.commit()
@@ -421,7 +487,7 @@ def test_firstmotion(db_session_with_pick):
         "clsf": "dn",
         "prob_up": 9.5,
         "prob_dn": 90.5,
-        "preds": np.zeros((300)).tolist()
+        "preds": np.zeros((300)).tolist(),
     }
 
     ifm = tables.FirstMotion(pid=ipick.id, method_id=imeth.id, **d)
@@ -439,7 +505,10 @@ def test_firstmotion(db_session_with_pick):
     assert ifm.last_modified.year == datetime.now().year, "invalid last_modified year"
     assert ifm.last_modified.month == datetime.now().month, "invalid last_modified year"
     assert ifm.last_modified.day == datetime.now().day, "invalid last_modified year"
-    assert ifm.last_modified.microsecond == 0, "last_modified does not include microseconds"
+    assert (
+        ifm.last_modified.microsecond == 0
+    ), "last_modified does not include microseconds"
+
 
 @pytest.fixture
 def db_session_with_corr(db_session_with_pick):
@@ -448,11 +517,13 @@ def db_session_with_corr(db_session_with_pick):
     assert ipick.id is not None
 
     # Add repicker method #
-    d = {"name": "SWAG-v1",
-         "phase": "P",
-         "desc": "For P picks, from Armstrong 2023 BSSA paper",
-         "path": "the/model/files/are/stored/here"}
-    
+    d = {
+        "name": "SWAG-v1",
+        "phase": "P",
+        "desc": "For P picks, from Armstrong 2023 BSSA paper",
+        "path": "the/model/files/are/stored/here",
+    }
+
     imeth = tables.RepickerMethod(**d)
     db_session.add(imeth)
     db_session.commit()
@@ -465,12 +536,12 @@ def db_session_with_corr(db_session_with_pick):
         "std": 1.1,
         "if_low": 0.1,
         "if_high": 2.2,
-        "trim_mean": 1.01, 
+        "trim_mean": 1.01,
         "trim_median": 1.02,
         "preds": np.zeros((300)).tolist(),
     }
 
-    icorr = tables.PickCorrection(pid=ipick.id, method_id=imeth.id,  **d)
+    icorr = tables.PickCorrection(pid=ipick.id, method_id=imeth.id, **d)
     db_session.add(icorr)
     db_session.commit()
 
@@ -481,20 +552,25 @@ def db_session_with_corr(db_session_with_pick):
 
     return db_session, icorr
 
+
 def test_ci(db_session_with_corr):
     db_session, icorr = db_session_with_corr
     assert len(icorr.cis) == 0, "No CI should be associated with PickCorrection yet"
 
     # Add repicker method #
-    d = {"name": "Kuleshov",
-         "phase": "P",
-         "desc": "For P picks, from Armstrong 2023 BSSA paper",
-         "path": "the/model/files/are/stored/here"}
-    
+    d = {
+        "name": "Kuleshov",
+        "phase": "P",
+        "desc": "For P picks, from Armstrong 2023 BSSA paper",
+        "path": "the/model/files/are/stored/here",
+    }
+
     imeth = tables.CalibrationMethod(**d)
     db_session.add(imeth)
     db_session.commit()
-    assert len(imeth.cis) == 0, "calibration_method.cis should have 0 values at this point"
+    assert (
+        len(imeth.cis) == 0
+    ), "calibration_method.cis should have 0 values at this point"
     #
 
     d = {
@@ -510,41 +586,49 @@ def test_ci(db_session_with_corr):
     assert len(icorr.cis) == 1, "1 CI should be associated with PickCorrection yet"
     assert len(imeth.cis) == 1, "calibration_method.cis should have 1 value now"
     assert ici.corr is not None, "CI should have a PickCorrection associated with it"
-    assert ici.method is not None, "CI should have a CalibrationMethod associcated with it"
+    assert (
+        ici.method is not None
+    ), "CI should have a CalibrationMethod associcated with it"
     assert ici.percent == 90, "Invalid ci.percent"
     assert ici.lb == -2.13, "Invalid ci.lb"
     assert ici.ub == 2.55, "Invalid ci.ub"
     assert ici.last_modified.year == datetime.now().year, "invalid last_modified year"
     assert ici.last_modified.month == datetime.now().month, "invalid last_modified year"
     assert ici.last_modified.day == datetime.now().day, "invalid last_modified year"
-    assert ici.last_modified.microsecond == 0, "last_modified does not include microseconds"
+    assert (
+        ici.last_modified.microsecond == 0
+    ), "last_modified does not include microseconds"
+
 
 @pytest.fixture
 def db_session_with_contdata_and_channel(db_session_with_contdata):
     db_session, icd = db_session_with_contdata
 
-    d = {"seed_code": "HHE",
+    d = {
+        "seed_code": "HHE",
         "loc": "01",
         "ondate": datetime.strptime("1993-10-26T00:00:00.00", dateformat),
         "samp_rate": 100.0,
-        "clock_drift": 1E-5,
+        "clock_drift": 1e-5,
         "sensor_desc": "Nanometrics something or other",
         "sensit_units": "M/S",
-        "sensit_val": 9E9,
+        "sensit_val": 9e9,
         "sensit_freq": 5,
         "lat": 44.4,
         "lon": -110.555,
         "elev": 256,
         "depth": 100,
         "azimuth": 90,
-        "dip": -90,}
+        "dip": -90,
+    }
 
     ichan = tables.Channel(sta_id=icd.station.id, **d)
-    
+
     db_session.add(ichan)
     db_session.commit()
 
     return db_session, icd, ichan
+
 
 def test_gap(db_session_with_contdata_and_channel):
     db_session, icd, ichan = db_session_with_contdata_and_channel
@@ -570,12 +654,17 @@ def test_gap(db_session_with_contdata_and_channel):
     assert igap.start.microsecond == 150000, "Invalid start fractional second"
     assert igap.end.microsecond == 250000, "Invalid end microsecond"
     assert igap.startsamp == 4399415, "Invalid startsamp"
-    assert igap.endsamp == 4399425, "Invalid endsamp" 
+    assert igap.endsamp == 4399425, "Invalid endsamp"
     assert igap.avail_sig_sec == 0.0, "Invalid default avail_sig_sec"
     assert igap.last_modified.year == datetime.now().year, "invalid last_modified year"
-    assert igap.last_modified.month == datetime.now().month, "invalid last_modified year"
+    assert (
+        igap.last_modified.month == datetime.now().month
+    ), "invalid last_modified year"
     assert igap.last_modified.day == datetime.now().day, "invalid last_modified year"
-    assert igap.last_modified.microsecond == 0, "last_modified does not include microseconds"
+    assert (
+        igap.last_modified.microsecond == 0
+    ), "last_modified does not include microseconds"
+
 
 @pytest.fixture
 def db_session_with_contdata_and_channel_and_pick(db_session_with_contdata_and_channel):
@@ -589,7 +678,7 @@ def db_session_with_contdata_and_channel_and_pick(db_session_with_contdata_and_c
         "ptime": datetime.strptime("2024-01-02T10:11:12.13", dateformat),
         "auth": "SPDL",
         "snr": 40.5,
-        "amp":10.22,
+        "amp": 10.22,
     }
 
     ipick = tables.Pick(sta_id=stat.id, **d)
@@ -600,6 +689,7 @@ def db_session_with_contdata_and_channel_and_pick(db_session_with_contdata_and_c
     assert ipick.station is not None, "station not associated with pick"
 
     return db_session, icd, ichan, ipick
+
 
 def test_waveform(db_session_with_contdata_and_channel_and_pick):
     db_session, icd, ichan, ipick = db_session_with_contdata_and_channel_and_pick
@@ -613,7 +703,7 @@ def test_waveform(db_session_with_contdata_and_channel_and_pick):
         "start": datetime.strptime("2024-01-02T10:11:02.13", dateformat),
         "end": datetime.strptime("2024-01-02T10:11:22.14", dateformat),
         "proc_notes": "Processed for repicker",
-        "data": np.zeros((2000)).tolist()
+        "data": np.zeros((2000)).tolist(),
     }
 
     iwf = tables.Waveform(data_id=icd.id, chan_id=ichan.id, pick_id=ipick.id, **d)
