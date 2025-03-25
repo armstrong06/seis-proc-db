@@ -415,7 +415,7 @@ class DLDetection(Base):
     # Many-to-one relationship with ContData
     contdatainfo: Mapped["DailyContDataInfo"] = relationship(back_populates="dldets")
     # One-to-one relationship with Pick
-    pick: Mapped["Pick"] = relationship(back_populates="dldet")
+    pick: Mapped[Optional["Pick"]] = relationship(back_populates="dldet")
     # Many-to-one relationship with DetectionMethod
     method: Mapped["DetectionMethod"] = relationship(back_populates="dldets")
 
@@ -470,7 +470,9 @@ class Pick(Base):
     snr: Mapped[Optional[float]] = mapped_column(Double)
     amp: Mapped[Optional[float]] = mapped_column(Double)
     # FK from Detections
-    detid = mapped_column(ForeignKey("dldetection.id"), nullable=True)
+    detid: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("dldetection.id"), nullable=True
+    )
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(
         TIMESTAMP, default=datetime.now, onupdate=datetime.now
@@ -479,7 +481,7 @@ class Pick(Base):
     # Many-to-one relationship with Station
     station: Mapped["Station"] = relationship(back_populates="picks")
     # One-to-one relationship with Detection
-    dldet: Mapped["DLDetection"] = relationship(back_populates="pick")
+    dldet: Mapped[Optional["DLDetection"]] = relationship(back_populates="pick")
     # One-to-many relationship with PickCorrection
     corrs: Mapped[List["PickCorrection"]] = relationship(back_populates="pick")
     # One-to-many relationship with FM
