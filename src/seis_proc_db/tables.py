@@ -470,9 +470,7 @@ class Pick(Base):
     snr: Mapped[Optional[float]] = mapped_column(Double)
     amp: Mapped[Optional[float]] = mapped_column(Double)
     # FK from Detections
-    detid: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("dldetection.id"), nullable=True
-    )
+    detid: Mapped[Optional[int]] = mapped_column(ForeignKey("dldetection.id"))
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(
         TIMESTAMP, default=datetime.now, onupdate=datetime.now
