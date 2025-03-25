@@ -21,7 +21,7 @@ class Base(DeclarativeBase):
 
 
 # create the database engine
-engine = create_engine(DB_URL, echo=True)
+engine = create_engine(DB_URL)
 
 # create a factory for Session objects with a fixed configuration
 Session = sessionmaker(engine)
