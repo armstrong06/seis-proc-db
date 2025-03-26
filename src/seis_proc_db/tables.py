@@ -138,7 +138,10 @@ class Channel(Base):
     __tablename__ = "channel"
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
-    sta_id = mapped_column(ForeignKey("station.id"), nullable=False)
+    sta_id = mapped_column(
+        ForeignKey("station.id", onupdate="cascade", ondelete="restrict"),
+        nullable=False,
+    )
     seed_code: Mapped[str] = mapped_column(String(3), nullable=False)
     loc: Mapped[str] = mapped_column(String(2), nullable=False)
     ondate: Mapped[datetime] = mapped_column(DateTime, nullable=False)
@@ -227,7 +230,10 @@ class DailyContDataInfo(Base):
 
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
-    sta_id = mapped_column(ForeignKey("station.id"), nullable=False)
+    sta_id = mapped_column(
+        ForeignKey("station.id", onupdate="cascade", ondelete="restrict"),
+        nullable=False,
+    )
     chan_pref: Mapped[str] = mapped_column(String(2), nullable=False)
     ncomps: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     date = mapped_column(Date, nullable=False)
@@ -406,8 +412,14 @@ class DLDetection(Base):
     __tablename__ = "dldetection"
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
-    data_id = mapped_column(ForeignKey("contdatainfo.id"), nullable=False)
-    method_id = mapped_column(ForeignKey("detection_method.id"), nullable=False)
+    data_id = mapped_column(
+        ForeignKey("contdatainfo.id", onupdate="cascade", ondelete="restrict"),
+        nullable=False,
+    )
+    method_id = mapped_column(
+        ForeignKey("detection_method.id", onupdate="cascade", ondelete="restrict"),
+        nullable=False,
+    )
     sample: Mapped[int] = mapped_column(Integer, nullable=False)
     ##
     phase: Mapped[str] = mapped_column(String(4))
@@ -464,7 +476,10 @@ class Pick(Base):
 
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
-    sta_id = mapped_column(ForeignKey("station.id"), nullable=False)
+    sta_id = mapped_column(
+        ForeignKey("station.id", onupdate="cascade", ondelete="restrict"),
+        nullable=False,
+    )
     chan_pref: Mapped[str] = mapped_column(String(2), nullable=False)
     # TODO: Should phase be removed from the PK, in the case it was unknown?
     phase: Mapped[str] = mapped_column(String(4), nullable=False)
@@ -477,7 +492,9 @@ class Pick(Base):
     snr: Mapped[Optional[float]] = mapped_column(Double)
     amp: Mapped[Optional[float]] = mapped_column(Double)
     # FK from Detections
-    detid: Mapped[Optional[int]] = mapped_column(ForeignKey("dldetection.id"))
+    detid: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("dldetection.id", onupdate="cascade", ondelete="cascade")
+    )
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(
         TIMESTAMP, default=datetime.now, onupdate=datetime.now
@@ -534,8 +551,13 @@ class PickCorrection(Base):
 
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
-    pid = mapped_column(ForeignKey("pick.id"), nullable=False)
-    method_id = mapped_column(ForeignKey("repicker_method.id"), nullable=False)
+    pid = mapped_column(
+        ForeignKey("pick.id", onupdate="cascade", ondelete="cascade"), nullable=False
+    )
+    method_id = mapped_column(
+        ForeignKey("repicker_method.id", onupdate="cascade", ondelete="restrict"),
+        nullable=False,
+    )
     ##
     median: Mapped[float] = mapped_column(Double)
     mean: Mapped[float] = mapped_column(Double)
@@ -593,8 +615,13 @@ class FirstMotion(Base):
     __tablename__ = "fm"
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
-    pid = mapped_column(ForeignKey("pick.id"), nullable=False)
-    method_id = mapped_column(ForeignKey("fm_method.id"), nullable=False)
+    pid = mapped_column(
+        ForeignKey("pick.id", onupdate="cascade", ondelete="cascade"), nullable=False
+    )
+    method_id = mapped_column(
+        ForeignKey("fm_method.id", onupdate="cascade", ondelete="restrict"),
+        nullable=False,
+    )
     # TODO: Get this constraint to work..
     clsf: Mapped[Enum] = mapped_column(
         Enum("uk", "up", "dn", create_constraint=True, name="fm_enum")
@@ -646,8 +673,14 @@ class CredibleInterval(Base):
     __tablename__ = "ci"
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
-    corr_id = mapped_column(ForeignKey("pick_corr.id"), nullable=False)
-    method_id = mapped_column(ForeignKey("calibration_method.id"), nullable=False)
+    corr_id = mapped_column(
+        ForeignKey("pick_corr.id", onupdate="cascade", ondelete="cascade"),
+        nullable=False,
+    )
+    method_id = mapped_column(
+        ForeignKey("calibration_method.id", onupdate="cascade", ondelete="restrict"),
+        nullable=False,
+    )
     percent: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     ##
     lb: Mapped[float] = mapped_column(Double)
@@ -700,8 +733,14 @@ class Gap(Base):
     __tablename__ = "gap"
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
-    data_id = mapped_column(ForeignKey("contdatainfo.id"), nullable=False)
-    chan_id = mapped_column(ForeignKey("channel.id"), nullable=False)
+    data_id = mapped_column(
+        ForeignKey("contdatainfo.id", onupdate="cascade", ondelete="restrict"),
+        nullable=False,
+    )
+    chan_id = mapped_column(
+        ForeignKey("channel.id", onupdate="cascade", ondelete="restrict"),
+        nullable=False,
+    )
     start: Mapped[datetime] = mapped_column(
         DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False
     )
@@ -764,9 +803,17 @@ class Waveform(Base):
     __tablename__ = "waveform"
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
-    data_id = mapped_column(ForeignKey("contdatainfo.id"), nullable=False)
-    chan_id = mapped_column(ForeignKey("channel.id"), nullable=False)
-    pick_id = mapped_column(ForeignKey("pick.id"), nullable=False)
+    data_id = mapped_column(
+        ForeignKey("contdatainfo.id", onupdate="cascade", ondelete="restrict"),
+        nullable=False,
+    )
+    chan_id = mapped_column(
+        ForeignKey("channel.id", onupdate="cascade", ondelete="restrict"),
+        nullable=False,
+    )
+    pick_id = mapped_column(
+        ForeignKey("pick.id", onupdate="cascade", ondelete="cascade"), nullable=False
+    )
     ##
     # TODO: Add more fields to PK if needed (storing processed and unprocessed wfs, diff durations)
     filt_low: Mapped[Optional[float]] = mapped_column(Double)
