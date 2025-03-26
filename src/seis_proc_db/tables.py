@@ -8,6 +8,7 @@ from datetime import datetime
 import enum
 
 from seis_proc_db.database import Base
+from seis_proc_db.config import MYSQL_ENGINE
 
 MYSQL_DATETIME_FSP = 6
 
@@ -40,6 +41,8 @@ class ISAMethod(Base):
     last_modified = mapped_column(
         TIMESTAMP, default=datetime.now, onupdate=datetime.now
     )
+
+    __table_args__ = {"mysql_engine": MYSQL_ENGINE}
 
 
 class Station(Base):
@@ -92,6 +95,7 @@ class Station(Base):
         CheckConstraint("lat >= -90 AND lon <= 90", name="valid_lat"),
         CheckConstraint("lon >= -180 AND lon <= 180", name="valid_lon"),
         CheckConstraint("elev >= 0", name="positive_elev"),
+        {"mysql_engine": MYSQL_ENGINE},
     )
 
     def __repr__(self) -> str:
@@ -172,6 +176,7 @@ class Channel(Base):
         CheckConstraint("elev >= 0", name="nonneg_elev"),
         CheckConstraint("azimuth >= 0 AND azimuth <= 360", name="valid_azimuth"),
         CheckConstraint("dip >= -90 AND dip <= 90", name="valid_dip"),
+        {"mysql_engine": MYSQL_ENGINE},
     )
 
     def __repr__(self) -> str:
@@ -273,6 +278,7 @@ class DailyContDataInfo(Base):
         CheckConstraint("org_npts >= 0", name="nonneg_org_npts"),
         CheckConstraint("proc_end > proc_start", name="valid_proc_times"),
         CheckConstraint("org_end > org_start", name="valid_org_times"),
+        {"mysql_engine": MYSQL_ENGINE},
     )
 
     def __repr__(self) -> str:
@@ -424,6 +430,7 @@ class DLDetection(Base):
         CheckConstraint("sample >= 0", name="nonneg_sample"),
         CheckConstraint("width > 0", name="positive_width"),
         CheckConstraint("height > 0 AND height <= 100", name="valid_height"),
+        {"mysql_engine": MYSQL_ENGINE},
     )
 
     def __repr__(self) -> str:
@@ -491,6 +498,7 @@ class Pick(Base):
         UniqueConstraint(sta_id, chan_pref, phase, ptime, auth, name="simplify_pk"),
         UniqueConstraint(detid, name="detid"),
         CheckConstraint("amp > 0", name="positive_amp"),
+        {"mysql_engine": MYSQL_ENGINE},
     )
 
     def __repr__(self) -> str:
@@ -553,6 +561,7 @@ class PickCorrection(Base):
         UniqueConstraint(pid, method_id, name="simplify_pk"),
         CheckConstraint("if_low < if_high", name="if_order"),
         CheckConstraint("std > 0", name="positive_std"),
+        {"mysql_engine": MYSQL_ENGINE},
     )
 
     def __repr__(self) -> str:
@@ -607,6 +616,7 @@ class FirstMotion(Base):
         UniqueConstraint(pid, method_id, name="simplify_pk"),
         CheckConstraint("prob_up >= 0", name="nonneg_prob_up"),
         CheckConstraint("prob_dn >= 0", name="nonneg_prob_dn"),
+        {"mysql_engine": MYSQL_ENGINE},
     )
 
     def __repr__(self) -> str:
@@ -656,6 +666,7 @@ class CredibleInterval(Base):
         UniqueConstraint(corr_id, method_id, percent, name="simplify_pk"),
         CheckConstraint("lb < ub", name="bound_order"),
         CheckConstraint("percent > 0 AND percent <= 100", name="valid_percent"),
+        {"mysql_engine": MYSQL_ENGINE},
     )
 
     def __repr__(self) -> str:
@@ -718,6 +729,7 @@ class Gap(Base):
         CheckConstraint("endsamp >= 1", name="pos_startsamp"),
         CheckConstraint("startsamp < endsamp", name="samps_order"),
         CheckConstraint("avail_sig_sec >= 0", name="nonneg_avail_sig"),
+        {"mysql_engine": MYSQL_ENGINE},
     )
 
     def __repr__(self) -> str:
@@ -785,6 +797,7 @@ class Waveform(Base):
         CheckConstraint("filt_high > 0", name="pos_filt_high"),
         CheckConstraint("filt_low < filt_high", name="filt_order"),
         CheckConstraint("start < end", name="times_order"),
+        {"mysql_engine": MYSQL_ENGINE},
     )
 
     def __repr__(self) -> str:
