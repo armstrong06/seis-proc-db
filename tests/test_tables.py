@@ -499,7 +499,7 @@ def test_firstmotion(db_session_with_pick):
     assert ifm.pick is not None, "fm.pick should exist"
     assert ifm.method is not None, "fm.method should exist"
     assert np.array_equal(ifm.preds, np.zeros((300))), "Invalid preds"
-    assert ifm.clsf == "dn", "fm.clsf wrong"
+    assert ifm.clsf == "dn", f"fm.clsf wrong as {ifm.clsf}"
     assert ifm.prob_up == 9.5, "fm.prob_up is wrong"
     assert ifm.prob_dn == 90.5, "fm.prob_up is wrong"
     assert ifm.last_modified.year == datetime.now().year, "invalid last_modified year"
