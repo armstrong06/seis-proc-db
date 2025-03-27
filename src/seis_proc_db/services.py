@@ -1,6 +1,6 @@
 """Store business logic"""
 
-from sqlalchemy import select, text
+from sqlalchemy import select, text, insert
 
 from seis_proc_db.tables import *
 
@@ -75,14 +75,48 @@ def get_station(session, net, sta, ondate):
     # This should only happen if (oddly) there were Stations with ondates within 1 min
     raise ValueError("More than one Station matching these criteria")
 
+def insert_channels(session, channel_dict_list):
+    """Inserts one or more channels into the database using a bulk insert. 
 
-def insert_contdatainfo(session):
+    Args:
+        session (Session): database session
+        channel_dict_list (list): A list of dictionary objects containing the relevant Channel information.
+        Dictionary keys should be the same as those in the Channel class.
+    """
+
+    # MySQL doesn't support bulk RETURNING
+    # stmt = insert(Channel).returning(Channel)
+    # inserted_channels = session.scalars(stmt, channel_dict_list).all()
+
+    session.execute(insert(Channel), channel_dict_list)
+
+def insert_channel(session, channel_dict):
+    """Insert a single channel into the database.
+
+    Args:
+        session (Session): The database session
+        channel_dict (dict): Dictionary containing Channel information
+
+    Returns:
+        Channel: Channel object corresponding to the inserted row
+    """
+
+    new_chan = Channel(**channel_dict)
+    session.add(new_chan)
+
+    return new_chan
+
+def get_channel(session, sta_id, seed_code):
     pass
 
-
-def insert_channel(session):
+def get_station_channels(session, sta_id):
     pass
 
+def insert_contdatainfo(session, sid):
+    pass
+
+def get_contdatainfo(session):
+    pass
 
 def insert_dldetection(session):
     pass
