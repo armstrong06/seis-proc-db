@@ -8,7 +8,7 @@ from seis_proc_db.database import engine
 Session = sessionmaker()
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def db_session():
     """From https://docs.sqlalchemy.org/en/20/orm/session_transaction.html#joining-a-session-into-an-external-transaction-such-as-for-test-suites"""
     ## Set Up Code

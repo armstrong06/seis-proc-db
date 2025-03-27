@@ -4,5 +4,6 @@ import os
 USER = os.getenv("USER")
 DB_PASSWORD = os.getenv("MYSQL_PASSWORD")
 DB_URL = f"mysql+mysqldb://{USER}:{DB_PASSWORD}@mysql.chpc.utah.edu/SeisProcML"
+# DB_URL = f"mariadb+mariadbconnector://{USER}:{DB_PASSWORD}@mysql.chpc.utah.edu/SeisProcML"
 
 MYSQL_ENGINE = "InnoDB"
