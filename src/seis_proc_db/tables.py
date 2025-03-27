@@ -23,13 +23,13 @@ class FMEnum(enum.Enum):
 
 class ISAMethod(Base):
     """Abstract table from creating IS-A Method tables
-
-    id: Not meaningful identifier for the method, used as the PK
-    name: Name of the method used
-    desc: Optional. Description of method.
-    path: Optional. Path where relevant files for the method are stored.
-    last_modified: Automatic field that keeps track of when a method was added to
-        or modified in the database in local time. Does not include fractional seconds.
+    Attributes:
+        id: Not meaningful identifier for the method, used as the PK
+        name: Name of the method used
+        desc: Optional. Description of method.
+        path: Optional. Path where relevant files for the method are stored.
+        last_modified: Automatic field that keeps track of when a method was added to
+            or modified in the database in local time. Does not include fractional seconds.
     """
 
     __abstract__ = True
@@ -49,18 +49,19 @@ class Station(Base):
     """Stores a station's information. Unique station is defined by the net, sta, and
     ondate.
 
-    id: Not meaningful identifier for the station, used as the PK
-    net: Network abbreviation
-    sta: Station code
-    ondate: The datetime in UTC that the station was turned on. Does not include
-        fractional seconds.
-    lat: station latitude
-    lon: station longitude
-    elev: station elevation in m
-    offdate: Optional. The datetime in UTC that the station was turned off. Does not
-        include fractional seconds.
-    last_modified: Automatic field that keeps track of when a station was added to
-        or modified in the database in local time. Does not include fractional seconds.
+    Attributes:
+        id: Not meaningful identifier for the station, used as the PK
+        net: Network abbreviation
+        sta: Station code
+        ondate: The datetime in UTC that the station was turned on. Does not include
+            fractional seconds.
+        lat: station latitude
+        lon: station longitude
+        elev: station elevation in m
+        offdate: Optional. The datetime in UTC that the station was turned off. Does not
+            include fractional seconds.
+        last_modified: Automatic field that keeps track of when a station was added to
+            or modified in the database in local time. Does not include fractional seconds.
     """
 
     __tablename__ = "station"
@@ -110,7 +111,7 @@ class Station(Base):
 class Channel(Base):
     """Stores a channel's information.
 
-    Args:
+    Attributes:
         id: Not meaningful channel identifier that is used as the PK.
         sta_id: id of a Station
         seed_code: SEED Channel name
@@ -199,7 +200,7 @@ class DailyContDataInfo(Base):
     """Keep track of information relating to daily (24 hr) continuous data files used in
     algorithms.
 
-    Args:
+    Attributes:
         id: Not meaningful identifier that is used as the PK
         sta_id: id of the related Station
         chan_pref: First two letters of the SEED code for the channels used
@@ -301,10 +302,9 @@ class DailyContDataInfo(Base):
 
 class RepickerMethod(ISAMethod):
     """Stores some info about the type/version of phase repicking model or technique used.
+    Inherits from ISAMethod()
 
-    Args:
-        ISAMethod (_type_)
-
+    Attributes:
         phase: Optional. Phase type the model was designed for, if applicable.
 
     """
@@ -325,10 +325,9 @@ class RepickerMethod(ISAMethod):
 
 class CalibrationMethod(ISAMethod):
     """Stores some info about the type/version of calibration model or technique used.
+    Inherits from ISAMethod
 
-    Args:
-        ISAMethod (_type_)
-
+    Attributes:
         phase: Optional. Phase type the model was designed for, if applicable.
 
     """
@@ -349,9 +348,7 @@ class CalibrationMethod(ISAMethod):
 
 class FMMethod(ISAMethod):
     """Stores some info about the type/version of first motion classifier used.
-
-    Args:
-        ISAMethod (_type_)
+    Inherits from ISAMethod
     """
 
     __tablename__ = "fm_method"
@@ -368,10 +365,9 @@ class FMMethod(ISAMethod):
 
 class DetectionMethod(ISAMethod):
     """Stores some info about the type/version of phase Detection algorithm used.
+    Inherits from ISAMethod
 
-    Args:
-        ISAMethod (_type_)
-
+    Attributes:
         phase: Optional. Phase type the model was designed for, if applicable.
 
     """
@@ -393,8 +389,7 @@ class DLDetection(Base):
     """Store Deep-Learning (DL) phase detections from a certain continuous data file
     and detection method.
 
-    Args:
-        Base (_type_): _description_
+    Attributes:
         id: Not meaningful detection identifier that is used as the PK.
         data_id: ID of DailyContDataInfo the detection comes from.
         method_id: ID of the DetectionMethod used.
@@ -456,8 +451,7 @@ class DLDetection(Base):
 class Pick(Base):
     """Describe a pick, which may be derived from a DLDetection.
 
-    Args:
-        Base (_type_): _description_
+    Attributes:
         id: Not meaningful pick identifier that is used as the PK.
         sta_id: Identifier for the Station the pick was made at
         chan_pref: First two letters of the SEED code for the channels used
@@ -530,8 +524,7 @@ class PickCorrection(Base):
     """Correction to a Pick to improve the arrival time estimate. Basically assumes some
     sampling method.
 
-    Args:
-        Base (_type_):
+    Attributes:
         id: Not meaningful pick correction identifier that is used as the PK.
         pid: Identifer of the Pick the correction is associated with.
         method_id: Identifier of the RepickerMethod used.
@@ -598,9 +591,7 @@ class PickCorrection(Base):
 class FirstMotion(Base):
     """First motion information associated with a P pick
 
-    Args:
-        Base (_type_): _description_
-
+    Attributes:
         id: Not meaningful first motion identifier that is used as the PK.
         pid: Identifer of the Pick the first motion is associated with.
         method_id: Identifier of the FMMethod used.
@@ -657,9 +648,7 @@ class FirstMotion(Base):
 class CredibleInterval(Base):
     """Credible Intervals associated with a pick correction.
 
-    Args:
-        Base (_type_): _description_
-
+    Attributes:
         id: Not meaningful first motion identifier that is used as the PK.
         corr_id: Identifer of the PickCorrection the CI is associated with.
         method_id: Identifier of the CalibratioNMethod used.
@@ -714,9 +703,7 @@ class Gap(Base):
     """Information on gaps in the DailyContinuousData for a Channel. Many small gaps may
       be represented as one large gap and, if so, avail_sig_sec will be > 0.
 
-    Args:
-        Base (_type_): _description_
-
+    Attributes:
         id: Not meaningful gap identifier that is used as the PK.
         data_id: ID of DailyContDataInfo the gap comes from.
         chan_id: ID of the Channel the gap is from.
@@ -784,7 +771,7 @@ class Waveform(Base):
     """Waveform snippet recorded on a Channel, around a Pick, extracted from continuous
     data described in DailyContDataInfo.
 
-    Args:
+    Attributes:
         Base (_type_): _description_
         id: Not meaningful waveform identifier that is used as the PK.
         data_id: ID of DailyContDataInfo describing where the waveform was grabbed from.
