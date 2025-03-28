@@ -1,6 +1,6 @@
 from sqlalchemy import String, Integer, SmallInteger, DateTime, Enum
 from sqlalchemy.types import TIMESTAMP, Double, Date, Boolean, JSON
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, WriteOnlyMapped, mapped_column, relationship
 from sqlalchemy.dialects.mysql import DATETIME
 from typing import List, Optional
 from sqlalchemy.schema import UniqueConstraint, CheckConstraint, ForeignKey
@@ -85,7 +85,7 @@ class Station(Base):
     # One-to-Many relationship with Channel
     channels: Mapped[List["Channel"]] = relationship(back_populates="station")
     # One-to-Many relationship with Pick
-    picks: Mapped[List["Pick"]] = relationship(back_populates="station")
+    picks: WriteOnlyMapped[List["Pick"]] = relationship(back_populates="station")
     # One-to-Many relation with DailyContDataInfo
     contdatainfo: Mapped[List["DailyContDataInfo"]] = relationship(
         back_populates="station"
@@ -170,7 +170,7 @@ class Channel(Base):
     # One-to-Many relationship with Gaps
     gaps: Mapped[List["Gap"]] = relationship(back_populates="channel")
     # One-to-Many relationship with Waveform
-    wfs: Mapped[List["Waveform"]] = relationship(back_populates="channel")
+    wfs: WriteOnlyMapped[List["Waveform"]] = relationship(back_populates="channel")
 
     __table_args__ = (
         UniqueConstraint(sta_id, seed_code, loc, ondate, name="simplify_pk"),
@@ -275,7 +275,7 @@ class DailyContDataInfo(Base):
     # One-to-Many relationship with Gaps
     gaps: Mapped[List["Gap"]] = relationship(back_populates="contdatainfo")
     # One-to-Many relationship with Waveform
-    wfs: Mapped[List["Waveform"]] = relationship(back_populates="contdatainfo")
+    wfs: WriteOnlyMapped[List["Waveform"]] = relationship(back_populates="contdatainfo")
 
     __table_args__ = (
         UniqueConstraint(sta_id, chan_pref, ncomps, date, name="simplify_pk"),
@@ -376,7 +376,7 @@ class DetectionMethod(ISAMethod):
     phase: Mapped[Optional[str]] = mapped_column(String(4))
 
     # One to Many relationship with DLDetection
-    dldets: Mapped[List["DLDetection"]] = relationship(back_populates="method")
+    dldets: WriteOnlyMapped[List["DLDetection"]] = relationship(back_populates="method")
 
     def __repr__(self) -> str:
         return (
@@ -459,8 +459,8 @@ class Pick(Base):
         ptime: DateTime of the pick in UTC. DOES include fractional seconds. If a pick
             has a PickCorrection, it is NOT included in the ptime value.
         auth: Short identifier for the author/creator of the pick (i.e., SPDL, UUSS)
-        snr: Single to noise ratio of pick. TODO: Define a clear method for measuring this
-        amp: Amplitude value of pick. TODO: Define a clear method for measuring this
+        snr: Optional. Single to noise ratio of pick. TODO: Define a clear method for measuring this
+        amp: Optional. Amplitude value of pick. TODO: Define a clear method for measuring this
         detid: Optional. Identifier for the DLDetection the pick is derived from
         last_modified: Automatic field that keeps track of when a row was added to
                 or modified in the database in local time. Does not include microseconds.
@@ -503,7 +503,7 @@ class Pick(Base):
     # One-to-many relationship with FM
     fms: Mapped[List["FirstMotion"]] = relationship(back_populates="pick")
     # One-to-many relationship with Waveform
-    wfs: Mapped[List["Waveform"]] = relationship(back_populates="pick")
+    wfs: WriteOnlyMapped[List["Waveform"]] = relationship(back_populates="pick")
 
     __table_args__ = (
         UniqueConstraint(sta_id, chan_pref, phase, ptime, auth, name="simplify_pk"),
