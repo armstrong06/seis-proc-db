@@ -13,8 +13,8 @@ dateformat = "%Y-%m-%dT%H:%M:%S.%f"
 def test_station(db_session):
     d = {
         "ondate": datetime.strptime("1993-10-26T00:00:00.00", dateformat),
-        "net": "WY",
-        "sta": "YNR",
+        "net": "TS",
+        "sta": "TEST",
         "lat": 44.7155,
         "lon": -110.67917,
         "elev": 2336,
@@ -49,8 +49,8 @@ def test_station_offdate(db_session):
     d = {
         "ondate": datetime.strptime("1993-10-26T00:00:00.00", dateformat),
         "offdate": datetime.strptime("2023-08-25T00:00:00.0", dateformat),
-        "net": "WY",
-        "sta": "YNR",
+        "net": "TS",
+        "sta": "TEST",
         "lat": 44.7155,
         "lon": -110.67917,
         "elev": 2336,
@@ -71,8 +71,8 @@ def test_station_offdate(db_session):
 def db_session_with_stat(db_session):
     d = {
         "ondate": datetime.strptime("1993-10-26T00:00:00.00", dateformat),
-        "net": "WY",
-        "sta": "YNR",
+        "net": "TS",
+        "sta": "TEST",
         "lat": 44.7155,
         "lon": -110.67917,
         "elev": 2336,
@@ -167,7 +167,7 @@ def test_dailycontdatainfo(db_session_with_stat):
 
 def test_repicker_method(db_session):
     d = {
-        "name": "MSWAG-v1.0",
+        "name": "TEST-v1.0",
         "phase": "S",
         "desc": "MultiSWAG models trained on 01/01/01 using M1 epoch 1, M2 epoch 2, M3 epoch 3",
         "path": "the/model/files/are/stored/here",
@@ -195,7 +195,7 @@ def test_repicker_method(db_session):
 
 def test_calibration_method(db_session):
     d = {
-        "name": "kolosov-m1",
+        "name": "TEST-m1",
         "phase": "P",
         "desc": "Calibration model using all data and Repicker Method 1",
         "path": "the/model/files/are/stored/here",
@@ -223,7 +223,7 @@ def test_calibration_method(db_session):
 
 def test_fm_method(db_session):
     d = {
-        "name": "MSWAG-v1.0",
+        "name": "TEST-v1.0",
         "desc": "MWAG models trained with data from 2012 - 2024",
         "path": "the/model/files/are/stored/here",
     }
@@ -249,7 +249,7 @@ def test_fm_method(db_session):
 
 def test_detection_method(db_session):
     d = {
-        "name": "P-UNET-v1",
+        "name": "TEST-UNET-v1",
         "phase": "P",
         "desc": "For P picks, from Armstrong 2023 BSSA paper",
         "path": "the/model/files/are/stored/here",
@@ -310,7 +310,7 @@ def test_dldetection(db_session_with_contdata):
 
     # Add detection method #
     d = {
-        "name": "P-UNET-v1",
+        "name": "TEST-UNET-v1",
         "phase": "P",
         "desc": "For P picks, from Armstrong 2023 BSSA paper",
         "path": "the/model/files/are/stored/here",
@@ -422,7 +422,7 @@ def test_pick_correction(db_session_with_pick):
 
     # Add repicker method #
     d = {
-        "name": "SWAG-v1",
+        "name": "TEST-SWAG-v1",
         "phase": "P",
         "desc": "For P picks, from Armstrong 2023 BSSA paper",
         "path": "the/model/files/are/stored/here",
@@ -472,7 +472,7 @@ def test_firstmotion(db_session_with_pick):
 
     # Add fm method #
     d = {
-        "name": "MSWAG-v1.0",
+        "name": "TEST-v1.0",
         "desc": "MWAG models trained with data from 2012 - 2024",
         "path": "the/model/files/are/stored/here",
     }
@@ -518,7 +518,7 @@ def db_session_with_corr(db_session_with_pick):
 
     # Add repicker method #
     d = {
-        "name": "SWAG-v1",
+        "name": "TEST-v1",
         "phase": "P",
         "desc": "For P picks, from Armstrong 2023 BSSA paper",
         "path": "the/model/files/are/stored/here",
@@ -559,7 +559,7 @@ def test_ci(db_session_with_corr):
 
     # Add repicker method #
     d = {
-        "name": "Kuleshov",
+        "name": "TEST",
         "phase": "P",
         "desc": "For P picks, from Armstrong 2023 BSSA paper",
         "path": "the/model/files/are/stored/here",

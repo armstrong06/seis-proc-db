@@ -14,8 +14,8 @@ def stat_ex():
     return deepcopy(
         {
             "ondate": datetime.strptime("1993-10-26T00:00:00.00", dateformat),
-            "net": "WY",
-            "sta": "YNR",
+            "net": "TS",
+            "sta": "TEST",
             "lat": 44.7155,
             "lon": -110.67917,
             "elev": 2336,
@@ -43,9 +43,7 @@ def channel_ex():
             "azimuth": 90,
             "dip": -90,
             "offdate": None,
-            "overall_gain_vel": None
-
-
+            "overall_gain_vel": None,
         }
     )
 
@@ -70,7 +68,7 @@ def contdatainfo_ex():
 def detection_method_ex():
     return deepcopy(
         {
-            "name": "P-UNET-v1",
+            "name": "TEST-UNET-v1",
             "phase": "P",
             "desc": "For P picks, from Armstrong 2023 BSSA paper",
             "path": "the/model/files/are/stored/here",
@@ -128,7 +126,7 @@ def db_session_with_station(db_session, stat_ex):
 
 def test_insert_station(db_session_with_station):
     db_session, sid = db_session_with_station
-    assert db_session.get(tables.Station, sid).sta == "YNR"
+    assert db_session.get(tables.Station, sid).sta == "TEST"
 
 
 def test_get_station(db_session_with_station):
@@ -138,7 +136,10 @@ def test_get_station(db_session_with_station):
     db_session.expunge_all()
 
     selected_stat = services.get_station(
-        db_session, "WY", "YNR", datetime.strptime("1993-10-26T00:00:00.00", dateformat)
+        db_session,
+        "TS",
+        "TEST",
+        datetime.strptime("1993-10-26T00:00:00.00", dateformat),
     )
     assert selected_stat is not None, "station was not found"
     assert (
@@ -146,6 +147,7 @@ def test_get_station(db_session_with_station):
         and selected_stat.lon == -110.67917
         and selected_stat.elev == 2336
     ), "selected station location is incorrect"
+
 
 def test_get_operating_station_by_name(db_session_with_station):
     db_session, sid = db_session_with_station
@@ -153,9 +155,7 @@ def test_get_operating_station_by_name(db_session_with_station):
     # Just in case it would grab the stored object from the Session
     db_session.expunge_all()
 
-    selected_stat = services.get_operating_station_by_name(
-        db_session, "YNR", 2003
-    )
+    selected_stat = services.get_operating_station_by_name(db_session, "TEST", 2003)
     assert selected_stat is not None, "station was not found"
     assert (
         selected_stat.lat == 44.7155
@@ -163,10 +163,11 @@ def test_get_operating_station_by_name(db_session_with_station):
         and selected_stat.elev == 2336
     ), "selected station location is incorrect"
 
+
 def test_station_no_results(db_session):
     ondate = datetime.strptime("1993-10-26T00:00:00.00", dateformat)
 
-    selected_stat = services.get_station(db_session, "WY", "YNR", ondate)
+    selected_stat = services.get_station(db_session, "TS", "TEST", ondate)
     assert selected_stat is None, "get_station did not return None"
 
 
@@ -175,6 +176,8 @@ def test_insert_channels(db_session_with_station, channel_ex):
 
     common_chan_dict = channel_ex
     common_chan_dict["sta_id"] = sid
+
+    cnt0 = db_session.execute(func.count(tables.Channel.id)).one()[0]
 
     c1, c2, c3 = (
         deepcopy(common_chan_dict),
@@ -190,13 +193,16 @@ def test_insert_channels(db_session_with_station, channel_ex):
 
     db_session.commit()
 
-    cnt = db_session.execute(func.count(tables.Channel.id)).one()
-    assert cnt[0] == 3
+    cnt1 = db_session.execute(func.count(tables.Channel.id)).one()[0]
+    assert cnt1 - cnt0 == 3
+
 
 def test_insert_ignore_channels_common_stat(db_session_with_station, channel_ex):
     db_session, sid = db_session_with_station
 
     common_chan_dict = channel_ex
+
+    cnt0 = db_session.execute(func.count(tables.Channel.id)).one()[0]
 
     c1, c2, c3 = (
         deepcopy(common_chan_dict),
@@ -210,8 +216,9 @@ def test_insert_ignore_channels_common_stat(db_session_with_station, channel_ex)
 
     services.insert_ignore_channels_common_stat(db_session, sid, [c1, c2, c3])
     db_session.commit()
-    cnt = db_session.execute(func.count(tables.Channel.id)).one()
-    assert cnt[0] == 3
+    cnt1 = db_session.execute(func.count(tables.Channel.id)).one()[0]
+    assert cnt1 - cnt0 == 3
+
 
 @pytest.fixture
 def db_session_with_single_channel(db_session_with_station, channel_ex):
@@ -326,7 +333,7 @@ def test_insert_detection_method(db_session, detection_method_ex):
         db_session, name=d["name"], phase=d["phase"], desc=d["desc"], path=d["path"]
     )
     db_session.commit()
-    assert inserted_det_meth.name == "P-UNET-v1", "incorrect name"
+    assert inserted_det_meth.name == "TEST-UNET-v1", "incorrect name"
     assert inserted_det_meth.phase == "P", "incorrect phase"
 
 
