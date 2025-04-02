@@ -6,7 +6,8 @@ build-backend = "setuptools.build_meta"
 name = "seis-proc-db"
 dynamic = ["version"]
 dependencies = [
-    "sqlalchemy~=2.0.0"
+    "sqlalchemy~=2.0.0",
+    "mysqlclient~=2.2.7"
 ]
 requires-python = ">= 3.11"
 authors = [
