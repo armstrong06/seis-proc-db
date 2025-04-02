@@ -347,6 +347,23 @@ def insert_waveform(
     return new_wf
 
 
+def get_or_insert_station(session, stat_dict):
+    stat = get_station(session, stat_dict["net"], stat_dict["sta"], stat_dict["ondate"])
+    if stat is None:
+        stat = insert_station(
+            session,
+            stat_dict["net"],
+            stat_dict["sta"],
+            stat_dict["ondate"],
+            stat_dict["lat"],
+            stat_dict["lon"],
+            stat_dict["elev"],
+            stat_dict["offdate"],
+        )
+
+    return stat
+
+
 def get_contdatainfo(session):
     pass
 
