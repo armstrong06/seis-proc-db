@@ -293,6 +293,36 @@ def get_common_station_channels(session, sta_id, seed_code_pref):
     return result
 
 
+def get_common_station_channels_by_name(session, sta, seed_code_pref):
+    """Get a list of Channel objects belonging to a station name with a common sensor
+    type. THERE COULD BE MORE THAN ONE STATION WITH THE SAME NAME.
+
+    Args:
+        session (Session): database Session
+        sta (str): station name
+        seed_code_pref(str): First two letters of the SEED code for the channel type
+        for 3C or all three letter for 1C.
+
+    Returns:
+        List: list of Channel objects corresponding to the table rows
+    """
+
+    assert type(sta) is str, ValueError("Station name should be a string")
+
+    if len(seed_code_pref) == 2:
+        seed_code_pref += "."
+
+    stmt = (
+        select(Channel)
+        .join(Station, Channel.sta_id == Station.id)
+        .where(Station.sta == sta, Channel.seed_code.op("REGEXP")(seed_code_pref))
+    )
+
+    result = session.scalars(stmt).all()
+
+    return result
+
+
 def insert_contdatainfo(session, contdatainfo_dict):
     new_contdatainfo = DailyContDataInfo(**contdatainfo_dict)
     session.add(new_contdatainfo)

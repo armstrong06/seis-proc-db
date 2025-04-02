@@ -361,8 +361,35 @@ def test_get_common_station_channels_1c(db_session_with_station, channel_ex):
     db_session.commit()
     db_session.expunge_all()
 
-    chan_list = services.get_common_station_channels(db_session, sid, "HHZ")
+    chan_list = services.get_common_station_channels(db_session, sid, "EHZ")
     assert len(chan_list) == 1, "Incorrect number of Channels"
+
+
+def test_get_common_station_channels_by_name(db_session_with_station, channel_ex):
+    db_session, sid = db_session_with_station
+
+    common_chan_dict = channel_ex
+    common_chan_dict["sta_id"] = sid
+    sta_name = db_session.get(tables.Station, sid).sta
+    c1, c2, c3, c4 = (
+        deepcopy(common_chan_dict),
+        deepcopy(common_chan_dict),
+        deepcopy(common_chan_dict),
+        deepcopy(common_chan_dict),
+    )
+
+    c1["seed_code"] = "HHE"
+    c2["seed_code"] = "HHN"
+    c3["seed_code"] = "HHZ"
+    c4["seed_code"] = "EHZ"
+
+    services.insert_channels(db_session, [c1, c2, c3, c4])
+    db_session.commit()
+    db_session.expunge_all()
+
+    chan_list = services.get_common_station_channels_by_name(db_session, sta_name, "HH")
+    assert len(chan_list) == 3, "Incorrect number of Channels"
+
 
 @pytest.fixture
 def db_session_with_contdatainfo(db_session_with_station, contdatainfo_ex):
