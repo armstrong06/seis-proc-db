@@ -273,6 +273,7 @@ def get_common_station_channels(session, sta_id, seed_code_pref):
     Returns:
         List: list of Channel objects corresponding to the table rows
     """
+    assert type(sta_id) is int, ValueError("Station id should be an int")
 
     if len(seed_code_pref) == 2:
         seed_code_pref += "."
