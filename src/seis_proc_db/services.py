@@ -1,7 +1,7 @@
 """Store business logic"""
 
 from sqlalchemy import select, text, insert
-
+from sqlalchemy.dialects.mysql import insert as mysql_insert
 from seis_proc_db.tables import *
 
 
@@ -305,6 +305,31 @@ def insert_detection_method(session, name, phase=None, desc=None, path=None):
     session.add(new_det_method)
 
     return new_det_method
+
+
+def get_detection_method(session, name):
+    result = session.scalars(
+        select(DetectionMethod).where(DetectionMethod.name == name)
+    ).all()
+
+    if len(result) == 0:
+        return None
+
+    return result[0]
+
+
+def upsert_detection_method(session, name, phase=None, desc=None, path=None):
+    insert_stmt = mysql_insert(DetectionMethod).values(
+        name=name, phase=phase, desc=desc, path=path
+    )
+    update_dict = {
+        col.name: insert_stmt.inserted[col.name]
+        for col in DetectionMethod.__table__.columns
+        if col.name != "id"
+    }
+    upsert_stmt = insert_stmt.on_duplicate_key_update(**update_dict)
+
+    session.execute(upsert_stmt)
 
 
 def insert_dldetection(session, data_id, method_id, sample, phase, width, height):

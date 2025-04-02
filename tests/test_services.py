@@ -273,8 +273,6 @@ def test_get_all_station_channels(db_session_with_station, channel_ex):
     c2["seed_code"] = "HHN"
     c3["seed_code"] = "HHZ"
 
-    print(c1["seed_code"], c2["seed_code"], c3["seed_code"])
-
     services.insert_channels(db_session, [c1, c2, c3])
     db_session.commit()
     db_session.expunge_all()
@@ -368,6 +366,43 @@ def test_insert_detection_method(db_session, detection_method_ex):
     db_session.commit()
     assert inserted_det_meth.name == "TEST-UNET-v1", "incorrect name"
     assert inserted_det_meth.phase == "P", "incorrect phase"
+
+
+def test_get_detection_method(db_session, detection_method_ex):
+    d = detection_method_ex
+    inserted_det_meth = services.insert_detection_method(
+        db_session, name=d["name"], phase=d["phase"], desc=d["desc"], path=d["path"]
+    )
+    db_session.commit()
+    db_session.expunge_all()
+
+    selected_method = services.get_detection_method(db_session, d["name"])
+    assert selected_method.name == "TEST-UNET-v1", "incorrect name"
+
+
+def test_get_detection_method_none(db_session, detection_method_ex):
+    d = detection_method_ex
+    selected_method = services.get_detection_method(db_session, d["name"])
+    assert selected_method is None, "method is not None"
+
+
+def test_upsert_detection_method(db_session, detection_method_ex):
+    d = detection_method_ex
+    inserted_det_meth = services.insert_detection_method(
+        db_session, name=d["name"], phase=d["phase"], desc=d["desc"], path=d["path"]
+    )
+    db_session.commit()
+    method_id = inserted_det_meth.id
+    db_session.expunge_all()
+    d["phase"] = "S"
+    d["path"] = "new/path"
+    print("dict", d)
+    services.upsert_detection_method(db_session, **d)
+    db_session.commit()
+    updated_meth = db_session.get(tables.DetectionMethod, method_id)
+
+    assert updated_meth.phase == "S", f"phase not updated"
+    assert updated_meth.path == "new/path", "path not updated"
 
 
 @pytest.fixture
