@@ -124,6 +124,29 @@ def insert_channels(session, channel_dict_list):
     session.execute(insert(Channel), channel_dict_list)
 
 
+def insert_ignore_channels_common_stat(session, sta_id, channel_dict_list):
+    """Inserts one or more channels for the same station into the database. Ignoring duplicate entries.
+
+    Args:
+        session (Session): database session
+        sta_id (int): Station.id
+        channel_dict_list (list): A list of dictionary objects containing the relevant Channel information.
+        Dictionary keys should be the same as those in the Channel class.
+    """
+
+    textual_sql = text(
+        "INSERT IGNORE INTO channel (sta_id, seed_code, loc, ondate, samp_rate, clock_drift, lat, lon, elev,"
+        "depth, azimuth, dip, offdate, sensor_desc, sensit_units, sensit_freq, sensit_val, overall_gain_vel)"
+        "VALUES (:sta_id, :seed_code, :loc, :ondate, :samp_rate, :clock_drift, :lat, :lon, :elev,"
+        ":depth, :azimuth, :dip, :offdate, :sensor_desc, :sensit_units, :sensit_freq, :sensit_val, :overall_gain_vel)"
+    )
+
+    for chan in channel_dict_list:
+        chan["sta_id"] = sta_id
+
+    session.execute(textual_sql, channel_dict_list)
+
+
 def insert_channel(session, channel_dict):
     """Insert a single channel into the database.
 
