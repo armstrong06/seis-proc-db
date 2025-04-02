@@ -67,8 +67,8 @@ class Station(Base):
     __tablename__ = "station"
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
-    net: Mapped[str] = mapped_column(String(2), nullable=False)
-    sta: Mapped[str] = mapped_column(String(4), nullable=False)
+    net: Mapped[str] = mapped_column(String(4), nullable=False)
+    sta: Mapped[str] = mapped_column(String(10), nullable=False)
     ondate: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     ##
     lat: Mapped[float] = mapped_column(Double)
