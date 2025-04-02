@@ -267,16 +267,15 @@ def get_common_station_channels(session, sta_id, seed_code_pref):
     Args:
         session (Session): database Session
         sta_id (int): Station id
-        seed_code_pref(str): First two letters of the SEED code for the channel type to gather.
+        seed_code_pref(str): First two letters of the SEED code for the channel type
+        for 3C or all three letter for 1C.
 
     Returns:
         List: list of Channel objects corresponding to the table rows
     """
 
-    if len(seed_code_pref) != 2:
-        return
-
-    seed_code_pref += "."
+    if len(seed_code_pref) == 2:
+        seed_code_pref += "."
 
     stmt = select(Channel).where(
         Channel.sta_id == sta_id, Channel.seed_code.op("REGEXP")(seed_code_pref)
