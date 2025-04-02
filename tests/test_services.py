@@ -42,6 +42,10 @@ def channel_ex():
             "depth": 100,
             "azimuth": 90,
             "dip": -90,
+            "offdate": None,
+            "overall_gain_vel": None
+
+
         }
     )
 
@@ -143,6 +147,21 @@ def test_get_station(db_session_with_station):
         and selected_stat.elev == 2336
     ), "selected station location is incorrect"
 
+def test_get_operating_station_by_name(db_session_with_station):
+    db_session, sid = db_session_with_station
+
+    # Just in case it would grab the stored object from the Session
+    db_session.expunge_all()
+
+    selected_stat = services.get_operating_station_by_name(
+        db_session, "YNR", 2003
+    )
+    assert selected_stat is not None, "station was not found"
+    assert (
+        selected_stat.lat == 44.7155
+        and selected_stat.lon == -110.67917
+        and selected_stat.elev == 2336
+    ), "selected station location is incorrect"
 
 def test_station_no_results(db_session):
     ondate = datetime.strptime("1993-10-26T00:00:00.00", dateformat)
@@ -174,6 +193,25 @@ def test_insert_channels(db_session_with_station, channel_ex):
     cnt = db_session.execute(func.count(tables.Channel.id)).one()
     assert cnt[0] == 3
 
+def test_insert_ignore_channels_common_stat(db_session_with_station, channel_ex):
+    db_session, sid = db_session_with_station
+
+    common_chan_dict = channel_ex
+
+    c1, c2, c3 = (
+        deepcopy(common_chan_dict),
+        deepcopy(common_chan_dict),
+        deepcopy(common_chan_dict),
+    )
+
+    c1["seed_code"] = "HHE"
+    c2["seed_code"] = "HHN"
+    c3["seed_code"] = "HHZ"
+
+    services.insert_ignore_channels_common_stat(db_session, sid, [c1, c2, c3])
+    db_session.commit()
+    cnt = db_session.execute(func.count(tables.Channel.id)).one()
+    assert cnt[0] == 3
 
 @pytest.fixture
 def db_session_with_single_channel(db_session_with_station, channel_ex):
