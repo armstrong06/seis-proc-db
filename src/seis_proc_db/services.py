@@ -76,6 +76,38 @@ def get_station(session, net, sta, ondate):
     raise ValueError("More than one Station matching these criteria")
 
 
+def get_operating_station_by_name(session, sta, year):
+    """Get a Station object from the database by looking for a specific station name that is operating during
+    a given year.
+
+    Args:
+        session (Session): The database Session
+        sta (str): The station code of the desired station
+        year (int): A year that the station should be operational.
+    Raises:
+        ValueError: More than one Station was found.
+
+    Returns:
+        Station: Station object containing the desired station information or None
+    """
+
+    textual_sql = text(
+        "SELECT * FROM station WHERE sta = :sta AND YEAR(ondate) <= :year AND (YEAR(offdate) >= :year OR offdate IS NULL)",
+    )
+
+    result = session.scalars(
+        select(Station).from_statement(textual_sql), {"sta": sta, "year": str(year)}
+    ).all()
+
+    if len(result) == 1:
+        return result[0]
+    if len(result) == 0:
+        return None
+
+    # This should only happen if (oddly) there were Stations with ondates within 1 min
+    raise ValueError("More than one Station matching these criteria")
+
+
 def insert_channels(session, channel_dict_list):
     """Inserts one or more channels into the database using a bulk insert.
 
