@@ -284,6 +284,39 @@ def test_get_all_station_channels(db_session_with_station, channel_ex):
     assert len(chan_list) == 3, "Incorrect number of Channels"
 
 
+def test_get_operating_channels_by_station_name(db_session_with_station, channel_ex):
+    db_session, sid = db_session_with_station
+
+    common_chan_dict = channel_ex
+    common_chan_dict["sta_id"] = sid
+    c1, c2, c3 = (
+        deepcopy(common_chan_dict),
+        deepcopy(common_chan_dict),
+        deepcopy(common_chan_dict),
+    )
+
+    c1["seed_code"] = "HHE"
+    c2["seed_code"] = "HHN"
+    c3["seed_code"] = "HHZ"
+
+    services.insert_channels(db_session, [c1, c2, c3])
+    db_session.commit()
+    db_session.expunge_all()
+
+    station = db_session.get(tables.Station, sid)
+
+    print("STA", station.sta)
+    station, channels = services.get_operating_channels_by_station_name(
+        db_session,
+        station.sta,
+        "HH",
+        datetime.strptime("2005-10-26T00:00:00.00", dateformat),
+    )
+    print(station)
+    print(channels)
+    assert len(channels) == 3
+
+
 def test_get_common_station_channels(db_session_with_station, channel_ex):
     db_session, sid = db_session_with_station
 

@@ -108,6 +108,50 @@ def get_operating_station_by_name(session, sta, year):
     raise ValueError("More than one Station matching these criteria")
 
 
+def get_operating_channels_by_station_name(session, sta, chan_pref, date):
+
+    # net, sta, seed_code, channel.ondate, channel.offdate
+    textual_sql = text(
+        (
+            # "SELECT * FROM station JOIN channel ON station.id = channel.sta_id"
+            # "AND station.sta = :sta AND   "
+            # "channel.seed_code LIKE :chan_pref AND "
+            "channel.ondate <= :date AND "
+            "(channel.offdate >= :date OR channel.offdate IS NULL)"
+        )
+    )
+
+    # select(
+    #     Station.id,
+    #     Station.net,
+    #     Station.sta,
+    #     Channel.id,
+    #     Channel.seed_code,
+    #     Channel.ondate,
+    #     Channel.offdate,
+    # )
+    stmt = (
+        select(Station, Channel)
+        .join(Channel, Station.id == Channel.sta_id)
+        .where(Station.sta == sta)
+        .where(Channel.seed_code.op("REGEXP")(chan_pref))
+        .where(textual_sql)
+    )
+
+    # print("STMT", stmt)
+    result = session.execute(stmt, {"date": date}).all()
+
+    if len(result) == 0:
+        return None, None
+
+    station_obj = result[0][0]
+    channel_list = []
+    for row in result:
+        channel_list.append(row[1])
+
+    return station_obj, channel_list
+
+
 def insert_channels(session, channel_dict_list):
     """Inserts one or more channels into the database using a bulk insert.
 
