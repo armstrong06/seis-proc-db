@@ -42,7 +42,10 @@ class ISAMethod(Base):
         TIMESTAMP, default=datetime.now, onupdate=datetime.now
     )
 
-    __table_args__ = {"mysql_engine": MYSQL_ENGINE}
+    __table_args__ = (
+        UniqueConstraint("name", name="simplify_pk"),
+        {"mysql_engine": MYSQL_ENGINE},
+    )
 
 
 class Station(Base):
@@ -139,7 +142,7 @@ class Channel(Base):
     __tablename__ = "channel"
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
-    sta_id = mapped_column(
+    sta_id: Mapped[int] = mapped_column(
         ForeignKey("station.id", onupdate="cascade", ondelete="restrict"),
         nullable=False,
     )
