@@ -245,27 +245,27 @@ class DailyContDataInfo(Base):
     ncomps: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     date = mapped_column(Date, nullable=False)
     ##
-    samp_rate: Mapped[float] = mapped_column(Double)
+    samp_rate: Mapped[Optional[float]] = mapped_column(Double)
     # TODO: Decide if need to store this...
-    dt: Mapped[float] = mapped_column(Double)
+    dt: Mapped[Optional[float]] = mapped_column(Double)
     # TODO: Decided whether to remove npts
-    org_npts: Mapped[int] = mapped_column(Integer)
-    org_start: Mapped[datetime] = mapped_column(
+    org_npts: Mapped[Optional[int]] = mapped_column(Integer)
+    org_start: Mapped[Optional[datetime]] = mapped_column(
         DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False
     )
-    org_end: Mapped[datetime] = mapped_column(
+    org_end: Mapped[Optional[datetime]] = mapped_column(
         DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False
     )
     # TODO: Decide if proc_* values should be stored in a different table
     proc_npts: Mapped[Optional[int]] = mapped_column(Integer)
-    proc_start: Mapped[datetime] = mapped_column(
+    proc_start: Mapped[Optional[datetime]] = mapped_column(
         DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=True
     )
-    proc_end: Mapped[datetime] = mapped_column(
+    proc_end: Mapped[Optional[datetime]] = mapped_column(
         DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=True
     )
     # TODO: Should this be nullable or have a default value (i.e., 0)
-    prev_appended: Mapped[bool] = mapped_column(
+    prev_appended: Mapped[Optional[bool]] = mapped_column(
         Boolean(create_constraint=True, name="prev_app_bool"), nullable=True
     )
     error: Mapped[Optional[str]] = mapped_column(String(20))
