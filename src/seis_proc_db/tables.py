@@ -201,12 +201,15 @@ class Channel(Base):
 
 class DailyContDataInfo(Base):
     """Keep track of information relating to daily (24 hr) continuous data files used in
-    algorithms.
+    algorithms. This assumes the data has been processed using
+    seis_proc_dl.apply_detectors.DataLoader
 
     Attributes:
         id: Not meaningful identifier that is used as the PK
         sta_id: id of the related Station
-        chan_pref: First two letters of the SEED code for the channels used
+        chan_pref: First two letters of the SEED code for the channels used for 3C or all
+        three letters for 1C
+        ncomps: The number of components used
         date: Date the data was recorded
         samp_rate: Sampling rate of the data (may be different than the Channel samp_rate)
         dt: Sampling interval of the data (should be 1/samp_rate)
@@ -238,7 +241,7 @@ class DailyContDataInfo(Base):
         ForeignKey("station.id", onupdate="cascade", ondelete="restrict"),
         nullable=False,
     )
-    chan_pref: Mapped[str] = mapped_column(String(2), nullable=False)
+    chan_pref: Mapped[str] = mapped_column(String(3), nullable=False)
     ncomps: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     date = mapped_column(Date, nullable=False)
     ##
@@ -457,7 +460,8 @@ class Pick(Base):
     Attributes:
         id: Not meaningful pick identifier that is used as the PK.
         sta_id: Identifier for the Station the pick was made at
-        chan_pref: First two letters of the SEED code for the channels used
+        chan_pref: First two letters of the SEED code for the channels used for 3C or all
+        three letters for 1C
         phase: Presumed phase type of the pick
         ptime: DateTime of the pick in UTC. DOES include fractional seconds. If a pick
             has a PickCorrection, it is NOT included in the ptime value.
@@ -477,7 +481,7 @@ class Pick(Base):
         ForeignKey("station.id", onupdate="cascade", ondelete="restrict"),
         nullable=False,
     )
-    chan_pref: Mapped[str] = mapped_column(String(2), nullable=False)
+    chan_pref: Mapped[str] = mapped_column(String(3), nullable=False)
     # TODO: Should phase be removed from the PK, in the case it was unknown?
     phase: Mapped[str] = mapped_column(String(4), nullable=False)
     ptime: Mapped[datetime] = mapped_column(
