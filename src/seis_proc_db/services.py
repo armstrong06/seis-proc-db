@@ -330,6 +330,23 @@ def insert_contdatainfo(session, contdatainfo_dict):
     return new_contdatainfo
 
 
+def get_contdatainfo(session, sta_id, chan_pref, ncomps, date):
+    stmt = (
+        select(DailyContDataInfo)
+        .where(DailyContDataInfo.sta_id == sta_id)
+        .where(DailyContDataInfo.chan_pref == chan_pref)
+        .where(DailyContDataInfo.ncomps == ncomps)
+        .where(DailyContDataInfo.date == date)
+    )
+
+    result = session.scalars(stmt).all()
+
+    if len(result) == 0:
+        return None
+    else:
+        return result[0]
+
+
 def insert_detection_method(session, name, phase=None, desc=None, path=None):
     new_det_method = DetectionMethod(name=name, phase=phase, desc=desc, path=path)
     session.add(new_det_method)
@@ -461,10 +478,6 @@ def get_or_insert_station(session, stat_dict):
         )
 
     return stat
-
-
-def get_contdatainfo(session):
-    pass
 
 
 # Potentially useful to implement

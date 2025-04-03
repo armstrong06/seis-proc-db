@@ -409,6 +409,20 @@ def test_insert_contdatainfo(db_session_with_contdatainfo):
     assert db_session.get(tables.DailyContDataInfo, dataid).chan_pref == "HH"
 
 
+def test_get_contdatainfo(db_session_with_contdatainfo, contdatainfo_ex):
+    d = contdatainfo_ex
+    db_session, sid, dataid = db_session_with_contdatainfo
+    db_session.expunge_all()
+
+    selected_info = services.get_contdatainfo(
+        db_session, sid, d["chan_pref"], d["ncomps"], d["date"]
+    )
+
+    assert selected_info is not None, "no contdatainfo selected"
+    assert selected_info.id is not None, "contdatainfo has no id"
+    assert selected_info.samp_rate == 100, "sampling rate is incorrect"
+
+
 def test_insert_detection_method(db_session, detection_method_ex):
     d = detection_method_ex
     inserted_det_meth = services.insert_detection_method(
