@@ -251,22 +251,22 @@ class DailyContDataInfo(Base):
     # TODO: Decided whether to remove npts
     org_npts: Mapped[Optional[int]] = mapped_column(Integer)
     org_start: Mapped[Optional[datetime]] = mapped_column(
-        DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False
+        DATETIME(fsp=MYSQL_DATETIME_FSP)
     )
     org_end: Mapped[Optional[datetime]] = mapped_column(
-        DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False
+        DATETIME(fsp=MYSQL_DATETIME_FSP)
     )
     # TODO: Decide if proc_* values should be stored in a different table
     proc_npts: Mapped[Optional[int]] = mapped_column(Integer)
     proc_start: Mapped[Optional[datetime]] = mapped_column(
-        DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=True
+        DATETIME(fsp=MYSQL_DATETIME_FSP)
     )
     proc_end: Mapped[Optional[datetime]] = mapped_column(
-        DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=True
+        DATETIME(fsp=MYSQL_DATETIME_FSP)
     )
     # TODO: Should this be nullable or have a default value (i.e., 0)
     prev_appended: Mapped[Optional[bool]] = mapped_column(
-        Boolean(create_constraint=True, name="prev_app_bool"), nullable=True
+        Boolean(create_constraint=True, name="prev_app_bool")
     )
     error: Mapped[Optional[str]] = mapped_column(String(20))
     # Keep track of when the row was inserted/updated
@@ -742,6 +742,7 @@ class Gap(Base):
     end: Mapped[datetime] = mapped_column(
         DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False
     )
+    # TODO: Get rid of these
     startsamp: Mapped[Optional[int]] = mapped_column(Integer)
     endsamp: Mapped[Optional[int]] = mapped_column(Integer)
     avail_sig_sec: Mapped[float] = mapped_column(Double, default=0.0)
