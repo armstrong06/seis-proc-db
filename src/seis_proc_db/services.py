@@ -434,6 +434,20 @@ def insert_gap(
 
     return new_gap
 
+def insert_gaps(session, gap_dict_list):
+    # Cant return the number of added gaps because they have not been committed yet
+    session.execute(insert(Gap), gap_dict_list)
+
+def get_gaps(session, chan_id, data_id):
+
+    result = session.scalars(
+            select(Gap).where(Gap.chan_id == chan_id, Gap.data_id == data_id)
+        ).all()
+
+    if len(result) == 0:
+        return None
+
+    return result
 
 def insert_waveform(
     session,
