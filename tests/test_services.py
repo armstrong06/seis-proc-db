@@ -406,7 +406,9 @@ def db_session_with_contdatainfo(db_session_with_station, contdatainfo_ex):
 
 def test_insert_contdatainfo(db_session_with_contdatainfo):
     db_session, sid, dataid = db_session_with_contdatainfo
-    assert db_session.get(tables.DailyContDataInfo, dataid).chan_pref == "HH"
+    contdatainfo = db_session.get(tables.DailyContDataInfo, dataid)
+    assert contdatainfo.chan_pref == "HH", "invalid chan_pref"
+    assert contdatainfo.id is not None, "id not set"
 
 
 def test_get_contdatainfo(db_session_with_contdatainfo, contdatainfo_ex):
