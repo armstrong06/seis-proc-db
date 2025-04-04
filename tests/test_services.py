@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytest
 from copy import deepcopy
 from sqlalchemy import func
@@ -557,6 +557,42 @@ def test_insert_gap(db_session_with_gap):
     assert inserted_gap.id is not None
     assert inserted_gap.end > inserted_gap.start, "Invalid times"
 
+def test_get_gaps(db_session_with_gap):
+    db_session, ids = db_session_with_gap
+    selected_gaps = services.get_gaps(db_session, ids["chan"], ids["data"])
+
+    assert len(selected_gaps) == 1, "incorrect number of gaps"
+    assert selected_gaps[0].id is not None, "gap id is not set"
+
+
+def test_insert_gaps(db_session_with_gap, gap_ex):
+    db_session, ids = db_session_with_gap
+
+    common_gap_dict = gap_ex
+    common_gap_dict["chan_id"] = ids["chan"]
+    common_gap_dict["data_id"] = ids["data"]
+
+    cnt0 = db_session.execute(func.count(tables.Gap.id)).one()[0]
+
+    g1, g2, g3 = (
+        deepcopy(common_gap_dict),
+        deepcopy(common_gap_dict),
+        deepcopy(common_gap_dict),
+    )
+
+    g1["start"] += timedelta(minutes=60)
+    g1["end"] += timedelta(minutes=60)
+    g2["start"] = g1["end"] + timedelta(minutes=60)
+    g2["end"] = g2["start"] + timedelta(minutes=120)
+    g3["start"] = g2["end"] + timedelta(minutes=60)
+    g3["end"] = g3["start"] + timedelta(minutes=120)
+
+    services.insert_gaps(db_session, [g1, g2, g3])
+
+    db_session.commit()
+
+    cnt1 = db_session.execute(func.count(tables.Gap.id)).one()[0]
+    assert cnt1 - cnt0 == 3, "3 gaps were not added"
 
 def test_insert_waveform(db_session_with_dldet_pick, waveform_ex):
     db_session, ids = db_session_with_dldet_pick
