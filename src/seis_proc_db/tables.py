@@ -470,7 +470,7 @@ class DLDetection(Base):
         return (
             f"DLDetection(id={self.id!r}, data_id={self.data_id!r}, method_id={self.method_id!r}, "
             f"sample={self.sample!r}, phase={self.phase!r}, width={self.width!r}, "
-            f"height={self.height!r}, last_modified={self.last_modified!r})"
+            f"height={self.height!r}, time={self.time!r}, last_modified={self.last_modified!r})"
         )
 
 
