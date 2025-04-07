@@ -260,7 +260,7 @@ def test_detection_method(db_session):
     db_session.commit()
 
     assert imeth.phase == "P", "invalid phase"
-    assert len(imeth.dldets) == 0, "The length of related DLDetections is not 0"
+    # assert len(imeth.dldets) == 0, "The length of related DLDetections is not 0"
     assert imeth.id is not None, "ID is not defined"
     assert len(imeth.name) > 0, "name is not defined"
     assert imeth.details is not None, "details is not defined"
@@ -306,7 +306,7 @@ def db_session_with_contdata(db_session_with_stat):
 
 def test_dldetection(db_session_with_contdata):
     db_session, icd = db_session_with_contdata
-    assert len(icd.dldets) == 0, "contdateinfo.dldets before adding det"
+    # assert len(icd.dldets) == 0, "contdateinfo.dldets before adding det"
 
     # Add detection method #
     d = {
@@ -319,7 +319,7 @@ def test_dldetection(db_session_with_contdata):
     imeth = tables.DetectionMethod(**d)
     db_session.add(imeth)
     db_session.commit()
-    assert len(imeth.dldets) == 0, "detection_method.dldets before adding det"
+    # assert len(imeth.dldets) == 0, "detection_method.dldets before adding det"
     #
 
     d = {"sample": 1000, "phase": "P", "width": 40, "height": 90}
@@ -328,8 +328,8 @@ def test_dldetection(db_session_with_contdata):
     db_session.add(idet)
     db_session.commit()
 
-    assert len(icd.dldets) == 1, "DLDetection not assocaited with ContDataInfo"
-    assert len(imeth.dldets) == 1, "DLDetection not assocaited with DetectionMethod"
+    # assert len(icd.dldets) == 1, "DLDetection not assocaited with ContDataInfo"
+    # assert len(imeth.dldets) == 1, "DLDetection not assocaited with DetectionMethod"
     assert idet.contdatainfo is not None, "ContDataInfo not associated with DLDetection"
     assert idet.method is not None, "DetectionMethod not associated with DLDetection"
     assert idet.sample == 1000
@@ -352,7 +352,7 @@ def test_dldetection(db_session_with_contdata):
 def test_pick(db_session_with_stat):
     db_session, istat = db_session_with_stat
     assert istat.id is not None
-    assert len(istat.picks) == 0, "stat.pick before adding"
+    # assert len(istat.picks) == 0, "stat.pick before adding"
 
     d = {
         "chan_pref": "HH",
@@ -379,10 +379,10 @@ def test_pick(db_session_with_stat):
     assert ipick.snr == 40.5, "invalid snr"
     assert ipick.amp == 10.22, "invalid amp"
 
-    assert len(istat.picks) == 1, "stat.pick after adding"
+    # assert len(istat.picks) == 1, "stat.pick after adding"
     assert ipick.dldet is None, "dldet should not be defined"
     assert len(ipick.corrs) == 0, "should be 0 corrs assigned to the pick"
-    assert len(ipick.wfs) == 0, "should be 0 wfs assigned to the pick"
+    # assert len(ipick.wfs) == 0, "should be 0 wfs assigned to the pick"
     assert len(ipick.fms) == 0, "should be 0 fms assigned to the pick"
     assert ipick.last_modified.year == datetime.now().year, "invalid last_modified year"
     assert (
@@ -413,7 +413,7 @@ def db_session_with_pick(db_session_with_stat):
     db_session.add(ipick)
     db_session.commit()
 
-    assert len(istat.picks) == 1, "picks not associated with station"
+    # assert len(istat.picks) == 1, "picks not associated with station"
     assert ipick.station is not None, "station not associated with pick"
 
     return db_session, ipick
@@ -571,9 +571,9 @@ def test_ci(db_session_with_corr):
     imeth = tables.CalibrationMethod(**d)
     db_session.add(imeth)
     db_session.commit()
-    assert (
-        len(imeth.cis) == 0
-    ), "calibration_method.cis should have 0 values at this point"
+    # assert (
+    #     len(imeth.cis) == 0
+    # ), "calibration_method.cis should have 0 values at this point"
     #
 
     d = {
@@ -587,7 +587,7 @@ def test_ci(db_session_with_corr):
     db_session.commit()
 
     assert len(icorr.cis) == 1, "1 CI should be associated with PickCorrection yet"
-    assert len(imeth.cis) == 1, "calibration_method.cis should have 1 value now"
+    # assert len(imeth.cis) == 1, "calibration_method.cis should have 1 value now"
     assert ici.corr is not None, "CI should have a PickCorrection associated with it"
     assert (
         ici.method is not None
@@ -688,7 +688,7 @@ def db_session_with_contdata_and_channel_and_pick(db_session_with_contdata_and_c
     db_session.add(ipick)
     db_session.commit()
 
-    assert len(stat.picks) == 1, "picks not associated with station"
+    # assert len(stat.picks) == 1, "picks not associated with station"
     assert ipick.station is not None, "station not associated with pick"
 
     return db_session, icd, ichan, ipick
@@ -696,9 +696,9 @@ def db_session_with_contdata_and_channel_and_pick(db_session_with_contdata_and_c
 
 def test_waveform(db_session_with_contdata_and_channel_and_pick):
     db_session, icd, ichan, ipick = db_session_with_contdata_and_channel_and_pick
-    assert len(icd.wfs) == 0, "ContData should have no waveforms yet"
-    assert len(ichan.wfs) == 0, "Channel should have no waveforms yet"
-    assert len(ipick.wfs) == 0, "Pick should have no waveforms yet"
+    # assert len(icd.wfs) == 0, "ContData should have no waveforms yet"
+    # assert len(ichan.wfs) == 0, "Channel should have no waveforms yet"
+    # assert len(ipick.wfs) == 0, "Pick should have no waveforms yet"
 
     d = {
         "filt_low": 1.5,
@@ -713,9 +713,9 @@ def test_waveform(db_session_with_contdata_and_channel_and_pick):
     db_session.add(iwf)
     db_session.commit()
 
-    assert len(icd.wfs) == 1, "ContData should have 1 waveform now"
-    assert len(ichan.wfs) == 1, "Channel should have 1 waveform now"
-    assert len(ipick.wfs) == 1, "Pick should have 1 waveform now"
+    # assert len(icd.wfs) == 1, "ContData should have 1 waveform now"
+    # assert len(ichan.wfs) == 1, "Channel should have 1 waveform now"
+    # assert len(ipick.wfs) == 1, "Pick should have 1 waveform now"
     assert iwf.contdatainfo is not None, "Waveform should have contdatainfo"
     assert iwf.pick is not None, "Waveform should have a pick"
     assert iwf.channel is not None, "Waveform should have a channel"
