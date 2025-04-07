@@ -1,6 +1,6 @@
 """Simple tests to make sure there were no major issues when generating the schema"""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy import select
 import pytest
 import numpy as np
@@ -336,6 +336,9 @@ def test_dldetection(db_session_with_contdata):
     assert idet.phase == "P"
     assert idet.width == 40
     assert idet.height == 90
+    assert idet.time == icd.proc_start + timedelta(
+        seconds=(d["sample"] / icd.samp_rate)
+    )
     assert idet.last_modified.year == datetime.now().year, "invalid last_modified year"
     assert (
         idet.last_modified.month == datetime.now().month

@@ -1,6 +1,13 @@
 from sqlalchemy import String, Integer, SmallInteger, DateTime, Enum
+from sqlalchemy import func, select, text
 from sqlalchemy.types import TIMESTAMP, Double, Date, Boolean, JSON
-from sqlalchemy.orm import Mapped, WriteOnlyMapped, mapped_column, relationship
+from sqlalchemy.orm import (
+    Mapped,
+    WriteOnlyMapped,
+    mapped_column,
+    relationship,
+    column_property,
+)
 from sqlalchemy.dialects.mysql import DATETIME
 from typing import List, Optional
 from sqlalchemy.schema import UniqueConstraint, CheckConstraint, ForeignKey
@@ -437,6 +444,19 @@ class DLDetection(Base):
     pick: Mapped[Optional["Pick"]] = relationship(back_populates="dldet")
     # Many-to-one relationship with DetectionMethod
     method: Mapped["DetectionMethod"] = relationship(back_populates="dldets")
+
+    # column property
+    time = column_property(
+        select(
+            func.date_add(
+                DailyContDataInfo.proc_start,
+                text("INTERVAL (sample / samp_rate) SECOND"),
+            )
+        )
+        .where(DailyContDataInfo.id == data_id)
+        .correlate_except(DailyContDataInfo)
+        .scalar_subquery()
+    )
 
     __table_args__ = (
         UniqueConstraint(data_id, method_id, sample, name="simplify_pk"),
