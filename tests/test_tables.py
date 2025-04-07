@@ -656,9 +656,15 @@ def test_gap(db_session_with_contdata_and_channel):
 
     assert igap.start.microsecond == 150000, "Invalid start fractional second"
     assert igap.end.microsecond == 250000, "Invalid end microsecond"
-    startsamp = ((igap.start - icd.proc_start).seconds) * icd.samp_rate
+    startsamp = (
+        ((igap.start - icd.proc_start)).seconds
+        + ((igap.start - icd.proc_start).microseconds / 1e6)
+    ) * icd.samp_rate
     assert igap.startsamp == startsamp, "invalid startsamp"
-    endsamp = ((igap.end - icd.proc_start).seconds) * icd.samp_rate
+    endsamp = (
+        ((igap.end - icd.proc_start)).seconds
+        + ((igap.end - icd.proc_start).microseconds / 1e6)
+    ) * icd.samp_rate
     assert igap.endsamp == endsamp, "invalid endsamp"
     # assert igap.startsamp == 4399415, "Invalid startsamp"
     # assert igap.endsamp == 4399425, "Invalid endsamp"
