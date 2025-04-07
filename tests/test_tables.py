@@ -639,8 +639,8 @@ def test_gap(db_session_with_contdata_and_channel):
     assert len(ichan.gaps) == 0, "Channel should have no gaps yet"
 
     d = {
-        "start": datetime.strptime("2023-01-02T12:13:14.15", dateformat),
-        "end": datetime.strptime("2023-01-02T12:13:14.25", dateformat),
+        "start": datetime.strptime("2024-10-01T12:13:14.15", dateformat),
+        "end": datetime.strptime("2024-10-01T12:13:14.25", dateformat),
         # "startsamp": 4399415,
         # "endsamp": 4399425,
     }
@@ -656,6 +656,10 @@ def test_gap(db_session_with_contdata_and_channel):
 
     assert igap.start.microsecond == 150000, "Invalid start fractional second"
     assert igap.end.microsecond == 250000, "Invalid end microsecond"
+    startsamp = ((igap.start - icd.proc_start).seconds) * icd.samp_rate
+    assert igap.startsamp == startsamp, "invalid startsamp"
+    endsamp = ((igap.end - icd.proc_start).seconds) * icd.samp_rate
+    assert igap.endsamp == endsamp, "invalid endsamp"
     # assert igap.startsamp == 4399415, "Invalid startsamp"
     # assert igap.endsamp == 4399425, "Invalid endsamp"
     assert igap.avail_sig_sec == 0.0, "Invalid default avail_sig_sec"

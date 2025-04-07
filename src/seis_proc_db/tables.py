@@ -1,5 +1,5 @@
 from sqlalchemy import String, Integer, SmallInteger, DateTime, Enum
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select, text, literal_column
 from sqlalchemy.types import TIMESTAMP, Double, Date, Boolean, JSON
 from sqlalchemy.orm import (
     Mapped,
@@ -779,6 +779,32 @@ class Gap(Base):
     # Column property
     # (gap[4] - self.metadata["starttime"]) * self.metadata["sampling_rate"]
     # startsamp = column_property(select(DailyContDataInfo.id))
+    startsamp = column_property(
+        select(
+            func.timestampdiff(
+                literal_column("SECOND"), DailyContDataInfo.proc_start, start
+            )
+            * DailyContDataInfo.samp_rate,
+        )
+        .where(
+            (DailyContDataInfo.id == data_id) & (DailyContDataInfo.proc_start != None)
+        )
+        .correlate_except(DailyContDataInfo)
+        .scalar_subquery()
+    )
+    endsamp = column_property(
+        select(
+            func.timestampdiff(
+                literal_column("SECOND"), DailyContDataInfo.proc_start, end
+            )
+            * DailyContDataInfo.samp_rate,
+        )
+        .where(
+            (DailyContDataInfo.id == data_id) & (DailyContDataInfo.proc_start != None)
+        )
+        .correlate_except(DailyContDataInfo)
+        .scalar_subquery()
+    )
 
     __table_args__ = (
         UniqueConstraint(data_id, chan_id, start, name="simplify_pk"),
