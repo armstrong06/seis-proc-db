@@ -70,7 +70,7 @@ def detection_method_ex():
         {
             "name": "TEST-UNET-v1",
             "phase": "P",
-            "desc": "For P picks, from Armstrong 2023 BSSA paper",
+            "details": "For P picks, from Armstrong 2023 BSSA paper",
             "path": "the/model/files/are/stored/here",
         }
     )
@@ -428,7 +428,11 @@ def test_get_contdatainfo(db_session_with_contdatainfo, contdatainfo_ex):
 def test_insert_detection_method(db_session, detection_method_ex):
     d = detection_method_ex
     inserted_det_meth = services.insert_detection_method(
-        db_session, name=d["name"], phase=d["phase"], desc=d["desc"], path=d["path"]
+        db_session,
+        name=d["name"],
+        phase=d["phase"],
+        details=d["details"],
+        path=d["path"],
     )
     db_session.commit()
     assert inserted_det_meth.name == "TEST-UNET-v1", "incorrect name"
@@ -438,7 +442,11 @@ def test_insert_detection_method(db_session, detection_method_ex):
 def test_get_detection_method(db_session, detection_method_ex):
     d = detection_method_ex
     inserted_det_meth = services.insert_detection_method(
-        db_session, name=d["name"], phase=d["phase"], desc=d["desc"], path=d["path"]
+        db_session,
+        name=d["name"],
+        phase=d["phase"],
+        details=d["details"],
+        path=d["path"],
     )
     db_session.commit()
     db_session.expunge_all()
@@ -456,7 +464,11 @@ def test_get_detection_method_none(db_session, detection_method_ex):
 def test_upsert_detection_method(db_session, detection_method_ex):
     d = detection_method_ex
     inserted_det_meth = services.insert_detection_method(
-        db_session, name=d["name"], phase=d["phase"], desc=d["desc"], path=d["path"]
+        db_session,
+        name=d["name"],
+        phase=d["phase"],
+        details=d["details"],
+        path=d["path"],
     )
     db_session.commit()
     method_id = inserted_det_meth.id
@@ -557,6 +569,7 @@ def test_insert_gap(db_session_with_gap):
     assert inserted_gap.id is not None
     assert inserted_gap.end > inserted_gap.start, "Invalid times"
 
+
 def test_get_gaps(db_session_with_gap):
     db_session, ids = db_session_with_gap
     selected_gaps = services.get_gaps(db_session, ids["chan"], ids["data"])
@@ -593,6 +606,7 @@ def test_insert_gaps(db_session_with_gap, gap_ex):
 
     cnt1 = db_session.execute(func.count(tables.Gap.id)).one()[0]
     assert cnt1 - cnt0 == 3, "3 gaps were not added"
+
 
 def test_insert_waveform(db_session_with_dldet_pick, waveform_ex):
     db_session, ids = db_session_with_dldet_pick

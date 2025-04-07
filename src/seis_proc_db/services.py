@@ -347,8 +347,8 @@ def get_contdatainfo(session, sta_id, chan_pref, ncomps, date):
         return result[0]
 
 
-def insert_detection_method(session, name, phase=None, desc=None, path=None):
-    new_det_method = DetectionMethod(name=name, phase=phase, desc=desc, path=path)
+def insert_detection_method(session, name, phase=None, details=None, path=None):
+    new_det_method = DetectionMethod(name=name, phase=phase, details=details, path=path)
     session.add(new_det_method)
 
     return new_det_method
@@ -365,9 +365,9 @@ def get_detection_method(session, name):
     return result[0]
 
 
-def upsert_detection_method(session, name, phase=None, desc=None, path=None):
+def upsert_detection_method(session, name, phase=None, details=None, path=None):
     insert_stmt = mysql_insert(DetectionMethod).values(
-        name=name, phase=phase, desc=desc, path=path
+        name=name, phase=phase, details=details, path=path
     )
     update_dict = {
         col.name: insert_stmt.inserted[col.name]

@@ -169,7 +169,7 @@ def test_repicker_method(db_session):
     d = {
         "name": "TEST-v1.0",
         "phase": "S",
-        "desc": "MultiSWAG models trained on 01/01/01 using M1 epoch 1, M2 epoch 2, M3 epoch 3",
+        "details": "MultiSWAG models trained on 01/01/01 using M1 epoch 1, M2 epoch 2, M3 epoch 3",
         "path": "the/model/files/are/stored/here",
     }
 
@@ -181,7 +181,7 @@ def test_repicker_method(db_session):
     assert len(irpm.corrs) == 0, "The length of related PickCorrections is not 0"
     assert irpm.id is not None, "ID is not defined"
     assert len(irpm.name) > 0, "name is not defined"
-    assert irpm.desc is not None, "desc is not defined"
+    assert irpm.details is not None, "details is not defined"
     assert irpm.path is not None, "path is not defined"
     assert irpm.last_modified.year == datetime.now().year, "invalid last_modified year"
     assert (
@@ -197,7 +197,7 @@ def test_calibration_method(db_session):
     d = {
         "name": "TEST-m1",
         "phase": "P",
-        "desc": "Calibration model using all data and Repicker Method 1",
+        "details": "Calibration model using all data and Repicker Method 1",
         "path": "the/model/files/are/stored/here",
     }
 
@@ -209,7 +209,7 @@ def test_calibration_method(db_session):
     assert len(imeth.cis) == 0, "The length of related CredibleInterval is not 0"
     assert imeth.id is not None, "ID is not defined"
     assert len(imeth.name) > 0, "name is not defined"
-    assert imeth.desc is not None, "desc is not defined"
+    assert imeth.details is not None, "details is not defined"
     assert imeth.path is not None, "path is not defined"
     assert imeth.last_modified.year == datetime.now().year, "invalid last_modified year"
     assert (
@@ -224,7 +224,7 @@ def test_calibration_method(db_session):
 def test_fm_method(db_session):
     d = {
         "name": "TEST-v1.0",
-        "desc": "MWAG models trained with data from 2012 - 2024",
+        "details": "MWAG models trained with data from 2012 - 2024",
         "path": "the/model/files/are/stored/here",
     }
 
@@ -235,7 +235,7 @@ def test_fm_method(db_session):
     assert len(imeth.fms) == 0, "The length of related FMs is not 0"
     assert imeth.id is not None, "ID is not defined"
     assert len(imeth.name) > 0, "name is not defined"
-    assert imeth.desc is not None, "desc is not defined"
+    assert imeth.details is not None, "details is not defined"
     assert imeth.path is not None, "path is not defined"
     assert imeth.last_modified.year == datetime.now().year, "invalid last_modified year"
     assert (
@@ -251,7 +251,7 @@ def test_detection_method(db_session):
     d = {
         "name": "TEST-UNET-v1",
         "phase": "P",
-        "desc": "For P picks, from Armstrong 2023 BSSA paper",
+        "details": "For P picks, from Armstrong 2023 BSSA paper",
         "path": "the/model/files/are/stored/here",
     }
 
@@ -263,7 +263,7 @@ def test_detection_method(db_session):
     assert len(imeth.dldets) == 0, "The length of related DLDetections is not 0"
     assert imeth.id is not None, "ID is not defined"
     assert len(imeth.name) > 0, "name is not defined"
-    assert imeth.desc is not None, "desc is not defined"
+    assert imeth.details is not None, "details is not defined"
     assert imeth.path is not None, "path is not defined"
     assert imeth.last_modified.year == datetime.now().year, "invalid last_modified year"
     assert (
@@ -312,7 +312,7 @@ def test_dldetection(db_session_with_contdata):
     d = {
         "name": "TEST-UNET-v1",
         "phase": "P",
-        "desc": "For P picks, from Armstrong 2023 BSSA paper",
+        "details": "For P picks, from Armstrong 2023 BSSA paper",
         "path": "the/model/files/are/stored/here",
     }
 
@@ -427,7 +427,7 @@ def test_pick_correction(db_session_with_pick):
     d = {
         "name": "TEST-SWAG-v1",
         "phase": "P",
-        "desc": "For P picks, from Armstrong 2023 BSSA paper",
+        "details": "For P picks, from Armstrong 2023 BSSA paper",
         "path": "the/model/files/are/stored/here",
     }
 
@@ -476,7 +476,7 @@ def test_firstmotion(db_session_with_pick):
     # Add fm method #
     d = {
         "name": "TEST-v1.0",
-        "desc": "MWAG models trained with data from 2012 - 2024",
+        "details": "MWAG models trained with data from 2012 - 2024",
         "path": "the/model/files/are/stored/here",
     }
 
@@ -523,7 +523,7 @@ def db_session_with_corr(db_session_with_pick):
     d = {
         "name": "TEST-v1",
         "phase": "P",
-        "desc": "For P picks, from Armstrong 2023 BSSA paper",
+        "details": "For P picks, from Armstrong 2023 BSSA paper",
         "path": "the/model/files/are/stored/here",
     }
 
@@ -564,7 +564,7 @@ def test_ci(db_session_with_corr):
     d = {
         "name": "TEST",
         "phase": "P",
-        "desc": "For P picks, from Armstrong 2023 BSSA paper",
+        "details": "For P picks, from Armstrong 2023 BSSA paper",
         "path": "the/model/files/are/stored/here",
     }
 

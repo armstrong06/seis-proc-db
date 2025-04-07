@@ -33,7 +33,7 @@ class ISAMethod(Base):
     Attributes:
         id: Not meaningful identifier for the method, used as the PK
         name: Name of the method used
-        desc: Optional. Description of method.
+        details: Optional. Description of method.
         path: Optional. Path where relevant files for the method are stored.
         last_modified: Automatic field that keeps track of when a method was added to
             or modified in the database in local time. Does not include fractional seconds.
@@ -42,7 +42,7 @@ class ISAMethod(Base):
     __abstract__ = True
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     name: Mapped[str] = mapped_column(String(50))
-    desc: Mapped[Optional[str]] = mapped_column(String(255))
+    details: Mapped[Optional[str]] = mapped_column(String(255))
     path: Mapped[Optional[str]] = mapped_column(String(255))
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(
@@ -331,7 +331,7 @@ class RepickerMethod(ISAMethod):
 
     def __repr__(self) -> str:
         return (
-            f"RepickerMethod(id={self.id!r}, name={self.name!r}, desc={self.desc!r}, "
+            f"RepickerMethod(id={self.id!r}, name={self.name!r}, details={self.details!r}, "
             f"path={self.path!r}, last_modified={self.last_modified!r})"
         )
 
@@ -354,7 +354,7 @@ class CalibrationMethod(ISAMethod):
 
     def __repr__(self) -> str:
         return (
-            f"CalibrationMethod(id={self.id!r}, name={self.name!r}, desc={self.desc!r}, "
+            f"CalibrationMethod(id={self.id!r}, name={self.name!r}, details={self.details!r}, "
             f"path={self.path!r}, last_modified={self.last_modified!r})"
         )
 
@@ -371,7 +371,7 @@ class FMMethod(ISAMethod):
 
     def __repr__(self) -> str:
         return (
-            f"FMMethod(id={self.id!r}, name={self.name!r}, desc={self.desc!r}, "
+            f"FMMethod(id={self.id!r}, name={self.name!r}, details={self.details!r}, "
             f"path={self.path!r}, last_modified={self.last_modified!r})"
         )
 
@@ -393,7 +393,7 @@ class DetectionMethod(ISAMethod):
 
     def __repr__(self) -> str:
         return (
-            f"DetectioNMethod(id={self.id!r}, name={self.name!r}, desc={self.desc!r}, "
+            f"DetectioNMethod(id={self.id!r}, name={self.name!r}, details={self.details!r}, "
             f"path={self.path!r}, phase={self.phase!r} last_modified={self.last_modified!r})"
         )
 
