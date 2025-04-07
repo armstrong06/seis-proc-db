@@ -60,6 +60,8 @@ def contdatainfo_ex():
             "org_npts": 86399,
             "org_start": datetime.strptime("2024-10-01T00:00:00.05", dateformat),
             "org_end": datetime.strptime("2024-10-01T23:59:59.55", dateformat),
+            "proc_npts": 86400,
+            "proc_start": datetime.strptime("2024-10-01T00:00:00.00", dateformat),
         }
     )
 
@@ -505,6 +507,8 @@ def test_insert_gap(db_session_with_gap):
     inserted_gap = db_session.get(tables.Gap, ids["gap"])
     assert inserted_gap.id is not None
     assert inserted_gap.end > inserted_gap.start, "Invalid times"
+    assert inserted_gap.startsamp == 4320015, "invalid startsamp"
+    assert inserted_gap.endsamp == 4680025, "invalid endsamp"
 
 
 def test_get_gaps(db_session_with_gap):
@@ -560,6 +564,7 @@ def db_session_with_dldetection(db_session_with_gap, detection_method_ex):
     db_session.commit()
 
     ids["dldet"] = inserted_dldet.id
+    ids["method"] = inserted_method.id
 
     return db_session, ids
 
@@ -594,6 +599,91 @@ def test_insert_pick(db_session_with_dldet_pick):
     assert inserted_pick.id is not None
     assert inserted_pick.detid == ids["dldet"]
     assert inserted_pick.phase == "P"
+
+
+def test_bulk_insert_dldetections_with_gap_check_outside_gap(
+    db_session_with_dldet_pick,
+):
+    db_session, ids = db_session_with_dldet_pick
+    cnt0 = db_session.execute(func.count(tables.DLDetection.id)).one()[0]
+    new_pick = {
+        "sample": 11 * 60 * 60 * 100,
+        "phase": "P",
+        "width": 20,
+        "height": 80,
+        "data_id": ids["data"],
+        "method_id": ids["method"],
+        "buffer": 0.0,
+    }
+    services.bulk_insert_dldetections_with_gap_check(db_session, [new_pick])
+    db_session.commit()
+    cnt1 = db_session.execute(func.count(tables.DLDetection.id)).one()[0]
+    assert cnt1 - cnt0 == 1, "Detection not inserted"
+
+
+def test_bulk_insert_dldetections_with_gap_check_inside_gap(
+    db_session_with_dldet_pick,
+):
+    db_session, ids = db_session_with_dldet_pick
+    cnt0 = db_session.execute(func.count(tables.DLDetection.id)).one()[0]
+    new_pick = {
+        "sample": 12.5 * 60 * 60 * 100,
+        "phase": "P",
+        "width": 20,
+        "height": 80,
+        "data_id": ids["data"],
+        "method_id": ids["method"],
+        "buffer": 0.0,
+    }
+    services.bulk_insert_dldetections_with_gap_check(db_session, [new_pick])
+    db_session.commit()
+    cnt1 = db_session.execute(func.count(tables.DLDetection.id)).one()[0]
+    assert cnt1 - cnt0 == 0, "Detection inserted"
+
+
+def test_bulk_insert_dldetections_with_gap_check_inside_buffer(
+    db_session_with_dldet_pick,
+):
+    db_session, ids = db_session_with_dldet_pick
+    cnt0 = db_session.execute(func.count(tables.DLDetection.id)).one()[0]
+    new_pick = {
+        "sample": 4319915,
+        "phase": "P",
+        "width": 20,
+        "height": 80,
+        "data_id": ids["data"],
+        "method_id": ids["method"],
+    }
+    print(db_session.get(tables.Gap, ids["gap"]))
+    services.bulk_insert_dldetections_with_gap_check(db_session, [new_pick])
+    db_session.commit()
+
+    cnt1 = db_session.execute(func.count(tables.DLDetection.id)).one()[0]
+
+    from sqlalchemy import text, select
+
+    dets = db_session.scalars(
+        select(tables.DLDetection).from_statement(text("select * from dldetection"))
+    ).all()
+    print(
+        "data start",
+        db_session.get(tables.DailyContDataInfo, ids["data"]).proc_start,
+    )
+    print("Det time", dets[-1].time)
+    print(db_session.get(tables.Gap, ids["gap"]))
+    print(
+        "Gap buffered times",
+        db_session.execute(
+            text(
+                """select TIMESTAMPADD(MICROSECOND, -@buffer*1E6, gap.start),
+                TIMESTAMPADD(MICROSECOND, @buffer*1E6, gap.end)
+                from gap where gap.id = :id"""
+            ),
+            {"id": ids["gap"]},
+        ).all(),
+    )
+
+    assert cnt1 - cnt0 == 0, "Detection inserted"
 
 
 def test_insert_waveform(db_session_with_dldet_pick, waveform_ex):

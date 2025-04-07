@@ -3,6 +3,7 @@
 from sqlalchemy import select, text, insert
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 from seis_proc_db.tables import *
+from seis_proc_db.config import DETECTION_GAP_BUFFER_SECONDS
 
 
 def insert_station(session, net, sta, ondate, lat, lon, elev, offdate=None):
@@ -434,20 +435,23 @@ def insert_gap(
 
     return new_gap
 
+
 def insert_gaps(session, gap_dict_list):
     # Cant return the number of added gaps because they have not been committed yet
     session.execute(insert(Gap), gap_dict_list)
 
+
 def get_gaps(session, chan_id, data_id):
 
     result = session.scalars(
-            select(Gap).where(Gap.chan_id == chan_id, Gap.data_id == data_id)
-        ).all()
+        select(Gap).where(Gap.chan_id == chan_id, Gap.data_id == data_id)
+    ).all()
 
     if len(result) == 0:
         return None
 
     return result
+
 
 def insert_waveform(
     session,
@@ -494,16 +498,101 @@ def get_or_insert_station(session, stat_dict):
     return stat
 
 
-# Potentially useful to implement
-def check_gaps(session):
-    pass
+def bulk_insert_dldetections_with_gap_check(session, dldets_dict):
+    session.execute(
+        text("SET @buffer = :buffer"), {"buffer": DETECTION_GAP_BUFFER_SECONDS}
+    )
+    textual_sql = text(
+        """INSERT INTO dldetection (data_id, method_id, sample, phase, width, height)
+        SELECT :data_id, :method_id, :sample, :phase, :width, :height
+        FROM contdatainfo WHERE contdatainfo.id = :data_id
+        AND NOT EXISTS (
+        SELECT gap.id FROM gap WHERE gap.data_id = :data_id
+        AND TIMESTAMPADD(MICROSECOND, (:sample*1.0) / contdatainfo.samp_rate * 1E6, contdatainfo.proc_start)
+        BETWEEN TIMESTAMPADD(MICROSECOND, -@buffer * 1E6, gap.start) AND
+        TIMESTAMPADD(MICROSECOND, @buffer * 1E6, gap.end)
+        )"""
+    )
+    session.execute(textual_sql, dldets_dict)
+
+    # CHATGPT on how to do this with ORM
+    # from sqlalchemy import insert, select, literal_column, literal, func, table, column, text
+    # from sqlalchemy.sql import and_, exists, not_, values
+    # from your_model_module import dldetection, gap, contdatainfo
+
+    # # Example detections
+    # detections = [
+    #     {"data_id": 80, "method_id": 43, "sample": 3960000, "phase": "P", "width": 20, "height": 80},
+    #     {"data_id": 80, "method_id": 43, "sample": 3970000, "phase": "S", "width": 15, "height": 70},
+    #     # Add more here
+    # ]
+
+    # buffer = 10.0  # seconds
+
+    # # Build a VALUES table for detection candidates
+    # vals = values(
+    #     column("data_id"),
+    #     column("method_id"),
+    #     column("sample"),
+    #     column("phase"),
+    #     column("width"),
+    #     column("height"),
+    #     name="incoming_detections"
+    # ).data(
+    #     *[(d["data_id"], d["method_id"], d["sample"], d["phase"], d["width"], d["height"]) for d in detections]
+    # )
+
+    # # Aliases
+    # v = vals.alias("v")
+    # cdi = contdatainfo.alias("cdi")
+    # g = gap.alias("g")
+
+    # # Calculate detection time
+    # detection_time = func.timestampadd(
+    #     text("SECOND"),
+    #     (v.c.sample * 1.0) / cdi.c.samp_rate,
+    #     cdi.c.proc_start
+    # )
+
+    # # EXISTS subquery for overlapping gap
+    # gap_exists = exists(
+    #     select(1).select_from(g).where(
+    #         and_(
+    #             g.c.data_id == v.c.data_id,
+    #             detection_time.between(
+    #                 func.timestampadd(text("SECOND"), -buffer, g.c.start),
+    #                 func.timestampadd(text("SECOND"),  buffer, g.c.end),
+    #             )
+    #         )
+    #     )
+    # )
+
+    # # Select filtered detections
+    # select_stmt = (
+    #     select(
+    #         v.c.data_id,
+    #         v.c.method_id,
+    #         v.c.sample,
+    #         v.c.phase,
+    #         v.c.width,
+    #         v.c.height,
+    #     )
+    #     .select_from(v.join(cdi, v.c.data_id == cdi.c.id))
+    #     .where(not_(gap_exists))
+    # )
+
+    # # Final insert
+    # insert_stmt = insert(dldetection).from_select(
+    #     ["data_id", "method_id", "sample", "phase", "width", "height"],
+    #     select_stmt
+    # )
+
+    # # Execute it
+    # with engine.begin() as conn:
+    #     conn.execute(insert_stmt)
 
 
 def add_dldetection_pick(session):
-    pass
-
-
-def bulk_insert_dldetections(session):
     pass
 
 

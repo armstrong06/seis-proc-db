@@ -465,7 +465,7 @@ class DLDetection(Base):
         select(
             func.date_add(
                 DailyContDataInfo.proc_start,
-                text("INTERVAL (sample / samp_rate) SECOND"),
+                text("INTERVAL (sample / samp_rate * 1E6) MICROSECOND"),
             )
         )
         .where(DailyContDataInfo.id == data_id)
@@ -811,8 +811,13 @@ class Gap(Base):
     # startsamp = column_property(select(DailyContDataInfo.id))
     startsamp = column_property(
         select(
-            func.timestampdiff(
-                literal_column("SECOND"), DailyContDataInfo.proc_start, start
+            (
+                func.timestampdiff(
+                    literal_column("MICROSECOND"),
+                    DailyContDataInfo.proc_start,
+                    start,
+                )
+                / 1e6
             )
             * DailyContDataInfo.samp_rate,
         )
@@ -824,8 +829,11 @@ class Gap(Base):
     )
     endsamp = column_property(
         select(
-            func.timestampdiff(
-                literal_column("SECOND"), DailyContDataInfo.proc_start, end
+            (
+                func.timestampdiff(
+                    literal_column("MICROSECOND"), DailyContDataInfo.proc_start, end
+                )
+                / 1e6
             )
             * DailyContDataInfo.samp_rate,
         )

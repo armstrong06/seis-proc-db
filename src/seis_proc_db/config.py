@@ -9,3 +9,6 @@ DB_URL = f"{DB_TYPE}+{DBAPI}://{USER}:{DB_PASSWORD}@mysql.chpc.utah.edu/SeisProc
 # DB_URL = f"mariadb+mariadbconnector://{USER}:{DB_PASSWORD}@mysql.chpc.utah.edu/SeisProcML"
 
 MYSQL_ENGINE = "InnoDB"
+
+# The buffer around gaps to not add in a detection
+DETECTION_GAP_BUFFER_SECONDS = 1.0
