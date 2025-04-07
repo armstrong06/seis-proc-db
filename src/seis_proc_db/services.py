@@ -417,8 +417,8 @@ def insert_gap(
     chan_id,
     start,
     end,
-    startsamp=None,
-    endsamp=None,
+    # startsamp=None,
+    # endsamp=None,
     avail_sig_sec=None,
 ):
     new_gap = Gap(
@@ -426,8 +426,8 @@ def insert_gap(
         chan_id=chan_id,
         start=start,
         end=end,
-        startsamp=startsamp,
-        endsamp=endsamp,
+        # startsamp=startsamp,
+        # endsamp=endsamp,
         avail_sig_sec=avail_sig_sec,
     )
     session.add(new_gap)
