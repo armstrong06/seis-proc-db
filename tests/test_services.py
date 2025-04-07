@@ -68,7 +68,7 @@ def contdatainfo_ex():
 def detection_method_ex():
     return deepcopy(
         {
-            "name": "TEST-UNET-v1",
+            "name": "TEST-UNET-v6",
             "phase": "P",
             "details": "For P picks, from Armstrong 2023 BSSA paper",
             "path": "the/model/files/are/stored/here",
@@ -94,10 +94,8 @@ def pick_ex():
 def gap_ex():
     return deepcopy(
         {
-            "start": datetime.strptime("2023-01-02T12:13:14.15", dateformat),
-            "end": datetime.strptime("2023-01-02T12:13:14.25", dateformat),
-            # "startsamp": 4399415,
-            # "endsamp": 4399425,
+            "start": datetime.strptime("2024-10-01T12:00:00.15", dateformat),
+            "end": datetime.strptime("2024-10-01T13:00:00.25", dateformat),
         }
     )
 
@@ -435,7 +433,7 @@ def test_insert_detection_method(db_session, detection_method_ex):
         path=d["path"],
     )
     db_session.commit()
-    assert inserted_det_meth.name == "TEST-UNET-v1", "incorrect name"
+    assert inserted_det_meth.name == "TEST-UNET-v6", "incorrect name"
     assert inserted_det_meth.phase == "P", "incorrect phase"
 
 
@@ -452,7 +450,7 @@ def test_get_detection_method(db_session, detection_method_ex):
     db_session.expunge_all()
 
     selected_method = services.get_detection_method(db_session, d["name"])
-    assert selected_method.name == "TEST-UNET-v1", "incorrect name"
+    assert selected_method.name == "TEST-UNET-v6", "incorrect name"
 
 
 def test_get_detection_method_none(db_session, detection_method_ex):
@@ -482,67 +480,6 @@ def test_upsert_detection_method(db_session, detection_method_ex):
 
     assert updated_meth.phase == "S", f"phase not updated"
     assert updated_meth.path == "new/path", "path not updated"
-
-
-@pytest.fixture
-def db_session_with_dldetection(db_session_with_contdatainfo, detection_method_ex):
-    db_session, sid, dataid = db_session_with_contdatainfo
-    inserted_method = services.insert_detection_method(
-        db_session, **detection_method_ex
-    )
-    db_session.commit()
-
-    d = {"sample": 1000, "phase": "P", "width": 40, "height": 90}
-    inserted_dldet = services.insert_dldetection(
-        db_session, dataid, inserted_method.id, **d
-    )
-    db_session.commit()
-
-    ids = {
-        "sta": sid,
-        "data": dataid,
-        "method": inserted_method.id,
-        "dldet": inserted_dldet.id,
-    }
-
-    return db_session, ids
-
-
-def test_insert_dldetection(db_session_with_dldetection):
-    db_session, ids = db_session_with_dldetection
-
-    inserted_dldet = db_session.get(tables.DLDetection, ids["dldet"])
-
-    assert inserted_dldet.id > 0, "No id"
-    assert inserted_dldet.phase == "P"
-    assert inserted_dldet.sample == 1000
-
-
-@pytest.fixture
-def db_session_with_dldet_pick(db_session_with_dldetection, pick_ex, channel_ex):
-    db_session, ids = db_session_with_dldetection
-    chan_dict = channel_ex
-    chan_dict["sta_id"] = ids["sta"]
-    chan = services.insert_channel(db_session, chan_dict)
-    db_session.commit()
-    ids["chan"] = chan.id
-
-    inserted_pick = services.insert_pick(
-        db_session, sta_id=ids["sta"], detid=ids["dldet"], **pick_ex
-    )
-    db_session.commit()
-
-    ids["pick"] = inserted_pick.id
-
-    return db_session, ids
-
-
-def test_insert_pick(db_session_with_dldet_pick):
-    db_session, ids = db_session_with_dldet_pick
-    inserted_pick = db_session.get(tables.Pick, ids["pick"])
-    assert inserted_pick.id is not None
-    assert inserted_pick.detid == ids["dldet"]
-    assert inserted_pick.phase == "P"
 
 
 @pytest.fixture
@@ -608,6 +545,57 @@ def test_insert_gaps(db_session_with_gap, gap_ex):
     assert cnt1 - cnt0 == 3, "3 gaps were not added"
 
 
+@pytest.fixture
+def db_session_with_dldetection(db_session_with_gap, detection_method_ex):
+    db_session, ids = db_session_with_gap
+    inserted_method = services.insert_detection_method(
+        db_session, **detection_method_ex
+    )
+    db_session.commit()
+
+    d = {"sample": 1000, "phase": "P", "width": 40, "height": 90}
+    inserted_dldet = services.insert_dldetection(
+        db_session, ids["data"], inserted_method.id, **d
+    )
+    db_session.commit()
+
+    ids["dldet"] = inserted_dldet.id
+
+    return db_session, ids
+
+
+def test_insert_dldetection(db_session_with_dldetection):
+    db_session, ids = db_session_with_dldetection
+
+    inserted_dldet = db_session.get(tables.DLDetection, ids["dldet"])
+
+    assert inserted_dldet.id > 0, "No id"
+    assert inserted_dldet.phase == "P"
+    assert inserted_dldet.sample == 1000
+
+
+@pytest.fixture
+def db_session_with_dldet_pick(db_session_with_dldetection, pick_ex, channel_ex):
+    db_session, ids = db_session_with_dldetection
+
+    inserted_pick = services.insert_pick(
+        db_session, sta_id=ids["sta"], detid=ids["dldet"], **pick_ex
+    )
+    db_session.commit()
+
+    ids["pick"] = inserted_pick.id
+
+    return db_session, ids
+
+
+def test_insert_pick(db_session_with_dldet_pick):
+    db_session, ids = db_session_with_dldet_pick
+    inserted_pick = db_session.get(tables.Pick, ids["pick"])
+    assert inserted_pick.id is not None
+    assert inserted_pick.detid == ids["dldet"]
+    assert inserted_pick.phase == "P"
+
+
 def test_insert_waveform(db_session_with_dldet_pick, waveform_ex):
     db_session, ids = db_session_with_dldet_pick
 
@@ -624,3 +612,13 @@ def test_insert_waveform(db_session_with_dldet_pick, waveform_ex):
     assert new_wf.id is not None, "ID is not set"
     assert len(new_wf.data) == 2000, "data length is invalid"
     assert new_wf.filt_low == 1.5, "filt_low is invalid"
+
+
+# This fail, so you can't get column_properties from db unless using ORM (unsurprising)
+# def test_get_startsamp(db_session_with_gap):
+#     db_session, ids = db_session_with_gap
+#     from sqlalchemy import text
+
+#     startsamp = db_session.execute(
+#         text("SELECT startsamp from gap where gap.id = :gap_id"), {"gap_id": ids["gap"]}
+#     )
