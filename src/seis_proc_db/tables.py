@@ -46,7 +46,10 @@ class ISAMethod(Base):
     path: Mapped[Optional[str]] = mapped_column(String(255))
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(
-        TIMESTAMP, default=datetime.now, onupdate=datetime.now
+        TIMESTAMP,
+        default=datetime.now,
+        onupdate=datetime.now,
+        server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
     )
 
     __table_args__ = (
@@ -89,7 +92,10 @@ class Station(Base):
     # last_modified = mapped_column(DateTime, onupdate=func.utc_timestamp())
     # define 'last_updated' to be populated with datetime.now()
     last_modified = mapped_column(
-        TIMESTAMP, default=datetime.now, onupdate=datetime.now
+        TIMESTAMP,
+        default=datetime.now,
+        onupdate=datetime.now,
+        server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
     )
 
     # One-to-Many relationship with Channel
@@ -172,7 +178,10 @@ class Channel(Base):
     dip: Mapped[int] = mapped_column(SmallInteger)
     offdate: Mapped[datetime] = mapped_column(DateTime, nullable=True)
     last_modified = mapped_column(
-        TIMESTAMP, default=datetime.now, onupdate=datetime.now
+        TIMESTAMP,
+        default=datetime.now,
+        onupdate=datetime.now,
+        server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
     )
 
     # Many-to-One relation with Station
@@ -278,7 +287,10 @@ class DailyContDataInfo(Base):
     error: Mapped[Optional[str]] = mapped_column(String(20))
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(
-        TIMESTAMP, default=datetime.now, onupdate=datetime.now
+        TIMESTAMP,
+        default=datetime.now,
+        onupdate=datetime.now,
+        server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
     )
 
     # Many-to-One relation with Station
@@ -435,7 +447,10 @@ class DLDetection(Base):
     height: Mapped[int] = mapped_column(SmallInteger)
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(
-        TIMESTAMP, default=datetime.now, onupdate=datetime.now
+        TIMESTAMP,
+        default=datetime.now,
+        onupdate=datetime.now,
+        server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
     )
 
     # Many-to-one relationship with ContData
@@ -518,7 +533,10 @@ class Pick(Base):
     )
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(
-        TIMESTAMP, default=datetime.now, onupdate=datetime.now
+        TIMESTAMP,
+        default=datetime.now,
+        onupdate=datetime.now,
+        server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
     )
 
     # Many-to-one relationship with Station
@@ -589,7 +607,10 @@ class PickCorrection(Base):
     preds: Mapped[JSON] = mapped_column(JSON)
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(
-        TIMESTAMP, default=datetime.now, onupdate=datetime.now
+        TIMESTAMP,
+        default=datetime.now,
+        onupdate=datetime.now,
+        server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
     )
 
     # Many-to-one relationship with Pick
@@ -649,7 +670,10 @@ class FirstMotion(Base):
     preds: Mapped[Optional[JSON]] = mapped_column(JSON)
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(
-        TIMESTAMP, default=datetime.now, onupdate=datetime.now
+        TIMESTAMP,
+        default=datetime.now,
+        onupdate=datetime.now,
+        server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
     )
 
     # Many-to-one relationship with Pick
@@ -703,7 +727,10 @@ class CredibleInterval(Base):
     ub: Mapped[float] = mapped_column(Double)
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(
-        TIMESTAMP, default=datetime.now, onupdate=datetime.now
+        TIMESTAMP,
+        default=datetime.now,
+        onupdate=datetime.now,
+        server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
     )
 
     # Many-to-one relationship with PickCorrection
@@ -768,7 +795,10 @@ class Gap(Base):
     avail_sig_sec: Mapped[float] = mapped_column(Double, default=0.0)
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(
-        TIMESTAMP, default=datetime.now, onupdate=datetime.now
+        TIMESTAMP,
+        default=datetime.now,
+        onupdate=datetime.now,
+        server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
     )
 
     # Many-to-one relationship with DailyContDataInfo
@@ -873,7 +903,10 @@ class Waveform(Base):
     data = mapped_column(JSON, nullable=False)
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(
-        TIMESTAMP, default=datetime.now, onupdate=datetime.now
+        TIMESTAMP,
+        default=datetime.now,
+        onupdate=datetime.now,
+        server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
     )
 
     # Many-to-one relationship with DailyContDataInfo
