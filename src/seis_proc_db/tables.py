@@ -737,8 +737,8 @@ class Gap(Base):
         start: Start time of the gap in UTC. Should include fractional seconds.
         end: End time of the gap in UTC. Should include fractional seconds.
         # TODO: Am I going to put entire missing days as a gap?
-        startsamp: Optional. Start sample of the gap in the processed DailyContDataInfo (i.e., Post Probs)
-        endsamp: Optional. End sample of the gap in the processed DailyContDataInfo (i.e., Post Probs)
+        #startsamp: Optional. Start sample of the gap in the processed DailyContDataInfo (i.e., Post Probs)
+        #endsamp: Optional. End sample of the gap in the processed DailyContDataInfo (i.e., Post Probs)
         avail_sig_sec: If the gap is not continuous, stores the amount of available signal (in seconds)
         last_modified: Automatic field that keeps track of when a row was added to
             or modified in the database in local time. Does not include microseconds.
@@ -763,8 +763,8 @@ class Gap(Base):
         DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False
     )
     # TODO: Get rid of these
-    startsamp: Mapped[Optional[int]] = mapped_column(Integer)
-    endsamp: Mapped[Optional[int]] = mapped_column(Integer)
+    # startsamp: Mapped[Optional[int]] = mapped_column(Integer)
+    # endsamp: Mapped[Optional[int]] = mapped_column(Integer)
     avail_sig_sec: Mapped[float] = mapped_column(Double, default=0.0)
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(
@@ -776,12 +776,16 @@ class Gap(Base):
     # Many-to-one relationship with Channel
     channel: Mapped["Channel"] = relationship(back_populates="gaps")
 
+    # Column property
+    # (gap[4] - self.metadata["starttime"]) * self.metadata["sampling_rate"]
+    # startsamp = column_property(select(DailyContDataInfo.id))
+
     __table_args__ = (
         UniqueConstraint(data_id, chan_id, start, name="simplify_pk"),
         CheckConstraint("start < end", name="times_order"),
-        CheckConstraint("startsamp >= 0", name="nonneg_startsamp"),
-        CheckConstraint("endsamp >= 1", name="pos_startsamp"),
-        CheckConstraint("startsamp < endsamp", name="samps_order"),
+        # CheckConstraint("startsamp >= 0", name="nonneg_startsamp"),
+        # CheckConstraint("endsamp >= 1", name="pos_startsamp"),
+        # CheckConstraint("startsamp < endsamp", name="samps_order"),
         CheckConstraint("avail_sig_sec >= 0", name="nonneg_avail_sig"),
         {"mysql_engine": MYSQL_ENGINE},
     )

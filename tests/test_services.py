@@ -96,8 +96,8 @@ def gap_ex():
         {
             "start": datetime.strptime("2023-01-02T12:13:14.15", dateformat),
             "end": datetime.strptime("2023-01-02T12:13:14.25", dateformat),
-            "startsamp": 4399415,
-            "endsamp": 4399425,
+            # "startsamp": 4399415,
+            # "endsamp": 4399425,
         }
     )
 
