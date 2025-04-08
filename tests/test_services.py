@@ -171,7 +171,8 @@ def test_station_no_results(db_session):
     assert selected_stat is None, "get_station did not return None"
 
 
-def test_insert_channels(db_session_with_station, channel_ex):
+@pytest.fixture
+def db_session_with_multiple_channels(db_session_with_station, channel_ex):
     db_session, sid = db_session_with_station
 
     common_chan_dict = channel_ex
@@ -179,7 +180,8 @@ def test_insert_channels(db_session_with_station, channel_ex):
 
     cnt0 = db_session.execute(func.count(tables.Channel.id)).one()[0]
 
-    c1, c2, c3 = (
+    c1, c2, c3, c4 = (
+        deepcopy(common_chan_dict),
         deepcopy(common_chan_dict),
         deepcopy(common_chan_dict),
         deepcopy(common_chan_dict),
@@ -188,13 +190,20 @@ def test_insert_channels(db_session_with_station, channel_ex):
     c1["seed_code"] = "HHE"
     c2["seed_code"] = "HHN"
     c3["seed_code"] = "HHZ"
+    c4["seed_code"] = "EHZ"
 
-    services.insert_channels(db_session, [c1, c2, c3])
+    services.insert_channels(db_session, [c1, c2, c3, c4])
 
     db_session.commit()
-
     cnt1 = db_session.execute(func.count(tables.Channel.id)).one()[0]
-    assert cnt1 - cnt0 == 3
+    info = {"sta_id": sid, "cnt0": cnt0, "cnt1": cnt1}
+
+    return db_session, info
+
+
+def test_insert_channels(db_session_with_multiple_channels):
+    db_session, info = db_session_with_multiple_channels
+    assert info["cnt1"] - info["cnt0"] == 4, "incorrect number of channels inserted"
 
 
 def test_insert_ignore_channels_common_stat(db_session_with_station, channel_ex):
@@ -258,135 +267,50 @@ def test_get_channel(db_session_with_single_channel):
     ), "Incorrect station location"
 
 
-def test_get_all_station_channels(db_session_with_station, channel_ex):
-    db_session, sid = db_session_with_station
-
-    common_chan_dict = channel_ex
-    common_chan_dict["sta_id"] = sid
-    c1, c2, c3 = (
-        deepcopy(common_chan_dict),
-        deepcopy(common_chan_dict),
-        deepcopy(common_chan_dict),
-    )
-
-    c1["seed_code"] = "HHE"
-    c2["seed_code"] = "HHN"
-    c3["seed_code"] = "HHZ"
-
-    services.insert_channels(db_session, [c1, c2, c3])
-    db_session.commit()
+def test_get_all_station_channels(db_session_with_multiple_channels):
+    db_session, info = db_session_with_multiple_channels
     db_session.expunge_all()
 
-    chan_list = services.get_all_station_channels(db_session, sid)
+    chan_list = services.get_all_station_channels(db_session, info["sta_id"])
 
-    assert len(chan_list) == 3, "Incorrect number of Channels"
+    assert len(chan_list) == 4, "Incorrect number of Channels"
 
 
-def test_get_operating_channels_by_station_name(db_session_with_station, channel_ex):
-    db_session, sid = db_session_with_station
-
-    common_chan_dict = channel_ex
-    common_chan_dict["sta_id"] = sid
-    c1, c2, c3 = (
-        deepcopy(common_chan_dict),
-        deepcopy(common_chan_dict),
-        deepcopy(common_chan_dict),
-    )
-
-    c1["seed_code"] = "HHE"
-    c2["seed_code"] = "HHN"
-    c3["seed_code"] = "HHZ"
-
-    services.insert_channels(db_session, [c1, c2, c3])
-    db_session.commit()
+def test_get_operating_channels_by_station_name(db_session_with_multiple_channels):
+    db_session, info = db_session_with_multiple_channels
     db_session.expunge_all()
 
-    station = db_session.get(tables.Station, sid)
+    station = db_session.get(tables.Station, info["sta_id"])
 
-    print("STA", station.sta)
     station, channels = services.get_operating_channels_by_station_name(
         db_session,
         station.sta,
         "HH",
         datetime.strptime("2005-10-26T00:00:00.00", dateformat),
     )
-    print(station)
-    print(channels)
     assert len(channels) == 3
 
 
-def test_get_common_station_channels(db_session_with_station, channel_ex):
-    db_session, sid = db_session_with_station
-
-    common_chan_dict = channel_ex
-    common_chan_dict["sta_id"] = sid
-    c1, c2, c3, c4 = (
-        deepcopy(common_chan_dict),
-        deepcopy(common_chan_dict),
-        deepcopy(common_chan_dict),
-        deepcopy(common_chan_dict),
-    )
-
-    c1["seed_code"] = "HHE"
-    c2["seed_code"] = "HHN"
-    c3["seed_code"] = "HHZ"
-    c4["seed_code"] = "EHZ"
-
-    services.insert_channels(db_session, [c1, c2, c3, c4])
-    db_session.commit()
+def test_get_common_station_channels(db_session_with_multiple_channels):
+    db_session, info = db_session_with_multiple_channels
     db_session.expunge_all()
 
-    chan_list = services.get_common_station_channels(db_session, sid, "HH")
+    chan_list = services.get_common_station_channels(db_session, info["sta_id"], "HH")
     assert len(chan_list) == 3, "Incorrect number of Channels"
 
 
-def test_get_common_station_channels_1c(db_session_with_station, channel_ex):
-    db_session, sid = db_session_with_station
-
-    common_chan_dict = channel_ex
-    common_chan_dict["sta_id"] = sid
-    c1, c2, c3, c4 = (
-        deepcopy(common_chan_dict),
-        deepcopy(common_chan_dict),
-        deepcopy(common_chan_dict),
-        deepcopy(common_chan_dict),
-    )
-
-    c1["seed_code"] = "HHE"
-    c2["seed_code"] = "HHN"
-    c3["seed_code"] = "HHZ"
-    c4["seed_code"] = "EHZ"
-
-    services.insert_channels(db_session, [c1, c2, c3, c4])
-    db_session.commit()
+def test_get_common_station_channels_1c(db_session_with_multiple_channels):
+    db_session, info = db_session_with_multiple_channels
     db_session.expunge_all()
 
-    chan_list = services.get_common_station_channels(db_session, sid, "EHZ")
+    chan_list = services.get_common_station_channels(db_session, info["sta_id"], "EHZ")
     assert len(chan_list) == 1, "Incorrect number of Channels"
 
 
-def test_get_common_station_channels_by_name(db_session_with_station, channel_ex):
-    db_session, sid = db_session_with_station
-
-    common_chan_dict = channel_ex
-    common_chan_dict["sta_id"] = sid
-    sta_name = db_session.get(tables.Station, sid).sta
-    c1, c2, c3, c4 = (
-        deepcopy(common_chan_dict),
-        deepcopy(common_chan_dict),
-        deepcopy(common_chan_dict),
-        deepcopy(common_chan_dict),
-    )
-
-    c1["seed_code"] = "HHE"
-    c2["seed_code"] = "HHN"
-    c3["seed_code"] = "HHZ"
-    c4["seed_code"] = "EHZ"
-
-    services.insert_channels(db_session, [c1, c2, c3, c4])
-    db_session.commit()
+def test_get_common_station_channels_by_name(db_session_with_multiple_channels):
+    db_session, info = db_session_with_multiple_channels
+    sta_name = db_session.get(tables.Station, info["sta_id"]).sta
     db_session.expunge_all()
-
     chan_list = services.get_common_station_channels_by_name(db_session, sta_name, "HH")
     assert len(chan_list) == 3, "Incorrect number of Channels"
 
@@ -475,7 +399,6 @@ def test_upsert_detection_method(db_session, detection_method_ex):
     db_session.expunge_all()
     d["phase"] = "S"
     d["path"] = "new/path"
-    print("dict", d)
     services.upsert_detection_method(db_session, **d)
     db_session.commit()
     updated_meth = db_session.get(tables.DetectionMethod, method_id)
