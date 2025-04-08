@@ -554,6 +554,25 @@ def test_bulk_insert_dldetections_with_gap_check_outside_gap(
     cnt1 = db_session.execute(func.count(tables.DLDetection.id)).one()[0]
     assert cnt1 - cnt0 == 4, "Detection not inserted"
 
+    inserted_dets = services.get_dldetections(
+        db_session, ids["data"], ids["method"], 70, "P"
+    )
+    print(inserted_dets)
+    assert (
+        len(inserted_dets) == 2
+    ), "incorrect number of dets returned with min_height=70"
+    inserted_dets = services.get_dldetections(
+        db_session, ids["data"], ids["method"], 71, "P"
+    )
+    assert (
+        len(inserted_dets) == 1
+    ), "incorrect number of dets returned with min_height=71"
+    inserted_dets = services.get_dldetections(
+        db_session, ids["data"], ids["method"], 50, "P"
+    )
+    assert (
+        len(inserted_dets) == 4
+    ), "incorrect number of dets returned with min_height=50"
 
 
 def test_bulk_insert_dldetections_with_gap_check_inside_gap(
