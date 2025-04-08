@@ -394,24 +394,6 @@ def insert_dldetection(session, data_id, method_id, sample, phase, width, height
     return new_det
 
 
-def insert_pick(
-    session, sta_id, chan_pref, phase, ptime, auth, snr=None, amp=None, detid=None
-):
-    new_pick = Pick(
-        sta_id=sta_id,
-        chan_pref=chan_pref,
-        phase=phase,
-        ptime=ptime,
-        auth=auth,
-        snr=snr,
-        amp=amp,
-        detid=detid,
-    )
-    session.add(new_pick)
-
-    return new_pick
-
-
 def insert_gap(
     session,
     data_id,
@@ -453,6 +435,43 @@ def get_gaps(session, chan_id, data_id):
     return result
 
 
+def get_dldetections(session, data_id, method_id, min_height, phase=None):
+    # select(DLDetection.id, DLDetection.time, DLDetection.phase)
+    stmt = select(DLDetection).where(
+        DLDetection.data_id == data_id,
+        DLDetection.method_id == method_id,
+        DLDetection.height >= min_height,
+        DLDetection.phase == phase
+    )
+    if phase is not None:
+        stmt = stmt.where(DLDetection.phase == phase)
+
+    result = session.scalars(stmt).all()
+
+    if len(result) == 0:
+        return None
+    else:
+        return result
+
+
+def insert_pick(
+    session, sta_id, chan_pref, phase, ptime, auth, snr=None, amp=None, detid=None
+):
+    new_pick = Pick(
+        sta_id=sta_id,
+        chan_pref=chan_pref,
+        phase=phase,
+        ptime=ptime,
+        auth=auth,
+        snr=snr,
+        amp=amp,
+        detid=detid,
+    )
+    session.add(new_pick)
+
+    return new_pick
+
+
 def insert_waveform(
     session,
     data_id,
@@ -479,6 +498,54 @@ def insert_waveform(
     session.add(new_wf)
 
     return new_wf
+
+# def insert_pick_with_waveform(
+#     session,
+#     sta_id,
+#     data_id,
+#     chan_id,
+#     chan_pref,
+#     phase,
+#     ptime,
+#     auth,
+#     wf_data,
+#     wf_start,
+#     wf_end,
+#     snr=None,
+#     amp=None,
+#     detid=None,
+#     wf_filt_low=None,
+#     wf_filt_high=None,
+#     wf_proc_notes=None,
+# ):
+#     new_pick = Pick(
+#         sta_id=sta_id,
+#         chan_pref=chan_pref,
+#         phase=phase,
+#         ptime=ptime,
+#         auth=auth,
+#         snr=snr,
+#         amp=amp,
+#         detid=detid,
+#     )
+
+#     new_wf = Waveform(
+#         data_id=data_id,
+#         chan_id=chan_id,
+#         pick_id=None,
+#         start=wf_start,
+#         end=wf_end,
+#         data=wf_data,
+#         filt_low=wf_filt_low,
+#         filt_high=wf_filt_high,
+#         proc_notes=wf_proc_notes,
+#     )
+
+#     new_pick.wfs.add(new_wf)
+
+#     session.add(new_pick)
+
+#     return new_pick, new_wf
 
 
 def get_or_insert_station(session, stat_dict):
