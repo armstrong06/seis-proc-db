@@ -577,35 +577,100 @@ def test_bulk_insert_dldetections_with_gap_check_inside_buffer(
         "data_id": ids["data"],
         "method_id": ids["method"],
     }
-    print(db_session.get(tables.Gap, ids["gap"]))
+    # print(db_session.get(tables.Gap, ids["gap"]))
     services.bulk_insert_dldetections_with_gap_check(db_session, [new_pick])
     db_session.commit()
 
     cnt1 = db_session.execute(func.count(tables.DLDetection.id)).one()[0]
 
-    from sqlalchemy import text, select
+    # from sqlalchemy import text, select
 
-    dets = db_session.scalars(
-        select(tables.DLDetection).from_statement(text("select * from dldetection"))
-    ).all()
-    print(
-        "data start",
-        db_session.get(tables.DailyContDataInfo, ids["data"]).proc_start,
-    )
-    print("Det time", dets[-1].time)
-    print(db_session.get(tables.Gap, ids["gap"]))
-    print(
-        "Gap buffered times",
-        db_session.execute(
-            text(
-                """select TIMESTAMPADD(MICROSECOND, -@buffer*1E6, gap.start),
-                TIMESTAMPADD(MICROSECOND, @buffer*1E6, gap.end)
-                from gap where gap.id = :id"""
-            ),
-            {"id": ids["gap"]},
-        ).all(),
+    # dets = db_session.scalars(
+    #     select(tables.DLDetection).from_statement(text("select * from dldetection"))
+    # ).all()
+    # print(
+    #     "data start",
+    #     db_session.get(tables.DailyContDataInfo, ids["data"]).proc_start,
+    # )
+    # print("Det time", dets[-1].time)
+    # print(db_session.get(tables.Gap, ids["gap"]))
+    # print(
+    #     "Gap buffered times",
+    #     db_session.execute(
+    #         text(
+    #             """select TIMESTAMPADD(MICROSECOND, -@buffer*1E6, gap.start),
+    #             TIMESTAMPADD(MICROSECOND, @buffer*1E6, gap.end)
+    #             from gap where gap.id = :id"""
+    #         ),
+    #         {"id": ids["gap"]},
+    #     ).all(),
+    # )
+
+    # TODO: Add more checks
+    assert cnt1 - cnt0 == 0, "Detection inserted"
+
+
+@pytest.fixture
+def db_session_with_multiple_channel_gaps(
+    db_session_with_contdatainfo, channel_ex, gap_ex, detection_method_ex
+):
+    db_session, sid, cid = db_session_with_contdatainfo
+
+    common_chan_dict = channel_ex
+    common_chan_dict["sta_id"] = sid
+
+    c1, c2, c3 = (
+        deepcopy(common_chan_dict),
+        deepcopy(common_chan_dict),
+        deepcopy(common_chan_dict),
     )
 
+    c1["seed_code"] = "HHE"
+    c2["seed_code"] = "HHN"
+    c3["seed_code"] = "HHZ"
+
+    services.insert_channels(db_session, [c1, c2, c3])
+    db_session.commit()
+    channels = services.get_common_station_channels(db_session, sid, "HH")
+
+    gaps = []
+    for i, chan in enumerate(channels):
+        g = deepcopy(gap_ex)
+        g["sta_id"] = sid
+        g["data_id"] = cid
+        g["chan_id"] = chan.id
+        g["start"] += timedelta(minutes=((-1 + i) * 10))
+        gaps.append(g)
+    print(gaps)
+    services.insert_gaps(db_session, gaps)
+
+    inserted_method = services.insert_detection_method(
+        db_session, **detection_method_ex
+    )
+    db_session.commit()
+    ids = {"sta": sid, "data": cid, "chan": chan.id, "method": inserted_method.id}
+
+    return db_session, ids
+
+
+def test_bulk_insert_dldetections_with_multiple_channel_gaps(
+    db_session_with_multiple_channel_gaps,
+):
+    db_session, ids = db_session_with_multiple_channel_gaps
+    cnt0 = db_session.execute(func.count(tables.DLDetection.id)).one()[0]
+    new_pick = {
+        "sample": 4319915,
+        "phase": "P",
+        "width": 20,
+        "height": 80,
+        "data_id": ids["data"],
+        "method_id": ids["method"],
+    }
+    # print(db_session.get(tables.Gap, ids["gap"]))
+    services.bulk_insert_dldetections_with_gap_check(db_session, [new_pick])
+    db_session.commit()
+
+    cnt1 = db_session.execute(func.count(tables.DLDetection.id)).one()[0]
     assert cnt1 - cnt0 == 0, "Detection inserted"
 
 
