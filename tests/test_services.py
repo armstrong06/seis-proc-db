@@ -723,6 +723,29 @@ def test_insert_waveform(db_session_with_dldet_pick, waveform_ex):
     assert new_wf.filt_low == 1.5, "filt_low is invalid"
 
 
+def test_insert_pick_and_waveform_manual(db_session_with_dldetection, pick_ex, waveform_ex):
+    db_session, ids = db_session_with_dldetection
+
+    inserted_pick = services.insert_pick(
+        db_session, sta_id=ids["sta"], detid=ids["dldet"], **pick_ex
+    )
+    # db_session.commit()
+    new_wf = tables.Waveform(
+        data_id=ids["data"], chan_id=ids["chan"], pick_id=None, **waveform_ex
+    )
+    inserted_pick.wfs.add(new_wf)
+    # new_wf = services.insert_waveform(
+    #     db_session,
+    #     data_id=ids["data"],
+    #     chan_id=ids["chan"],
+    #     pick_id=inserted_pick.id,
+    #     **waveform_ex,
+    # )
+    db_session.commit()
+    assert inserted_pick.id is not None
+    assert new_wf.pick_id is not None
+    assert new_wf.id is not None
+
 # This fail, so you can't get column_properties from db unless using ORM (unsurprising)
 # def test_get_startsamp(db_session_with_gap):
 #     db_session, ids = db_session_with_gap
