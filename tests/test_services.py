@@ -529,19 +529,31 @@ def test_bulk_insert_dldetections_with_gap_check_outside_gap(
 ):
     db_session, ids = db_session_with_dldetection
     cnt0 = db_session.execute(func.count(tables.DLDetection.id)).one()[0]
-    new_pick = {
+    new_det1 = {
         "sample": 11 * 60 * 60 * 100,
         "phase": "P",
         "width": 20,
-        "height": 80,
+        "height": 70,
         "data_id": ids["data"],
         "method_id": ids["method"],
         "buffer": 0.0,
     }
-    services.bulk_insert_dldetections_with_gap_check(db_session, [new_pick])
+    new_det2 = deepcopy(new_det1)
+    new_det2["sample"] = 5000
+    new_det2["height"] = 60
+    new_det3 = deepcopy(new_det1)
+    new_det3["sample"] = 6000
+    new_det3["height"] = 50
+    new_det4 = deepcopy(new_det1)
+    new_det4["sample"] = 7000
+    new_det4["height"] = 40
+    services.bulk_insert_dldetections_with_gap_check(
+        db_session, [new_det1, new_det2, new_det3, new_det4]
+    )
     db_session.commit()
     cnt1 = db_session.execute(func.count(tables.DLDetection.id)).one()[0]
-    assert cnt1 - cnt0 == 1, "Detection not inserted"
+    assert cnt1 - cnt0 == 4, "Detection not inserted"
+
 
 
 def test_bulk_insert_dldetections_with_gap_check_inside_gap(
