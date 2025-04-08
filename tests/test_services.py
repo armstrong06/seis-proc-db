@@ -525,9 +525,9 @@ def test_insert_pick(db_session_with_dldet_pick):
 
 
 def test_bulk_insert_dldetections_with_gap_check_outside_gap(
-    db_session_with_dldet_pick,
+    db_session_with_dldetection,
 ):
-    db_session, ids = db_session_with_dldet_pick
+    db_session, ids = db_session_with_dldetection
     cnt0 = db_session.execute(func.count(tables.DLDetection.id)).one()[0]
     new_pick = {
         "sample": 11 * 60 * 60 * 100,
@@ -545,9 +545,9 @@ def test_bulk_insert_dldetections_with_gap_check_outside_gap(
 
 
 def test_bulk_insert_dldetections_with_gap_check_inside_gap(
-    db_session_with_dldet_pick,
+    db_session_with_dldetection,
 ):
-    db_session, ids = db_session_with_dldet_pick
+    db_session, ids = db_session_with_dldetection
     cnt0 = db_session.execute(func.count(tables.DLDetection.id)).one()[0]
     new_pick = {
         "sample": 12.5 * 60 * 60 * 100,
@@ -565,9 +565,9 @@ def test_bulk_insert_dldetections_with_gap_check_inside_gap(
 
 
 def test_bulk_insert_dldetections_with_gap_check_inside_buffer(
-    db_session_with_dldet_pick,
+    db_session_with_dldetection,
 ):
-    db_session, ids = db_session_with_dldet_pick
+    db_session, ids = db_session_with_dldetection
     cnt0 = db_session.execute(func.count(tables.DLDetection.id)).one()[0]
     new_pick = {
         "sample": 4319915,
