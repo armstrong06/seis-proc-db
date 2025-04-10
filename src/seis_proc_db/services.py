@@ -478,7 +478,7 @@ def get_picks(session, sta_id, chan_pref, phase=None, min_time=None, max_time=No
     if phase is not None:
         stmt = stmt.where(Pick.phase == phase)
     if min_time is not None:
-        stmt = stmt.were(Pick.ptime >= min_time)
+        stmt = stmt.where(Pick.ptime >= min_time)
     if max_time is not None:
         stmt = stmt.where(Pick.ptime <= max_time)
 
@@ -689,11 +689,3 @@ def bulk_insert_dldetections_with_gap_check(session, dldets_dict):
     # # Execute it
     # with engine.begin() as conn:
     #     conn.execute(insert_stmt)
-
-
-def add_dldetection_pick(session):
-    pass
-
-
-def bulk_insert_picks(session):
-    pass
