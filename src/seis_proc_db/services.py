@@ -441,7 +441,6 @@ def get_dldetections(session, data_id, method_id, min_height, phase=None):
         DLDetection.data_id == data_id,
         DLDetection.method_id == method_id,
         DLDetection.height >= min_height,
-        DLDetection.phase == phase
     )
     if phase is not None:
         stmt = stmt.where(DLDetection.phase == phase)
