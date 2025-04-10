@@ -1,4 +1,5 @@
 import obspy
+from obspy.core import UTCDateTime
 import numpy as np
 import os
 import glob
@@ -51,10 +52,13 @@ for year in np.arange(2024, 2001, -1):
                         "sensit_val": channel.response.instrument_sensitivity.value,
                         "overall_gain_vel": channel.response._get_overall_sensitivity_and_gain(
                             output="VEL"
-                        )[
-                            1
-                        ],
+                        )[1],
                     }
+                    if station.code == "YFT" and channel.code[:-1] == "HH" and channel.start_date == UTCDateTime("2016-06-19T00:00:00.0000"):
+                        print("UPDATING YFT ENDDATE")
+                        # Enddate from IRIS
+                        chan_dict["offdate"] = UTCDateTime("2020-09-14T23:59:59")
+
                     channels.append(chan_dict)
 
                 stat_dict["channels"] = channels
