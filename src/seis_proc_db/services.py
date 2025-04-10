@@ -472,6 +472,21 @@ def insert_pick(
     return new_pick
 
 
+def get_picks(session, sta_id, chan_pref, phase=None, min_time=None, max_time=None):
+    stmt = select(Pick).where(Pick.sta_id == sta_id, Pick.chan_pref == chan_pref)
+
+    if phase is not None:
+        stmt = stmt.where(Pick.phase == phase)
+    if min_time is not None:
+        stmt = stmt.were(Pick.ptime >= min_time)
+    if max_time is not None:
+        stmt = stmt.where(Pick.ptime <= max_time)
+
+    result = session.scalars(stmt).all()
+
+    return result
+
+
 def insert_waveform(
     session,
     data_id,
@@ -498,6 +513,22 @@ def insert_waveform(
     session.add(new_wf)
 
     return new_wf
+
+
+def get_waveforms(session, pick_id, chan_id=None, data_id=None):
+
+    stmt = select(Waveform).where(Waveform.pick_id == pick_id)
+
+    if chan_id is not None:
+        stmt = stmt.where(Waveform.chan_id == chan_id)
+
+    if data_id is not None:
+        stmt = stmt.where(Waveform.data_id == data_id)
+
+    result = session.scalars(stmt).all()
+
+    return result
+
 
 # def insert_pick_with_waveform(
 #     session,
