@@ -429,8 +429,8 @@ def get_gaps(session, chan_id, data_id):
         select(Gap).where(Gap.chan_id == chan_id, Gap.data_id == data_id)
     ).all()
 
-    if len(result) == 0:
-        return None
+    # if len(result) == 0:
+    #     return None
 
     return result
 
@@ -448,10 +448,11 @@ def get_dldetections(session, data_id, method_id, min_height, phase=None):
 
     result = session.scalars(stmt).all()
 
-    if len(result) == 0:
-        return None
-    else:
-        return result
+    # if len(result) == 0:
+    #     return None
+    # else:
+    #
+    return result
 
 
 def insert_pick(
@@ -569,6 +570,7 @@ def bulk_insert_dldetections_with_gap_check(session, dldets_dict):
     session.execute(
         text("SET @buffer = :buffer"), {"buffer": DETECTION_GAP_BUFFER_SECONDS}
     )
+    # BETWEEN is inclusive on both ends
     textual_sql = text(
         """INSERT INTO dldetection (data_id, method_id, sample, phase, width, height)
         SELECT :data_id, :method_id, :sample, :phase, :width, :height
