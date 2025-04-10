@@ -705,7 +705,8 @@ def test_bulk_insert_dldetections_with_multiple_channel_gaps(
     assert cnt1 - cnt0 == 0, "Detection inserted"
 
 
-def test_insert_waveform(db_session_with_dldet_pick, waveform_ex):
+@pytest.fixture
+def db_session_with_pick_waveform(db_session_with_dldet_pick, waveform_ex):
     db_session, ids = db_session_with_dldet_pick
 
     new_wf = services.insert_waveform(
@@ -718,12 +719,31 @@ def test_insert_waveform(db_session_with_dldet_pick, waveform_ex):
 
     db_session.commit()
 
+    ids["wf"] = new_wf.id
+
+    return db_session, ids
+
+
+def test_insert_waveform(db_session_with_pick_waveform):
+    db_session, ids = db_session_with_pick_waveform
+
+    new_wf = db_session.get(tables.Waveform, ids["wf"])
+
     assert new_wf.id is not None, "ID is not set"
     assert len(new_wf.data) == 2000, "data length is invalid"
     assert new_wf.filt_low == 1.5, "filt_low is invalid"
 
 
-def test_insert_pick_and_waveform_manual(db_session_with_dldetection, pick_ex, waveform_ex):
+def test_get_waveforms(db_session_with_pick_waveform):
+    db_session, ids = db_session_with_pick_waveform
+
+    wfs = services.get_waveforms(db_session, ids["pick"])
+    assert len(wfs) == 1, "incorrect number of waveforms"
+
+
+def test_insert_pick_and_waveform_manual(
+    db_session_with_dldetection, pick_ex, waveform_ex
+):
     db_session, ids = db_session_with_dldetection
 
     inserted_pick = services.insert_pick(
@@ -745,6 +765,14 @@ def test_insert_pick_and_waveform_manual(db_session_with_dldetection, pick_ex, w
     assert inserted_pick.id is not None
     assert new_wf.pick_id is not None
     assert new_wf.id is not None
+
+
+def test_get_picks(db_session_with_dldet_pick):
+    db_session, ids = db_session_with_dldet_pick
+
+    picks = services.get_picks(db_session, ids["sta"], "HH")
+    assert len(picks) == 1, "incorrect number of picks"
+
 
 # This fail, so you can't get column_properties from db unless using ORM (unsurprising)
 # def test_get_startsamp(db_session_with_gap):
