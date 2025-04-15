@@ -11,4 +11,4 @@ DB_URL = f"{DB_TYPE}+{DBAPI}://{USER}:{DB_PASSWORD}@mysql.chpc.utah.edu/SeisProc
 MYSQL_ENGINE = "InnoDB"
 
 # The buffer around gaps to not add in a detection
-DETECTION_GAP_BUFFER_SECONDS = 1.0
+DETECTION_GAP_BUFFER_SECONDS = 0.25
