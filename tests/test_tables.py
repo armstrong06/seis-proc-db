@@ -133,9 +133,9 @@ def test_dailycontdatainfo(db_session_with_stat):
         "date": datetime(year=2024, month=10, day=1),
         "samp_rate": 100.0,
         "dt": 0.01,
-        "org_npts": 86399,
-        "org_start": datetime.strptime("2024-10-01T00:00:00.05", dateformat),
-        "org_end": datetime.strptime("2024-10-01T23:59:59.55", dateformat),
+        "orig_npts": 86399,
+        "orig_start": datetime.strptime("2024-10-01T00:00:00.05", dateformat),
+        "orig_end": datetime.strptime("2024-10-01T23:59:59.55", dateformat),
         "proc_start": datetime.strptime("2024-10-01T00:00:00.01", dateformat),
         "proc_end": datetime.strptime("2024-10-01T23:59:59.59", dateformat),
     }
@@ -149,14 +149,14 @@ def test_dailycontdatainfo(db_session_with_stat):
     # # of a Python object per database identity and within a session scope.
     assert rcd == icd, "rcd and icd are not actually the same"
     assert rcd.date.day == 1, "day incorrect for Date obj"
-    assert rcd.org_start.microsecond == 50000, "org_start microseconds incorrect"
-    assert rcd.org_end.microsecond == 550000, "org_end microseconds incorrect"
+    assert rcd.orig_start.microsecond == 50000, "orig_start microseconds incorrect"
+    assert rcd.orig_end.microsecond == 550000, "orig_end microseconds incorrect"
     assert rcd.proc_start.microsecond == 10000, "proc_start microseconds incorrect"
     assert rcd.proc_end.microsecond == 590000, "proc_end microseconds incorrect"
     assert rcd.dt == 0.01
     assert rcd.samp_rate == 100.0
     assert rcd.chan_pref == "HH"
-    assert rcd.org_npts == 86399
+    assert rcd.orig_npts == 86399
     assert rcd.last_modified.year == datetime.now().year, "invalid last_modified year"
     assert rcd.last_modified.month == datetime.now().month, "invalid last_modified year"
     assert rcd.last_modified.day == datetime.now().day, "invalid last_modified year"
@@ -287,9 +287,9 @@ def db_session_with_contdata(db_session_with_stat):
         "date": datetime(year=2024, month=10, day=1),
         "samp_rate": 100.0,
         "dt": 0.01,
-        "org_npts": 86399,
-        "org_start": datetime.strptime("2024-10-01T00:00:00.05", dateformat),
-        "org_end": datetime.strptime("2024-10-01T23:59:59.55", dateformat),
+        "orig_npts": 86399,
+        "orig_start": datetime.strptime("2024-10-01T00:00:00.05", dateformat),
+        "orig_end": datetime.strptime("2024-10-01T23:59:59.55", dateformat),
         "proc_start": datetime.strptime("2024-10-01T00:00:00.01", dateformat),
         "proc_end": datetime.strptime("2024-10-01T23:59:59.59", dateformat),
     }

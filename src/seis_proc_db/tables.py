@@ -229,10 +229,10 @@ class DailyContDataInfo(Base):
         date: Date the data was recorded
         samp_rate: Sampling rate of the data (may be different than the Channel samp_rate)
         dt: Sampling interval of the data (should be 1/samp_rate)
-        org_npts: Number of data samples in the file before any processing is done in ApplyDetectors
-        org_start: Starttime (UTC) of the file before any processing is done in ApplyDetectors.
+        orig_npts: Number of data samples in the file before any processing is done in ApplyDetectors
+        orig_start: Starttime (UTC) of the file before any processing is done in ApplyDetectors.
             DOES include fractional seconds.
-        org_end: Endtime (UTC) of the file before any processing is done in ApplyDetectors.
+        orig_end: Endtime (UTC) of the file before any processing is done in ApplyDetectors.
             DOES include fractional seconds.
         proc_npts: Optional. Number of data samples in the file after processing in ApplyDetectors.
             This will be the same for the saved posterior probabilities files.
@@ -265,11 +265,11 @@ class DailyContDataInfo(Base):
     # TODO: Decide if need to store this...
     dt: Mapped[Optional[float]] = mapped_column(Double)
     # TODO: Decided whether to remove npts
-    org_npts: Mapped[Optional[int]] = mapped_column(Integer)
-    org_start: Mapped[Optional[datetime]] = mapped_column(
+    orig_npts: Mapped[Optional[int]] = mapped_column(Integer)
+    orig_start: Mapped[Optional[datetime]] = mapped_column(
         DATETIME(fsp=MYSQL_DATETIME_FSP)
     )
-    org_end: Mapped[Optional[datetime]] = mapped_column(
+    orig_end: Mapped[Optional[datetime]] = mapped_column(
         DATETIME(fsp=MYSQL_DATETIME_FSP)
     )
     # TODO: Decide if proc_* values should be stored in a different table
@@ -307,9 +307,9 @@ class DailyContDataInfo(Base):
         CheckConstraint("samp_rate > 0", name="positive_samp_rate"),
         CheckConstraint("dt <= 1", name="dt_lt_1"),
         CheckConstraint("proc_npts >= 1", name="proc_npts_gt_1"),
-        CheckConstraint("org_npts >= 0", name="nonneg_org_npts"),
+        CheckConstraint("orig_npts >= 0", name="nonneg_orig_npts"),
         CheckConstraint("proc_end > proc_start", name="valid_proc_times"),
-        CheckConstraint("org_end > org_start", name="valid_org_times"),
+        CheckConstraint("orig_end > orig_start", name="valid_orig_times"),
         {"mysql_engine": MYSQL_ENGINE},
     )
 
@@ -317,8 +317,8 @@ class DailyContDataInfo(Base):
         return (
             f"DailyContDataInfo(id={self.id!r}, sta_id={self.sta_id!r}, "
             f"chan_pref={self.chan_pref!r}, ncomps={self.ncomps!r}, date={self.date!r}, "
-            f"samp_rate={self.samp_rate!r}, dt={self.dt!r}, org_npts={self.org_npts!r}, "
-            f"org_start={self.org_start!r}, org_end={self.org_end!r}, "
+            f"samp_rate={self.samp_rate!r}, dt={self.dt!r}, orig_npts={self.orig_npts!r}, "
+            f"orig_start={self.orig_start!r}, orig_end={self.orig_end!r}, "
             f"proc_npts={self.proc_npts!r}, proc_start={self.proc_start!r}, "
             f"proc_end={self.proc_end!r}, prev_appended={self.prev_appended!r}, "
             f"error={self.error!r}, last_modified={self.last_modified!r})"

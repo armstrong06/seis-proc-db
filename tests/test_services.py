@@ -57,9 +57,9 @@ def contdatainfo_ex():
             "date": datetime(year=2024, month=10, day=1),
             "samp_rate": 100.0,
             "dt": 0.01,
-            "org_npts": 86399,
-            "org_start": datetime.strptime("2024-10-01T00:00:00.05", dateformat),
-            "org_end": datetime.strptime("2024-10-01T23:59:59.55", dateformat),
+            "orig_npts": 86399,
+            "orig_start": datetime.strptime("2024-10-01T00:00:00.05", dateformat),
+            "orig_end": datetime.strptime("2024-10-01T23:59:59.55", dateformat),
             "proc_npts": 86400,
             "proc_start": datetime.strptime("2024-10-01T00:00:00.00", dateformat),
         }
