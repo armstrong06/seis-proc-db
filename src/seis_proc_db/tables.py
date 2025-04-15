@@ -165,7 +165,7 @@ class Channel(Base):
     ##
     samp_rate: Mapped[float] = mapped_column(Double)
     clock_drift: Mapped[float] = mapped_column(Double)
-    sensor_desc: Mapped[Optional[str]] = mapped_column(String(50))
+    sensor_desc: Mapped[Optional[str]] = mapped_column(String(100))
     sensit_units: Mapped[str] = mapped_column(String(10))
     sensit_val: Mapped[float] = mapped_column(Double)
     sensit_freq: Mapped[float] = mapped_column(Double)
@@ -284,7 +284,7 @@ class DailyContDataInfo(Base):
     prev_appended: Mapped[Optional[bool]] = mapped_column(
         Boolean(create_constraint=True, name="prev_app_bool")
     )
-    error: Mapped[Optional[str]] = mapped_column(String(20))
+    error: Mapped[Optional[str]] = mapped_column(String(50))
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(
         TIMESTAMP,
