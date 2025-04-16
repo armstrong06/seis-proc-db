@@ -1,6 +1,6 @@
 from sqlalchemy import String, Integer, SmallInteger, DateTime, Enum
 from sqlalchemy import func, select, text, literal_column
-from sqlalchemy.types import TIMESTAMP, Double, Date, Boolean, JSON
+from sqlalchemy.types import TIMESTAMP, Double, Date, Boolean, JSON, LargeBinary
 from sqlalchemy.orm import (
     Mapped,
     WriteOnlyMapped,
@@ -923,6 +923,85 @@ class Waveform(Base):
     channel: Mapped["Channel"] = relationship(back_populates="wfs")
     # Many-to-one relationship with Pick
     pick: Mapped["Pick"] = relationship(back_populates="wfs")
+
+    __table_args__ = (
+        UniqueConstraint(data_id, chan_id, pick_id, name="simplify_pk"),
+        CheckConstraint("filt_low > 0", name="pos_filt_low"),
+        CheckConstraint("filt_high > 0", name="pos_filt_high"),
+        CheckConstraint("filt_low < filt_high", name="filt_order"),
+        CheckConstraint("start < end", name="times_order"),
+        {"mysql_engine": MYSQL_ENGINE},
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"Waveform(id={self.id!r}, data_id={self.data_id!r}, chan_id={self.chan_id!r}, "
+            f"pick_id={self.pick_id!r}, filt_low={self.filt_low!r}, filt_high={self.filt_high!r}, "
+            f"start={self.start!r}, end={self.end!r}, proc_notes={self.proc_notes!r}, "
+            f"data={self.data[0:3]!r}, last_modified={self.last_modified!r})"
+        )
+
+
+class WaveformBLOB(Base):
+    """Waveform snippet recorded on a Channel, around a Pick, extracted from continuous
+    data described in DailyContDataInfo.
+
+    Attributes:
+        Base (_type_): _description_
+        id: Not meaningful waveform identifier that is used as the PK.
+        data_id: ID of DailyContDataInfo describing where the waveform was grabbed from.
+        chan_id: ID of the Channel recording the waveform.
+        pick_id: ID of the Pick the waveform is centered on.
+        filt_low: Optional. Lower end of the filter applied.
+        filt_high: Optional. Upper end of the filter applied.
+        data: Waveform data in some format of path to data...
+        start: Start time of the waveform in UTC. Should include fractional seconds.
+        end: End time of the waveform in UTC. Should include fractional seconds.
+        proc_notes: Optional. Brief notes about waveform processing.
+        last_modified: Automatic field that keeps track of when a row was added to
+            or modified in the database in local time. Does not include microseconds.
+    """
+
+    __tablename__ = "waveform_blob"
+    id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
+    ## PK (not simplified)
+    data_id = mapped_column(
+        ForeignKey("contdatainfo.id", onupdate="cascade", ondelete="restrict"),
+        nullable=False,
+    )
+    chan_id = mapped_column(
+        ForeignKey("channel.id", onupdate="cascade", ondelete="restrict"),
+        nullable=False,
+    )
+    pick_id = mapped_column(
+        ForeignKey("pick.id", onupdate="cascade", ondelete="cascade"), nullable=False
+    )
+    ##
+    # TODO: Add more fields to PK if needed (storing processed and unprocessed wfs, diff durations)
+    filt_low: Mapped[Optional[float]] = mapped_column(Double)
+    filt_high: Mapped[Optional[float]] = mapped_column(Double)
+    start: Mapped[datetime] = mapped_column(
+        DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False
+    )
+    end: Mapped[datetime] = mapped_column(
+        DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False
+    )
+    proc_notes: Mapped[Optional[str]] = mapped_column(String(255))
+    data: Mapped[LargeBinary] = mapped_column(LargeBinary, nullable=False)
+    # Keep track of when the row was inserted/updated
+    last_modified: Mapped[TIMESTAMP] = mapped_column(
+        TIMESTAMP,
+        default=datetime.now,
+        onupdate=datetime.now,
+        server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
+    )
+
+    # # Many-to-one relationship with DailyContDataInfo
+    # contdatainfo: Mapped["DailyContDataInfo"] = relationship(back_populates="wfs")
+    # # Many-to-one relationship with Channel
+    # channel: Mapped["Channel"] = relationship(back_populates="wfs")
+    # # Many-to-one relationship with Pick
+    # pick: Mapped["Pick"] = relationship(back_populates="wfs")
 
     __table_args__ = (
         UniqueConstraint(data_id, chan_id, pick_id, name="simplify_pk"),
