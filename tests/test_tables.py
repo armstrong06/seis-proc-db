@@ -304,6 +304,45 @@ def db_session_with_contdata(db_session_with_stat):
     return db_session, icd
 
 
+def test_dldetector_output(db_session_with_contdata):
+    db_session, icd = db_session_with_contdata
+    # assert len(icd.dldets) == 0, "contdateinfo.dldets before adding det"
+
+    # Add detection method #
+    d = {
+        "name": "TEST-UNET-v1",
+        "phase": "P",
+        "details": "For P picks, from Armstrong 2023 BSSA paper",
+        "path": "the/model/files/are/stored/here",
+    }
+
+    imeth = tables.DetectionMethod(**d)
+    db_session.add(imeth)
+    db_session.commit()
+
+    d = {"hdf_file": "testSta_HH_3C.hdf", "hdf_index": 1000}
+
+    iinf = tables.DLDetectorOutput(data_id=icd.id, method_id=imeth.id, **d)
+    db_session.add(iinf)
+    db_session.commit()
+    assert (
+        iinf.contdatainfo is not None
+    ), "ContDataInfo not associated with DLDetectorOutput"
+    assert (
+        iinf.method is not None
+    ), "DetectionMethod not associated with DLDetectorOutput"
+    assert iinf.hdf_file == "testSta_HH_3C.hdf", "Invalid hdf_file"
+    assert iinf.hdf_index == 1000, "Invalid hdf_index"
+    assert iinf.last_modified.year == datetime.now().year, "invalid last_modified year"
+    assert (
+        iinf.last_modified.month == datetime.now().month
+    ), "invalid last_modified year"
+    assert iinf.last_modified.day == datetime.now().day, "invalid last_modified year"
+    assert (
+        iinf.last_modified.microsecond == 0
+    ), "last_modified does not include microseconds"
+
+
 def test_dldetection(db_session_with_contdata):
     db_session, icd = db_session_with_contdata
     # assert len(icd.dldets) == 0, "contdateinfo.dldets before adding det"
@@ -737,3 +776,35 @@ def test_waveform(db_session_with_contdata_and_channel_and_pick):
     assert iwf.end.second == 22, "Invalud end second"
     assert iwf.end.microsecond == 140000, "Invalid end microsecond"
     assert np.array_equal(iwf.data, np.zeros(2000)), "invalid data"
+
+
+def test_waveform_info(db_session_with_contdata_and_channel_and_pick):
+    db_session, icd, ichan, ipick = db_session_with_contdata_and_channel_and_pick
+    d = {
+        "filt_low": 1.5,
+        "filt_high": 17.5,
+        "start": datetime.strptime("2024-01-02T10:11:02.13", dateformat),
+        "end": datetime.strptime("2024-01-02T10:11:22.14", dateformat),
+        "proc_notes": "Processed for repicker",
+        "hdf_file": "raw_testStation_HH_3C.hdf",
+        "hdf_index": 0,
+    }
+    iwf = tables.WaveformInfo(data_id=icd.id, chan_id=ichan.id, pick_id=ipick.id, **d)
+    db_session.add(iwf)
+    db_session.commit()
+
+    assert iwf.contdatainfo is not None, "WaveformInfo should have contdatainfo"
+    assert iwf.pick is not None, "WaveformInfo should have a pick"
+    assert iwf.channel is not None, "WaveformInfo should have a channel"
+    assert iwf.filt_low == 1.5, "Invalid filt_low"
+    assert iwf.filt_high == 17.5, "Invalid filt_high"
+    assert iwf.start.second == 2, "Invalid start second"
+    assert iwf.start.microsecond == 130000, "Invalid start microsecond"
+    assert iwf.end.second == 22, "Invalud end second"
+    assert iwf.end.microsecond == 140000, "Invalid end microsecond"
+    assert iwf.hdf_file == "raw_testStation_HH_3C.hdf", "Invalid hdf_file"
+    assert iwf.hdf_index == 0, "Invalid hdf_index"
+    assert iwf.last_modified.year == datetime.now().year, "invalid last_modified year"
+    assert iwf.last_modified.month == datetime.now().month, "invalid last_modified year"
+    assert iwf.last_modified.day == datetime.now().day, "invalid last_modified year"
+    assert iwf.last_modified.microsecond == 0, "invalid last_modified microsecond"
