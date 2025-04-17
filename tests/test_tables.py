@@ -320,7 +320,7 @@ def test_dldetector_output(db_session_with_contdata):
     db_session.add(imeth)
     db_session.commit()
 
-    d = {"hdf_file": "testSta_HH_3C.hdf", "hdf_index": 1000}
+    d = {"hdf_file": "testSta_HH_3C.hdf"} #, "hdf_index": 1000}
 
     iinf = tables.DLDetectorOutput(data_id=icd.id, method_id=imeth.id, **d)
     db_session.add(iinf)
@@ -332,7 +332,7 @@ def test_dldetector_output(db_session_with_contdata):
         iinf.method is not None
     ), "DetectionMethod not associated with DLDetectorOutput"
     assert iinf.hdf_file == "testSta_HH_3C.hdf", "Invalid hdf_file"
-    assert iinf.hdf_index == 1000, "Invalid hdf_index"
+    # assert iinf.hdf_index == 1000, "Invalid hdf_index"
     assert iinf.last_modified.year == datetime.now().year, "invalid last_modified year"
     assert (
         iinf.last_modified.month == datetime.now().month
@@ -486,7 +486,7 @@ def test_pick_correction(db_session_with_pick):
         "trim_median": 1.02,
         #"preds": np.zeros((300)).tolist(),
         "preds_hdf_file": "swag_P_TestSTA_HHZ.hdf",
-        "preds_hdf_index": 1000000
+        # "preds_hdf_index": 1000000
     }
 
     icorr = tables.PickCorrection(pid=ipick.id, method_id=imeth.id, **d)
@@ -501,7 +501,7 @@ def test_pick_correction(db_session_with_pick):
     assert icorr.trim_mean == 1.01, "invalud trim_mean"
     # assert np.array_equal(icorr.preds, np.zeros((300))), "Invalid preds"
     assert icorr.preds_hdf_file == "swag_P_TestSTA_HHZ.hdf", "invalid preds_hdf_file"
-    assert icorr.preds_hdf_index == 1000000, "invalid preds_hdf_index"
+    # assert icorr.preds_hdf_index == 1000000, "invalid preds_hdf_index"
     assert icorr.last_modified.year == datetime.now().year, "invalid last_modified year"
     assert (
         icorr.last_modified.month == datetime.now().month
@@ -535,7 +535,7 @@ def test_firstmotion(db_session_with_pick):
         "prob_dn": 90.5,
         #"preds": np.zeros((300)).tolist(),
         "preds_hdf_file": "swag_TestSTA_HHZ.hdf",
-        "preds_hdf_index": 2000000
+        # "preds_hdf_index": 2000000
     }
 
     ifm = tables.FirstMotion(pid=ipick.id, method_id=imeth.id, **d)
@@ -548,7 +548,7 @@ def test_firstmotion(db_session_with_pick):
     assert ifm.method is not None, "fm.method should exist"
     #assert np.array_equal(ifm.preds, np.zeros((300))), "Invalid preds"
     assert ifm.preds_hdf_file == "swag_TestSTA_HHZ.hdf", "invalid preds_hdf_file"
-    assert ifm.preds_hdf_index == 2000000, "invalid preds_hdf_index"
+    # assert ifm.preds_hdf_index == 2000000, "invalid preds_hdf_index"
     assert ifm.clsf == "dn", f"fm.clsf wrong as {ifm.clsf}"
     assert ifm.prob_up == 9.5, "fm.prob_up is wrong"
     assert ifm.prob_dn == 90.5, "fm.prob_up is wrong"
@@ -590,7 +590,7 @@ def db_session_with_corr(db_session_with_pick):
         "trim_median": 1.02,
         #"preds": np.zeros((300)).tolist(),
         "preds_hdf_file": "swag_P_TestSTA_HHZ.hdf",
-        "preds_hdf_index": 1000000
+        # "preds_hdf_index": 1000000
     }
 
     icorr = tables.PickCorrection(pid=ipick.id, method_id=imeth.id, **d)
@@ -797,7 +797,7 @@ def test_waveform_info(db_session_with_contdata_and_channel_and_pick):
         "end": datetime.strptime("2024-01-02T10:11:22.14", dateformat),
         "proc_notes": "Processed for repicker",
         "hdf_file": "raw_testStation_HH_3C.hdf",
-        "hdf_index": 0,
+        # "hdf_index": 0,
     }
     iwf = tables.WaveformInfo(data_id=icd.id, chan_id=ichan.id, pick_id=ipick.id, **d)
     db_session.add(iwf)
@@ -813,7 +813,7 @@ def test_waveform_info(db_session_with_contdata_and_channel_and_pick):
     assert iwf.end.second == 22, "Invalud end second"
     assert iwf.end.microsecond == 140000, "Invalid end microsecond"
     assert iwf.hdf_file == "raw_testStation_HH_3C.hdf", "Invalid hdf_file"
-    assert iwf.hdf_index == 0, "Invalid hdf_index"
+   # assert iwf.hdf_index == 0, "Invalid hdf_index"
     assert iwf.last_modified.year == datetime.now().year, "invalid last_modified year"
     assert iwf.last_modified.month == datetime.now().month, "invalid last_modified year"
     assert iwf.last_modified.day == datetime.now().day, "invalid last_modified year"

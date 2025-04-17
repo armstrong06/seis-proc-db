@@ -442,7 +442,7 @@ class DLDetectorOutput(Base):
     ##
     # TODO: These two columns could also be the primary key...
     hdf_file: Mapped[str] = mapped_column(String(255))
-    hdf_index: Mapped[int] = mapped_column(Integer)
+    # hdf_index: Mapped[int] = mapped_column(Integer)
 
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(
@@ -465,15 +465,15 @@ class DLDetectorOutput(Base):
 
     __table_args__ = (
         UniqueConstraint(data_id, method_id, name="simplify_pk"),
-        CheckConstraint("hdf_index >= 0", name="nonneg_index"),
+        # CheckConstraint("hdf_index >= 0", name="nonneg_index"),
         {"mysql_engine": MYSQL_ENGINE},
     )
 
     def __repr__(self) -> str:
         return (
             f"DLDetectorOutput(id={self.id!r}, hdf_file={self.hdf_file!r}, "
-            f"hdf_index={self.hdf_index}, data_id={self.data_id!r}, "
-            f"method_id={self.method_id!r}, last_modified={self.last_modified!r})"
+            f"data_id={self.data_id!r}, method_id={self.method_id!r}, "
+            f"last_modified={self.last_modified!r})"
         )
 
 
@@ -660,7 +660,7 @@ class PickCorrection(Base):
         # preds: JSON object storing the sampled pick correction values
         preds_hdf_file: The name of the hdf file in config.HDF_BASE_PATH/config.HDF_PICKCORR_DIR
             where the predictions are stored 
-        preds_hdf_index: The index in the hdf_file where the predictions are stored
+        # preds_hdf_index: The index in the hdf_file where the predictions are stored
         last_modified: Automatic field that keeps track of when a row was added to
                 or modified in the database in local time. Does not include microseconds.
     """
@@ -686,7 +686,7 @@ class PickCorrection(Base):
     trim_mean: Mapped[float] = mapped_column(Double)
     # preds: Mapped[JSON] = mapped_column(JSON)
     preds_hdf_file: Mapped[str] = mapped_column(String(255))
-    preds_hdf_index: Mapped[int] = mapped_column(Integer)
+    # preds_hdf_index: Mapped[int] = mapped_column(Integer)
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(
         TIMESTAMP,
@@ -714,8 +714,7 @@ class PickCorrection(Base):
             f"PickCorrection(id={self.id!r}, pid={self.pid!r}, method_id={self.method_id!r}, "
             f"median={self.median!r}, mean={self.mean!r}, std={self.std!r}, if_low={self.if_low!r}, "
             f"if_high={self.if_high!r}, trim_mean={self.trim_mean!r}, trim_median={self.trim_median!r}, "
-            f"preds_hdf_file={self.preds_hdf_file!r}, preds_hdf_index={self.preds_hdf_index!r}, "
-            f"last_modified={self.last_modified!r})"
+            f"preds_hdf_file={self.preds_hdf_file!r}, last_modified={self.last_modified!r})"
         )
 
 
@@ -732,7 +731,7 @@ class FirstMotion(Base):
         # preds: Optional. JSON object storing the sampled first motion values.
         preds_hdf_file: Optional. The name of the hdf file in config.HDF_BASE_PATH/config.HDF_PICKCORR_DIR
             where the predictions are stored 
-        preds_hdf_index: Optional. The index in the hdf_file where the predictions are stored
+        # preds_hdf_index: Optional. The index in the hdf_file where the predictions are stored
         last_modified: Automatic field that keeps track of when a row was added to
                 or modified in the database in local time. Does not include microseconds.
     """
@@ -755,7 +754,7 @@ class FirstMotion(Base):
     prob_dn: Mapped[Optional[float]] = mapped_column(Double)
     # preds: Mapped[Optional[JSON]] = mapped_column(JSON)
     preds_hdf_file: Mapped[Optional[str]] = mapped_column(String(255))
-    preds_hdf_index: Mapped[Optional[int]] = mapped_column(Integer)
+    # preds_hdf_index: Mapped[Optional[int]] = mapped_column(Integer)
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(
         TIMESTAMP,
@@ -780,8 +779,7 @@ class FirstMotion(Base):
         return (
             f"FirstMotion(id={self.id!r}, pid={self.pid!r}, method_id={self.method_id!r}, "
             f"clsf={self.clsf!r}, prob_up={self.prob_up!r}, prob_dn={self.prob_dn!r}, "
-            f"preds_hdf_file={self.preds_hdf_file!r}, preds_hdf_index={self.preds_hdf_index!r}, "
-            f"last_modified={self.last_modified!r})"
+            f"preds_hdf_file={self.preds_hdf_file!r},  last_modified={self.last_modified!r})"
         )
 
 
@@ -968,7 +966,7 @@ class WaveformInfo(Base):
         end: End time of the waveform in UTC. Should include fractional seconds.
         hdf_file: The name of the hdf file in config.HDF_BASE_PATH/config.HDF_WAVEFORM_DIR
             where the waveform is stored
-        hdf_index: The index in the hdf_file where the waveform is stored
+        # hdf_index: The index in the hdf_file where the waveform is stored
         proc_notes: Optional. Brief notes about waveform processing.
         last_modified: Automatic field that keeps track of when a row was added to
             or modified in the database in local time. Does not include microseconds.
@@ -998,7 +996,7 @@ class WaveformInfo(Base):
         DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False
     )
     hdf_file: Mapped[str] = mapped_column(String(255))
-    hdf_index: Mapped[int] = mapped_column(Integer)
+    # hdf_index: Mapped[int] = mapped_column(Integer)
     proc_notes: Mapped[Optional[str]] = mapped_column(String(255))
 
     # Keep track of when the row was inserted/updated
@@ -1032,7 +1030,7 @@ class WaveformInfo(Base):
             f"Waveform(id={self.id!r}, data_id={self.data_id!r}, chan_id={self.chan_id!r}, "
             f"pick_id={self.pick_id!r}, filt_low={self.filt_low!r}, filt_high={self.filt_high!r}, "
             f"start={self.start!r}, end={self.end!r}, proc_notes={self.proc_notes!r}, "
-            f"hdf_file={self.hdf_file!r}, hdf_index={self.hdf_index!r}, last_modified={self.last_modified!r})"
+            f"hdf_file={self.hdf_file!r}, last_modified={self.last_modified!r})"
         )
 
 
