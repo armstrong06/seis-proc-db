@@ -9,7 +9,7 @@ from seis_proc_db.config import HDF_BASE_PATH, HDF_WAVEFORM_DIR, HDF_UNET_SOFTMA
 class BasePyTable(ABC):
     TABLE_NAME = None
     TABLE_TITLE = None
-    TABLE_DESCRIPTION = None
+    TABLE_TYPE = "NewTable"
     TABLE_DTYPE = None
 
     @property
@@ -31,7 +31,7 @@ class BasePyTable(ABC):
         self._open_file(
             self.TABLE_NAME,
             self.TABLE_TITLE,
-            self.TABLE_DESCRIPTION,
+            self.TABLE_TYPE,
             self.TABLE_DTYPE,
         )
 
@@ -112,11 +112,10 @@ class BasePyTable(ABC):
             self._flush_counter = 0
 
     def _set_table_metadata(self, table):
-        attrs = table
+        attrs = table.attrs
 
         # Get instance attributes that came from __init__ (excluding private/internal ones)
         init_params = {k: v for k, v in self.__dict__.items() if not k.startswith("_")}
-
         for key, value in init_params.items():
             if hasattr(attrs, key):
                 existing = getattr(attrs, key)
@@ -161,7 +160,7 @@ class BasePyTable(ABC):
 class WaveformStorage(BasePyTable):
     TABLE_NAME = "waveform"
     TABLE_TITLE = "Waveform data"
-    TABLE_DESCRIPTION = "Waveform"
+    # TABLE_DESCRIPTION = "Waveform"
     TABLE_DTYPE = Float32Col
 
     def __init__(
@@ -201,7 +200,7 @@ class DLDetectorOutputStorage(BasePyTable):
 
     TABLE_NAME = "dldetector_output"
     TABLE_TITLE = "DL detector output"
-    TABLE_DESCRIPTION = "DlDetectorOutput"
+    # TABLE_DESCRIPTION = "DlDetectorOutput"
     TABLE_DTYPE = UInt8Col
 
     def __init__(
