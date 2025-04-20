@@ -11,6 +11,7 @@ class BasePyTable(ABC):
     TABLE_TITLE = None
     TABLE_TYPE = "NewTable"
     TABLE_DTYPE = None
+    TABLE_START_END_INDS = False
 
     @property
     def table(self):
@@ -27,6 +28,8 @@ class BasePyTable(ABC):
         self._file_path = self._make_filepath()
         self._flush_counter = 0
         self._flush_threshold = 50
+        self._default_start_ind = 0
+        self._default_end_ind = int(expected_array_length)
         self._h5_file, self._table = None, None
         self._open_file(
             self.TABLE_NAME,
@@ -59,7 +62,6 @@ class BasePyTable(ABC):
                 mode="a",
                 title=(self._make_h5_file_title()),
             )
-
             if not file_exists:
                 table = h5file.create_table(
                     "/",
@@ -69,7 +71,6 @@ class BasePyTable(ABC):
                     ),
                     table_title,
                 )
-
                 table.cols.id.create_index()
 
                 self._set_table_metadata(table)
@@ -92,6 +93,9 @@ class BasePyTable(ABC):
             "last_modified": Float64Col(),
             "data": data_col_type(shape=(self.expected_array_length,)),
         }
+        if self.TABLE_START_END_INDS:
+            class_attrs["start_ind"] = Int32Col()
+            class_attrs["end_ind"] = Int32Col()  # (dflt=self._default_end_ind),
         return type(table_description, (IsDescription,), class_attrs)
 
     def __enter__(self):
@@ -137,23 +141,47 @@ class BasePyTable(ABC):
             self._table.flush()
             self._flush_counter = 0
 
-    def append(self, db_id, data_array):
+    def append(self, db_id, data_array, start_ind=None, end_ind=None):
+        if any(True for _ in self._table.where(f"id == {db_id}")):
+            raise ValueError(f"Duplicate entry '{db_id}' for key 'id'")
+
         row = self._table.row
         row["id"] = db_id
         row["data"] = data_array
+        # If no value is provided for start_ind and end_ind, then the default value
+        # will be used
+        if self.TABLE_START_END_INDS:
+            row["start_ind"] = (
+                start_ind if start_ind is not None else self._default_start_ind
+            )
+            row["end_ind"] = end_ind if end_ind is not None else self._default_end_ind
         row["last_modified"] = datetime.now().timestamp()
         row.append()
-
         self._maybe_flush()
 
-    def modify(self, db_id, data_array):
-        result = [x for x in self._table.where(f"id == {db_id}")]
-        assert len(result) == 1, "Expected exactly one row to match"
-        row = result[0]
-        row["data"] = data_array
-        row["last_modified"] = datetime.now().timestamp()
-        row.update()
-
+    def modify(self, db_id, data_array, start_ind=None, end_ind=None):
+        if self.TABLE_START_END_INDS:
+            if start_ind is None or end_ind is None:
+                raise ValueError(
+                    "start_ind and end_ind must be provided when TABLE_START_END_INDS is True"
+                )
+        else:
+            if start_ind is not None or end_ind is not None:
+                raise ValueError(
+                    "start_ind and end_ind should not be passed when TABLE_START_END_INDS is False"
+                )
+        n_matches = len(list(self._table.where(f"id == {db_id}")))
+        if n_matches != 1:
+            raise ValueError(
+                f"Expected exactly one entry to match id = {db_id} but found {n_matches}"
+            )
+        for row in self._table.where(f"id == {db_id}"):
+            row["data"] = data_array
+            if self.TABLE_START_END_INDS:
+                row["start_ind"] = start_ind
+                row["end_ind"] = end_ind
+            row["last_modified"] = datetime.now().timestamp()
+            row.update()
         self._maybe_flush()
 
 
@@ -162,6 +190,7 @@ class WaveformStorage(BasePyTable):
     TABLE_TITLE = "Waveform data"
     # TABLE_DESCRIPTION = "Waveform"
     TABLE_DTYPE = Float32Col
+    TABLE_START_END_INDS = True
 
     def __init__(
         self,
@@ -216,7 +245,7 @@ class DLDetectorOutputStorage(BasePyTable):
         super().__init__(expected_array_length)
 
     def _make_filepath(self):
-        file_name = f"{self.sta}_{self.seed_code}_{self.phase}_{self.ncomps}C_detmethod{self.det_method_id}.h5"
+        file_name = f"{self.sta}_{self.seed_code}_{self.phase}_{self.ncomps}C_detmethod{self.det_method_id:02d}.h5"
         return os.path.join(HDF_BASE_PATH, HDF_UNET_SOFTMAX_DIR, file_name)
 
     def _make_h5_file_title(self):
