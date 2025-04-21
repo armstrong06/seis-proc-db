@@ -28,9 +28,10 @@ class BasePyTable(ABC):
         _, file_name = os.path.split(self._file_path)
         return file_name
 
-    def __init__(self, expected_array_length):
+    def __init__(self, expected_array_length, on_event=None):
 
         self._is_open = False
+        self._on_event = on_event
         self.expected_array_length = expected_array_length
         self._file_path = self._make_filepath()
         self._flush_counter = 0
@@ -250,19 +251,33 @@ class BasePyTable(ABC):
             raise e
 
     def _reset_transaction(self):
+        n_mod = len(self._transaction_modified_backup)
+        n_added = self._table.nrows - self._transaction_start_ind
         self._in_transaction = False
         self._transaction_start_ind = None
         self._transaction_modified_backup = {}
 
+        return n_added, n_mod
+
+    def _notify(self, message: str):
+        if self._on_event:
+            self._on_event(message)
+
     def rollback(self):
         if self._in_transaction:
             self._remove_transaction_changes()
-            self._reset_transaction()
+            n_added, n_mod = self._reset_transaction()
+            self._notify(
+                f"Rolled back {n_mod} modified rows and {n_added} added rows in the last transaction for {self.TABLE_NAME} PyTable."
+            )
 
     def commit(self):
         self._flush()
         if self._in_transaction:
-            self._reset_transaction()
+            n_added, n_mod = self._reset_transaction()
+            self._notify(
+                f"Committed {n_mod} modified rows and {n_added} added rows in the last transaction for {self.TABLE_NAME} PyTable."
+            )
 
 
 class WaveformStorage(BasePyTable):
@@ -282,6 +297,7 @@ class WaveformStorage(BasePyTable):
         filt_low,
         filt_high,
         proc_notes,
+        on_event=None,
     ):
         self.sta = sta
         self.seed_code = seed_code
@@ -292,7 +308,7 @@ class WaveformStorage(BasePyTable):
         self.filt_high = filt_high
         self.proc_notes = proc_notes
 
-        super().__init__(expected_array_length)
+        super().__init__(expected_array_length, on_event=on_event)
 
     def _make_filepath(self):
         file_name = f"{self.sta}_{self.seed_code}_{self.phase}_{self.ncomps}C_{self.filt_low!r}Hz_{self.filt_high!r}Hz_{self.expected_array_length}samps.h5"
@@ -313,7 +329,14 @@ class DLDetectorOutputStorage(BasePyTable):
     TABLE_DTYPE = UInt8Col
 
     def __init__(
-        self, expected_array_length, sta, seed_code, phase, ncomps, det_method_id
+        self,
+        expected_array_length,
+        sta,
+        seed_code,
+        phase,
+        ncomps,
+        det_method_id,
+        on_event=None,
     ):
 
         self.sta = sta
@@ -322,7 +345,7 @@ class DLDetectorOutputStorage(BasePyTable):
         self.phase = phase
         self.det_method_id = det_method_id
 
-        super().__init__(expected_array_length)
+        super().__init__(expected_array_length, on_event=on_event)
 
     def _make_filepath(self):
         file_name = f"{self.sta}_{self.seed_code}_{self.phase}_{self.ncomps}C_detmethod{self.det_method_id:02d}.h5"
