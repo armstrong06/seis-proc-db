@@ -724,3 +724,19 @@ def insert_waveform_pytable(
     storage_session.append(db_id, data, signal_start_ind, signal_end_ind)
 
     return new_wf_info
+
+
+def insert_dldetector_output_pytable(
+    session, storage_session, data_id, method_id, data
+):
+    new_detout = DLDetectorOutput(
+        data_id=data_id, method_id=method_id, hdf_file=storage_session.file_name
+    )
+
+    session.add(new_detout)
+    session.flush()
+
+    db_id = new_detout.id
+    storage_session.append(db_id, data)
+
+    return new_detout

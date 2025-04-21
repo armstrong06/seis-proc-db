@@ -836,3 +836,50 @@ def test_insert_waveform_pytable(
         wf_storage.close()
         os.remove(wf_storage.file_path)
         assert not os.path.exists(wf_storage.file_path), "the file was not removed"
+
+
+def test_insert_dldetector_output_pytable(
+    db_session_with_dldet_pick, mock_pytables_config
+):
+    try:
+        db_session, ids = db_session_with_dldet_pick
+
+        detout_storage = pytables_backend.DLDetectorOutputStorage(
+            expected_array_length=8640000,
+            sta="TEST",
+            seed_code="HHZ",
+            ncomps=3,
+            phase="P",
+            det_method_id=ids["method"],
+        )
+
+        data = np.zeros(8640000).astype(np.uint8)
+        new_detout_id = services.insert_dldetector_output_pytable(
+            db_session,
+            detout_storage,
+            data_id=ids["data"],
+            method_id=ids["method"],
+            data=data,
+        )
+
+        db_session.commit()
+        detout_storage.commit()
+
+        db_id = new_detout_id.id
+        assert db_id is not None, "DLDetectorOutput.id is not set"
+        assert detout_storage.table.nrows == 1, "incorrect number of rows in table"
+        row = [row for row in detout_storage.table.where(f"id == {db_id}")][0]
+        assert row["id"] == db_id, "incorrect id"
+        assert np.array_equal(row["data"], data), "incorrect data"
+        assert (
+            datetime.fromtimestamp(row["last_modified"]).date() == datetime.now().date()
+        ), "incorrect last_modified date"
+        assert (
+            datetime.fromtimestamp(row["last_modified"]) - new_detout_id.last_modified
+        ).microseconds * 1e-6 < 2, "DLDetectorOutput.last_modified and Pytables.Row.last_modified are not close"
+
+    finally:
+        # Clean up
+        detout_storage.close()
+        os.remove(detout_storage.file_path)
+        assert not os.path.exists(detout_storage.file_path), "the file was not removed"
