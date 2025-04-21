@@ -1,5 +1,4 @@
 from tables import *
-import numpy as np
 import os
 import warnings
 from abc import ABC, abstractmethod

@@ -17,7 +17,10 @@ description = "SQL Database code for enhanced Yellowstone earthquake catalog"
 readme = "README.md"
 
 [project.optional-dependencies]
-test = ["pytest~=8.3.5"]
+test = [
+    "pytest~=8.3.5", 
+    "numpy~=2.2.4"
+]
 pytables = ["pytables~=3.10.2"]
 
 [tool.pytest.ini_options]
