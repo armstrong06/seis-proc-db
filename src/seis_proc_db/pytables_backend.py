@@ -44,8 +44,7 @@ class BasePyTable(ABC):
         )
 
         self._in_transaction = False
-        self._transaction_append_begin_ind = None
-        self._transaction_modified_rows = []
+        self._transaction_start_time = None
 
     @abstractmethod
     def _make_filepath(self):
@@ -111,11 +110,11 @@ class BasePyTable(ABC):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.flush()
+        self._flush()
         self.close()
 
     def __del__(self):
-        self.flush()
+        self._flush()
         self.close()
 
     def _maybe_flush(self):
@@ -142,18 +141,18 @@ class BasePyTable(ABC):
 
     def close(self):
         if self._h5_file is not None and self._is_open:
-            self.mock_commit()
+            self.commit()
             self._h5_file.close()
             self._is_open = False
 
-    def flush(self):
+    def _flush(self):
         if self._table is not None and self._is_open and self._flush_counter > 0:
             self._table.flush()
             self._flush_counter = 0
 
     def append(self, db_id, data_array, start_ind=None, end_ind=None):
         if any(True for _ in self._table.where(f"id == {db_id}")):
-            self.mock_rollback()
+            self.rollback()
             raise ValueError(f"Duplicate entry '{db_id}' for key 'id'")
 
         try:
@@ -171,28 +170,27 @@ class BasePyTable(ABC):
                 )
             row["last_modified"] = datetime.now().timestamp()
             row.append()
-            self._update_mock_transaction_append()
             self._maybe_flush()
         except:
-            self.mock_rollback()
+            self.rollback()
             self.close()
 
     def modify(self, db_id, data_array, start_ind=None, end_ind=None):
         if self.TABLE_START_END_INDS:
             if start_ind is None or end_ind is None:
-                self.mock_rollback()
+                self.rollback()
                 raise ValueError(
                     "start_ind and end_ind must be provided when TABLE_START_END_INDS is True"
                 )
         else:
             if start_ind is not None or end_ind is not None:
-                self.mock_rollback()
+                self.rollback()
                 raise ValueError(
                     "start_ind and end_ind should not be passed when TABLE_START_END_INDS is False"
                 )
         n_matches = len(list(self._table.where(f"id == {db_id}")))
         if n_matches != 1:
-            self.mock_rollback()
+            self.rollback()
             raise ValueError(
                 f"Expected exactly one entry to match id = {db_id} but found {n_matches}"
             )
@@ -204,38 +202,37 @@ class BasePyTable(ABC):
                     row["start_ind"] = start_ind
                     row["end_ind"] = end_ind
                 row["last_modified"] = datetime.now().timestamp()
-                # row.update()
-                self._update_mock_transaction_append(row.nrow)
+                row.update()
             self._maybe_flush()
         except:
-            self.mock_rollback()
+            self.rollback()
             self.close()
 
-    def _update_mock_transaction_append(self):
-        current_index = self._table.nrows
+    def start_transaction(self):
         if not self._in_transaction:
             self._in_transaction = True
-            self._transaction_append_begin_ind = current_index
+            self._transaction_start_time = datetime.now().timestamp()
 
-    def _update_mock_transaction_modify(self, nrow):
-        if not self._in_transaction:
-            self._in_transaction = True
+    def _remove_transaction_changes(self):
+        for row in self._table.where(
+            f"last_modified >= {self._transaction_start_time}"
+        ):
+            self._table.remove_row(row.nrow)
 
-        self._transaction_modified_rows.append(nrow)
+    def _reset_transaction(self):
+        self._in_transaction = False
+        self._transaction_start_time = None
 
-    def mock_rollback(self):
+    def rollback(self):
         if self._in_transaction:
-            self._table.remove_rows(self._transaction_append_begin_ind)
-            self._in_transaction = False
-            self._transaction_append_begin_ind = None
+            self._remove_transaction_changes()
+            self._flush()
+            self._reset_transaction()
 
-    def mock_commit(self):
+    def commit(self):
+        self._flush()
         if self._in_transaction:
-            for ind in self._transaction_modified_rows:
-                self._table[ind].update()
-            self.flush()
-            self._in_transaction = False
-            self._transaction_append_begin_ind = None
+            self._reset_transaction()
 
 
 class WaveformStorage(BasePyTable):

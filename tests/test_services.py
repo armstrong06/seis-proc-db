@@ -812,7 +812,7 @@ def test_insert_waveform_pytable(
         )
 
         db_session.commit()
-        wf_storage.flush()
+        wf_storage.commit()
 
         db_id = new_wf_info.id
         assert db_id is not None, "WaveformInfo.id is not set"

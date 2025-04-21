@@ -80,7 +80,7 @@ class TestWaveformStorage:
             data[0:start_ind] = 0
             data[end_ind:] = 0
             wf_storage.append(db_id, data, start_ind, end_ind)
-            wf_storage.mock_commit()
+            wf_storage.commit()
 
             assert wf_storage.table.nrows == 1, "incorrect number of rows in table"
             row = [row for row in wf_storage.table.where(f"id == {db_id}")][0]
@@ -127,13 +127,14 @@ class TestWaveformStorage:
             data[0:start_ind] = 0
             data[end_ind:] = 0
             wf_storage.append(db_id, data, start_ind, end_ind)
+            wf_storage.commit()
 
             # Modify the row
             new_data = np.random.rand(1200).astype(np.float32)
             start_ind = 0
             end_ind = 1200
             wf_storage.modify(db_id, new_data, start_ind, end_ind)
-            wf_storage.mock_commit()
+            wf_storage.commit()
 
             assert wf_storage.table.nrows == 1, "incorrect number of rows in table"
             row = [row for row in wf_storage.table.where(f"id == {db_id}")][0]
@@ -210,7 +211,7 @@ class TestDLDetectorOutputStorage:
             db_id = 1
             data = np.random.rand(86400).astype(np.uint8)
             detout_storage.append(db_id, data)
-            detout_storage.mock_commit()
+            detout_storage.commit()
 
             assert detout_storage.table.nrows == 1, "incorrect number of rows in table"
             row = [row for row in detout_storage.table.where(f"id == {db_id}")][0]
