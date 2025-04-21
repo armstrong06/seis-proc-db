@@ -13,6 +13,7 @@ class BasePyTable(ABC):
     TABLE_TYPE = "NewTable"
     TABLE_DTYPE = None
     TABLE_START_END_INDS = False
+    FLUSH_THRESHOLD = 50
 
     @property
     def table(self):
@@ -33,7 +34,6 @@ class BasePyTable(ABC):
         self.expected_array_length = expected_array_length
         self._file_path = self._make_filepath()
         self._flush_counter = 0
-        self._flush_threshold = 50
         self._default_start_ind = 0
         self._default_end_ind = int(expected_array_length)
         self._h5_file, self._table = None, None
@@ -133,9 +133,9 @@ class BasePyTable(ABC):
 
     def _maybe_flush(self):
         self._flush_counter += 1
-        if self._flush_counter >= self._flush_threshold:
-            self._table.flush()
-            self._flush_counter = 0
+        if self._flush_counter >= self.FLUSH_THRESHOLD:
+            print("flushing")
+            self._flush()
 
     def _set_table_metadata(self, table):
         attrs = table.attrs
