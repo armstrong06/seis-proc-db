@@ -216,9 +216,8 @@ class BasePyTable(ABC):
                     self._in_transaction
                     and row.nrow not in self._transaction_modified_backup
                 ):
-                    self._transaction_modified_backup[row.nrow] = dict(
-                        row.fetch_all_fields()
-                    )
+                    self._transaction_modified_backup[row.nrow] = row[:]
+
                 row["data"] = data_array
                 if self.TABLE_START_END_INDS:
                     row["start_ind"] = start_ind
@@ -237,14 +236,18 @@ class BasePyTable(ABC):
             self._transaction_start_ind = self._table.nrows
 
     def _remove_transaction_changes(self):
-        for nrow, backup in self._transaction_modified_backup.items():
-            row = self._table[nrow]
-            for key, value in backup.items():
-                row[key] = value
-            row.update()
+        try:
+            for nrow, backup in self._transaction_modified_backup.items():
+                nmod = self._table.modify_rows(
+                    start=nrow, stop=nrow + 1, step=1, rows=[backup]
+                )
+                assert nmod == 1, "Expected exactly 1 row to be modified"
 
-        self._table.remove_rows(self._transaction_start_ind)
-        self._flush()
+            self._table.remove_rows(self._transaction_start_ind)
+            self._flush()
+        except Exception as e:
+            self.close()
+            raise e
 
     def _reset_transaction(self):
         self._in_transaction = False
