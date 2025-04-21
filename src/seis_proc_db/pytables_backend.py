@@ -1,6 +1,7 @@
 from tables import *
 import numpy as np
 import os
+import warnings
 from abc import ABC, abstractmethod
 from datetime import datetime
 from seis_proc_db.config import HDF_BASE_PATH, HDF_WAVEFORM_DIR, HDF_UNET_SOFTMAX_DIR
@@ -111,10 +112,22 @@ class BasePyTable(ABC):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        if self._in_transaction:
+            if exc_type is not None:
+                # An exception occurred; rollback
+                self.rollback()
+            else:
+                # No exception; commit
+                self.commit()
         self._flush()
         self.close()
 
     def __del__(self):
+        if self._in_transaction:
+            warnings.warn(
+                "HDF5 table deleted with uncommitted transaction; changes may be lost.",
+                ResourceWarning,
+            )
         self._flush()
         self.close()
 
