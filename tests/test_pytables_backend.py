@@ -2,21 +2,11 @@ import os
 import pytest
 import numpy as np
 from datetime import datetime
-from unittest import mock
 from seis_proc_db import pytables_backend
 
 
-@pytest.fixture
-def mock_config():
-    with mock.patch(
-        "seis_proc_db.pytables_backend.HDF_BASE_PATH",
-        "./tests/pytables_outputs",
-    ):
-        yield
-
-
 class TestWaveformStorage:
-    def test_init(self, mock_config):
+    def test_init(self, mock_pytables_config):
 
         wf_storage = pytables_backend.WaveformStorage(
             expected_array_length=1200,
@@ -70,7 +60,7 @@ class TestWaveformStorage:
             os.remove(wf_storage.file_path)
             assert not os.path.exists(wf_storage.file_path), "the file was not removed"
 
-    def test_append(self, mock_config):
+    def test_append(self, mock_pytables_config):
         wf_storage = pytables_backend.WaveformStorage(
             expected_array_length=1200,
             sta="TEST",
@@ -116,7 +106,7 @@ class TestWaveformStorage:
             os.remove(wf_storage.file_path)
             assert not os.path.exists(wf_storage.file_path), "the file was not removed"
 
-    def test_modify(self, mock_config):
+    def test_modify(self, mock_pytables_config):
         wf_storage = pytables_backend.WaveformStorage(
             expected_array_length=1200,
             sta="TEST",
@@ -159,7 +149,7 @@ class TestWaveformStorage:
 
 
 class TestDLDetectorOutputStorage:
-    def test_init(self, mock_config):
+    def test_init(self, mock_pytables_config):
         detout_storage = None
         try:
             detout_storage = pytables_backend.DLDetectorOutputStorage(
@@ -206,7 +196,7 @@ class TestDLDetectorOutputStorage:
                     detout_storage.file_path
                 ), "the file was not removed"
 
-    def test_append(self, mock_config):
+    def test_append(self, mock_pytables_config):
         detout_storage = pytables_backend.DLDetectorOutputStorage(
             expected_array_length=86400,
             sta="TEST",
