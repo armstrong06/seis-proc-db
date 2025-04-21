@@ -21,6 +21,11 @@ class BasePyTable(ABC):
     def file_path(self):
         return self._file_path
 
+    @property
+    def file_name(self):
+        _, file_name = os.path.split(self._file_path)
+        return file_name
+
     def __init__(self, expected_array_length):
 
         self._is_open = False

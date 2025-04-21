@@ -30,7 +30,7 @@ class TestWaveformStorage:
         )
 
         try:
-            base_path, file_name = os.path.split(wf_storage.file_path)
+            file_name = wf_storage.file_name
             # Check that the filename is as would be expected
             assert (
                 file_name == "TEST_HHZ_P_3C_NoneHz_NoneHz_1200samps.h5"
@@ -171,7 +171,7 @@ class TestDLDetectorOutputStorage:
                 det_method_id=1,
             )
 
-            base_path, file_name = os.path.split(detout_storage.file_path)
+            file_name = detout_storage.file_name
             # Check that the filename is as would be expected
             assert (
                 file_name == "TEST_HHZ_P_3C_detmethod01.h5"
