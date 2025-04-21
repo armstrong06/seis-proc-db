@@ -44,7 +44,8 @@ class BasePyTable(ABC):
         )
 
         self._in_transaction = False
-        self._transaction_start_time = None
+        self._transaction_start_ind = None
+        self._transaction_modified_backup = {}
 
     @abstractmethod
     def _make_filepath(self):
@@ -197,6 +198,13 @@ class BasePyTable(ABC):
 
         try:
             for row in self._table.where(f"id == {db_id}"):
+                if (
+                    self._in_transaction
+                    and row.nrow not in self._transaction_modified_backup
+                ):
+                    self._transaction_modified_backup[row.nrow] = dict(
+                        row.fetch_all_fields()
+                    )
                 row["data"] = data_array
                 if self.TABLE_START_END_INDS:
                     row["start_ind"] = start_ind
@@ -211,22 +219,26 @@ class BasePyTable(ABC):
     def start_transaction(self):
         if not self._in_transaction:
             self._in_transaction = True
-            self._transaction_start_time = datetime.now().timestamp()
+            self._transaction_start_ind = self._table.nrows
 
     def _remove_transaction_changes(self):
-        for row in self._table.where(
-            f"last_modified >= {self._transaction_start_time}"
-        ):
-            self._table.remove_row(row.nrow)
+        for nrow, backup in self._transaction_modified_backup.items():
+            row = self._table[nrow]
+            for key, value in backup.items():
+                row[key] = value
+            row.update()
+
+        self._table.remove_rows(self._transaction_start_ind)
+        self._flush()
 
     def _reset_transaction(self):
         self._in_transaction = False
-        self._transaction_start_time = None
+        self._transaction_start_ind = None
+        self._transaction_modified_backup = {}
 
     def rollback(self):
         if self._in_transaction:
             self._remove_transaction_changes()
-            self._flush()
             self._reset_transaction()
 
     def commit(self):
