@@ -689,3 +689,38 @@ def bulk_insert_dldetections_with_gap_check(session, dldets_dict):
     # # Execute it
     # with engine.begin() as conn:
     #     conn.execute(insert_stmt)
+
+
+def insert_waveform_pytable(
+    session,
+    storage_session,
+    data_id,
+    chan_id,
+    pick_id,
+    start,
+    end,
+    data,
+    filt_low=None,
+    filt_high=None,
+    proc_notes=None,
+    signal_start_ind=None,
+    signal_end_ind=None,
+):
+    new_wf_info = WaveformInfo(
+        data_id=data_id,
+        chan_id=chan_id,
+        pick_id=pick_id,
+        start=start,
+        end=end,
+        hdf_file=storage_session.file_name,
+        filt_low=filt_low,
+        filt_high=filt_high,
+        proc_notes=proc_notes,
+    )
+    session.add(new_wf_info)
+    session.flush()
+
+    db_id = new_wf_info.id
+    storage_session.append(db_id, data, signal_start_ind, signal_end_ind)
+
+    return new_wf_info

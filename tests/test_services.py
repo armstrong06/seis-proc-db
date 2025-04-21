@@ -3,8 +3,9 @@ import pytest
 from copy import deepcopy
 from sqlalchemy import func
 import numpy as np
+import os
 
-from seis_proc_db import services, tables
+from seis_proc_db import services, tables, pytables_backend
 
 dateformat = "%Y-%m-%dT%H:%M:%S.%f"
 
@@ -782,3 +783,56 @@ def test_get_picks(db_session_with_dldet_pick):
 #     startsamp = db_session.execute(
 #         text("SELECT startsamp from gap where gap.id = :gap_id"), {"gap_id": ids["gap"]}
 #     )
+
+
+def test_insert_waveform_pytable(
+    db_session_with_dldet_pick, waveform_ex, mock_pytables_config
+):
+    try:
+        wf_storage = pytables_backend.WaveformStorage(
+            expected_array_length=2000,
+            sta="TEST",
+            seed_code="HHZ",
+            ncomps=3,
+            phase="P",
+            filt_low=None,
+            filt_high=None,
+            proc_notes="raw waveforms",
+        )
+
+        db_session, ids = db_session_with_dldet_pick
+
+        new_wf_info = services.insert_waveform_pytable(
+            db_session,
+            wf_storage,
+            data_id=ids["data"],
+            chan_id=ids["chan"],
+            pick_id=ids["pick"],
+            **waveform_ex,
+        )
+
+        db_session.commit()
+        wf_storage.flush()
+
+        db_id = new_wf_info.id
+        assert db_id is not None, "WaveformInfo.id is not set"
+        assert wf_storage.table.nrows == 1, "incorrect number of rows in table"
+        row = [row for row in wf_storage.table.where(f"id == {db_id}")][0]
+        assert row["id"] == db_id, "incorrect id"
+        assert row["start_ind"] == 0, "incorrect start_ind"
+        assert row["end_ind"] == 2000, "incorrect end_ind"
+        assert np.array_equal(row["data"], waveform_ex["data"]), "incorrect data"
+        assert (
+            datetime.fromtimestamp(row["last_modified"]).date() == datetime.now().date()
+        ), "incorrect last_modified date"
+        assert (
+            datetime.fromtimestamp(row["last_modified"]) - new_wf_info.last_modified
+        ).microseconds * 1e-6 < 2, (
+            "WaveformInfo.last_modified and Pytables.Row.last_modified are not close"
+        )
+
+    finally:
+        # Clean up
+        wf_storage.close()
+        os.remove(wf_storage.file_path)
+        assert not os.path.exists(wf_storage.file_path), "the file was not removed"
