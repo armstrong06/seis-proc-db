@@ -2,7 +2,57 @@ import os
 import pytest
 import numpy as np
 from datetime import datetime
+from tables import Float32Col
 from seis_proc_db import pytables_backend
+
+
+class MockStorage(pytables_backend.BasePyTable):
+    TABLE_NAME = "waveforms"
+    TABLE_TITLE = "Test Waveforms"
+    TABLE_DTYPE = Float32Col
+    TABLE_START_END_INDS = True
+    FLUSH_THRESHOLD = 1  # Need to flush or can't use iterrows
+
+    def _make_filepath(self):
+        return "./tests/pytables_outputs/test_transaction.h5"
+
+    def _make_h5_file_title(self):
+        return "Testing Transactions"
+
+
+class TestBasePyTable:
+    def test_transaction(self):
+        if os.path.exists("./tests/pytables_outputs/test_transaction.h5"):
+            os.remove("./tests/pytables_outputs/test_transaction.h5")
+
+        stor = MockStorage(expected_array_length=10)
+
+        # Append outside of transaction
+        stor.append(db_id=1, data_array=np.ones(10))
+        assert any(row["id"] == 1 for row in stor.table.iterrows())
+
+        # Begin transaction
+        stor.start_transaction()
+        stor.append(db_id=2, data_array=np.full(10, 2))
+        stor.modify(db_id=1, data_array=np.zeros(10), start_ind=0, end_ind=10)
+        # Confirm changes exist for now
+        assert any(row["id"] == 2 for row in stor.table.iterrows())
+        assert np.allclose([row["data"] for row in stor.table.where("id == 1")][0], 0)
+
+        # Rollback
+        stor.rollback()
+        ids = [row["id"] for row in stor.table.iterrows()]
+        assert 2 not in ids  # Removed
+        assert np.allclose(
+            [row["data"] for row in stor.table.where("id == 1")][0], 1
+        )  # Reverted
+
+        # Begin and commit transaction
+        stor.start_transaction()
+        stor.append(db_id=3, data_array=np.full(10, 3))
+        stor.commit()
+        ids = [row["id"] for row in stor.table.iterrows()]
+        assert 3 in ids  # Stays
 
 
 class TestWaveformStorage:
