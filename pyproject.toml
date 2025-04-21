@@ -19,9 +19,9 @@ readme = "README.md"
 [project.optional-dependencies]
 test = [
     "pytest~=8.3.5", 
-    "numpy~=2.2.4"
+    "numpy>=1.26"
 ]
-pytables = ["pytables~=3.10.2"]
+pytables = ["tables~=3.10.2"]
 
 [tool.pytest.ini_options]
 minversion = "8.3.5"
