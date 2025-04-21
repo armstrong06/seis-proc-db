@@ -602,7 +602,7 @@ def test_bulk_insert_dldetections_with_gap_check_inside_buffer(
     db_session, ids = db_session_with_dldetection
     cnt0 = db_session.execute(func.count(tables.DLDetection.id)).one()[0]
     new_pick = {
-        "sample": 4319915,
+        "sample": 4320000,
         "phase": "P",
         "width": 20,
         "height": 80,
