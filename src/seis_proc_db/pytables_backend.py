@@ -95,7 +95,7 @@ class BasePyTable(ABC):
             if h5file is not None:
                 h5file.close()
 
-            raise
+            raise e
 
     def _generate_table_description(self, data_col_type, table_description):
         class_attrs = {
@@ -185,9 +185,10 @@ class BasePyTable(ABC):
             row["last_modified"] = datetime.now().timestamp()
             row.append()
             self._maybe_flush()
-        except:
+        except Exception as e:
             self.rollback()
             self.close()
+            raise e
 
     def modify(self, db_id, data_array, start_ind=None, end_ind=None):
         if self.TABLE_START_END_INDS:
@@ -225,9 +226,10 @@ class BasePyTable(ABC):
                 row["last_modified"] = datetime.now().timestamp()
                 row.update()
             self._maybe_flush()
-        except:
+        except Exception as e:
             self.rollback()
             self.close()
+            raise e
 
     def start_transaction(self):
         if not self._in_transaction:
