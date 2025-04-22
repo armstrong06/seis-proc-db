@@ -538,7 +538,7 @@ def test_bulk_insert_dldetections_with_gap_check_outside_gap(
         "data_id": ids["data"],
         "method_id": ids["method"],
         "buffer": 0.0,
-        "inference_id": None
+        "inference_id": None,
     }
     new_det2 = deepcopy(new_det1)
     new_det2["sample"] = 5000
@@ -590,7 +590,7 @@ def test_bulk_insert_dldetections_with_gap_check_inside_gap(
         "data_id": ids["data"],
         "method_id": ids["method"],
         "buffer": 0.0,
-        "inference_id": None
+        "inference_id": None,
     }
     services.bulk_insert_dldetections_with_gap_check(db_session, [new_pick])
     db_session.commit()
@@ -610,7 +610,7 @@ def test_bulk_insert_dldetections_with_gap_check_inside_buffer(
         "height": 80,
         "data_id": ids["data"],
         "method_id": ids["method"],
-        "inference_id": None
+        "inference_id": None,
     }
     # print(db_session.get(tables.Gap, ids["gap"]))
     services.bulk_insert_dldetections_with_gap_check(db_session, [new_pick])
@@ -700,7 +700,7 @@ def test_bulk_insert_dldetections_with_multiple_channel_gaps(
         "height": 80,
         "data_id": ids["data"],
         "method_id": ids["method"],
-        "inference_id": None
+        "inference_id": None,
     }
     # print(db_session.get(tables.Gap, ids["gap"]))
     services.bulk_insert_dldetections_with_gap_check(db_session, [new_pick])
@@ -789,39 +789,51 @@ def test_get_picks(db_session_with_dldet_pick):
 #     )
 
 
-def test_insert_waveform_pytable(
+@pytest.fixture
+def db_session_with_waveform_info(
     db_session_with_dldet_pick, waveform_ex, mock_pytables_config
 ):
+    db_session, ids = db_session_with_dldet_pick
+
+    wf_storage = pytables_backend.WaveformStorage(
+        expected_array_length=2000,
+        sta="TEST",
+        seed_code="HHZ",
+        ncomps=3,
+        phase="P",
+        filt_low=None,
+        filt_high=None,
+        proc_notes="raw waveforms",
+    )
+
+    db_session, ids = db_session_with_dldet_pick
+
+    new_wf_info = services.insert_waveform_pytable(
+        db_session,
+        wf_storage,
+        data_id=ids["data"],
+        chan_id=ids["chan"],
+        pick_id=ids["pick"],
+        **waveform_ex,
+    )
+
+    db_session.commit()
+    wf_storage.commit()
+
+    ids["wf_info"] = new_wf_info.id
+
+    return db_session, wf_storage, ids
+
+
+def test_insert_waveform_pytable(db_session_with_waveform_info, waveform_ex):
     try:
-        wf_storage = pytables_backend.WaveformStorage(
-            expected_array_length=2000,
-            sta="TEST",
-            seed_code="HHZ",
-            ncomps=3,
-            phase="P",
-            filt_low=None,
-            filt_high=None,
-            proc_notes="raw waveforms",
-        )
+        db_session, wf_storage, ids = db_session_with_waveform_info
 
-        db_session, ids = db_session_with_dldet_pick
-
-        new_wf_info = services.insert_waveform_pytable(
-            db_session,
-            wf_storage,
-            data_id=ids["data"],
-            chan_id=ids["chan"],
-            pick_id=ids["pick"],
-            **waveform_ex,
-        )
-
-        db_session.commit()
-        wf_storage.commit()
-
-        db_id = new_wf_info.id
+        db_id = ids["wf_info"]
+        new_wf_info = db_session.get(tables.WaveformInfo, db_id)
         assert db_id is not None, "WaveformInfo.id is not set"
         assert wf_storage.table.nrows == 1, "incorrect number of rows in table"
-        row = [row for row in wf_storage.table.where(f"id == {db_id}")][0]
+        row = wf_storage.select_row(db_id)
         assert row["id"] == db_id, "incorrect id"
         assert row["start_ind"] == 0, "incorrect start_ind"
         assert row["end_ind"] == 2000, "incorrect end_ind"
@@ -834,6 +846,15 @@ def test_insert_waveform_pytable(
         ).microseconds * 1e-6 < 2, (
             "WaveformInfo.last_modified and Pytables.Row.last_modified are not close"
         )
+        assert new_wf_info.hdf_file == wf_storage.file_name, "wf_info hdf_file incorrect"
+        assert new_wf_info.chan_id == ids["chan"], "wf_info chan id incorrect"
+        assert new_wf_info.pick_id == ids["pick"], "wf_info pick_id incorrect"
+        assert new_wf_info.data_id == ids["data"], "wf_info data_id incorrect"
+        assert new_wf_info.filt_low == 1.5, "wf_info filt_low incorrect"
+        assert new_wf_info.filt_high == 17.5, "wf_info filt_high incorrect"
+        assert new_wf_info.start == datetime.strptime("2024-01-02T10:11:02.13", dateformat), "wf_info start incorrect"
+        assert new_wf_info.end == datetime.strptime("2024-01-02T10:11:22.14", dateformat), "wf_info end incorrect"
+        assert new_wf_info.proc_notes == "Processed for repicker", "wf_info proc_notes incorrect"
 
     finally:
         # Clean up
@@ -841,6 +862,31 @@ def test_insert_waveform_pytable(
         os.remove(wf_storage.file_path)
         assert not os.path.exists(wf_storage.file_path), "the file was not removed"
 
+
+def test_get_waveform_infos(db_session_with_waveform_info):
+    db_session, wf_storage, ids = db_session_with_waveform_info
+    try:
+        wfs = services.get_waveform_infos(db_session, ids["pick"])
+        assert len(wfs) == 1, "incorrect number of waveforms"
+    finally:
+        # Clean up
+        wf_storage.close()
+        os.remove(wf_storage.file_path)
+        assert not os.path.exists(wf_storage.file_path), "the file was not removed"
+
+def test_get_waveform_infos_and_data(db_session_with_waveform_info, waveform_ex):
+    db_session, wf_storage, ids = db_session_with_waveform_info
+    try:
+        wfs = services.get_waveform_infos_and_data(db_session, wf_storage, ids["pick"])
+        assert len(wfs) == 1, "incorrect number of waveforms"
+        assert wfs[0]["db_wf_info"].id == ids["wf_info"], "incorrect in db_wf_info"
+        assert np.array_equal(wfs[0]["data"], waveform_ex["data"]), "incorrect data"
+        assert wfs[0]["id"] == ids["wf_info"]
+    finally:
+        # Clean up
+        wf_storage.close()
+        os.remove(wf_storage.file_path)
+        assert not os.path.exists(wf_storage.file_path), "the file was not removed"
 
 def test_insert_dldetector_output_pytable(
     db_session_with_dldet_pick, mock_pytables_config

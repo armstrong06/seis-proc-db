@@ -530,7 +530,36 @@ def get_waveforms(session, pick_id, chan_id=None, data_id=None):
 
     return result
 
+def get_waveform_infos(session, pick_id, chan_id=None, hdf_file=None, data_id=None):
 
+    stmt = select(WaveformInfo).where(WaveformInfo.pick_id == pick_id)
+
+    if hdf_file is not None:
+        stmt = stmt.where(WaveformInfo.hdf_file == hdf_file)
+
+    if chan_id is not None:
+        stmt = stmt.where(WaveformInfo.chan_id == chan_id)
+
+    if data_id is not None:
+        stmt = stmt.where(WaveformInfo.data_id == data_id)
+
+    result = session.scalars(stmt).all()
+
+    return result
+
+def get_waveform_infos_and_data(session, storage, pick_id, chan_id=None, data_id=None):
+    hdf_file = storage.file_name
+    wf_infos = get_waveform_infos(session, pick_id, chan_id=chan_id, hdf_file=hdf_file, data_id=data_id)
+    results = []
+    for wf_info in wf_infos:
+        row = storage.select_row(wf_info.id)
+        if row is None:
+            row = {}
+        row["db_wf_info"] = wf_info
+        results.append(row)
+
+    return results
+        
 # def insert_pick_with_waveform(
 #     session,
 #     sta_id,
