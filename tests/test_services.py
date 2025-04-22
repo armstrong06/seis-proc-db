@@ -538,6 +538,7 @@ def test_bulk_insert_dldetections_with_gap_check_outside_gap(
         "data_id": ids["data"],
         "method_id": ids["method"],
         "buffer": 0.0,
+        "inference_id": None
     }
     new_det2 = deepcopy(new_det1)
     new_det2["sample"] = 5000
@@ -589,6 +590,7 @@ def test_bulk_insert_dldetections_with_gap_check_inside_gap(
         "data_id": ids["data"],
         "method_id": ids["method"],
         "buffer": 0.0,
+        "inference_id": None
     }
     services.bulk_insert_dldetections_with_gap_check(db_session, [new_pick])
     db_session.commit()
@@ -608,6 +610,7 @@ def test_bulk_insert_dldetections_with_gap_check_inside_buffer(
         "height": 80,
         "data_id": ids["data"],
         "method_id": ids["method"],
+        "inference_id": None
     }
     # print(db_session.get(tables.Gap, ids["gap"]))
     services.bulk_insert_dldetections_with_gap_check(db_session, [new_pick])
@@ -697,6 +700,7 @@ def test_bulk_insert_dldetections_with_multiple_channel_gaps(
         "height": 80,
         "data_id": ids["data"],
         "method_id": ids["method"],
+        "inference_id": None
     }
     # print(db_session.get(tables.Gap, ids["gap"]))
     services.bulk_insert_dldetections_with_gap_check(db_session, [new_pick])
