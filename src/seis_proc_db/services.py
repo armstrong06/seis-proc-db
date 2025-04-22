@@ -380,7 +380,7 @@ def upsert_detection_method(session, name, phase=None, details=None, path=None):
     session.execute(upsert_stmt)
 
 
-def insert_dldetection(session, data_id, method_id, sample, phase, width, height):
+def insert_dldetection(session, data_id, method_id, sample, phase, width, height, inference_id=None):
     # TODO: Add gap check
     new_det = DLDetection(
         data_id=data_id,
@@ -389,6 +389,7 @@ def insert_dldetection(session, data_id, method_id, sample, phase, width, height
         phase=phase,
         width=width,
         height=height,
+        inference_id=inference_id
     )
     session.add(new_det)
     return new_det
@@ -602,8 +603,8 @@ def bulk_insert_dldetections_with_gap_check(session, dldets_dict):
     )
     # BETWEEN is inclusive on both ends
     textual_sql = text(
-        """INSERT INTO dldetection (data_id, method_id, sample, phase, width, height)
-        SELECT :data_id, :method_id, :sample, :phase, :width, :height
+        """INSERT INTO dldetection (data_id, method_id, sample, phase, width, height, inference_id)
+        SELECT :data_id, :method_id, :sample, :phase, :width, :height, :inference_id
         FROM contdatainfo WHERE contdatainfo.id = :data_id
         AND NOT EXISTS (
         SELECT gap.id FROM gap WHERE gap.data_id = :data_id
