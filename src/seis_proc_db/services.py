@@ -553,10 +553,7 @@ def get_waveform_infos_and_data(session, storage, pick_id, chan_id=None, data_id
     results = []
     for wf_info in wf_infos:
         row = storage.select_row(wf_info.id)
-        if row is None:
-            row = {}
-        row["db_wf_info"] = wf_info
-        results.append(row)
+        results.append((wf_info, row))
 
     return results
         

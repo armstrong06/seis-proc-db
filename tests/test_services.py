@@ -879,9 +879,9 @@ def test_get_waveform_infos_and_data(db_session_with_waveform_info, waveform_ex)
     try:
         wfs = services.get_waveform_infos_and_data(db_session, wf_storage, ids["pick"])
         assert len(wfs) == 1, "incorrect number of waveforms"
-        assert wfs[0]["db_wf_info"].id == ids["wf_info"], "incorrect in db_wf_info"
-        assert np.array_equal(wfs[0]["data"], waveform_ex["data"]), "incorrect data"
-        assert wfs[0]["id"] == ids["wf_info"]
+        assert wfs[0][0].id == ids["wf_info"], "incorrect in db_wf_info"
+        assert np.array_equal(wfs[0][1]["data"], waveform_ex["data"]), "incorrect data"
+        assert wfs[0][1]["id"] == ids["wf_info"]
     finally:
         # Clean up
         wf_storage.close()
