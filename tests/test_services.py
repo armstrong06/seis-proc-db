@@ -855,6 +855,7 @@ def test_insert_waveform_pytable(db_session_with_waveform_info, waveform_ex):
         assert new_wf_info.start == datetime.strptime("2024-01-02T10:11:02.13", dateformat), "wf_info start incorrect"
         assert new_wf_info.end == datetime.strptime("2024-01-02T10:11:22.14", dateformat), "wf_info end incorrect"
         assert new_wf_info.proc_notes == "Processed for repicker", "wf_info proc_notes incorrect"
+        assert new_wf_info.duration_samples == 2001, "incorrect duration"
 
     finally:
         # Clean up

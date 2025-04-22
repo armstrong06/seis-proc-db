@@ -1,5 +1,5 @@
 from sqlalchemy import String, Integer, SmallInteger, DateTime, Enum
-from sqlalchemy import func, select, text, literal_column
+from sqlalchemy import func, select, text, literal_column, case, null, cast
 from sqlalchemy.types import TIMESTAMP, Double, Date, Boolean, JSON, LargeBinary
 from sqlalchemy.orm import (
     Mapped,
@@ -490,7 +490,7 @@ class DLDetection(Base):
         width: Width of the spike in the posterior probabilities the detection is associated with.
         height: Posterior probability value at the detection sample. Value is expected to
             be between 1 and 100 (not 0 and 1).
-        inference_id: OPTIONAL. The id of the DLDetectorOutput that the detection came from. 
+        inference_id: OPTIONAL. The id of the DLDetectorOutput that the detection came from.
         last_modified: Automatic field that keeps track of when a row was added to
                 or modified in the database in local time. Does not include microseconds.
     """
@@ -658,7 +658,7 @@ class PickCorrection(Base):
         trim_mean: Mean value of samples within the inner fence
         # preds: JSON object storing the sampled pick correction values
         preds_hdf_file: The name of the hdf file in config.HDF_BASE_PATH/config.HDF_PICKCORR_DIR
-            where the predictions are stored 
+            where the predictions are stored
         # preds_hdf_index: The index in the hdf_file where the predictions are stored
         last_modified: Automatic field that keeps track of when a row was added to
                 or modified in the database in local time. Does not include microseconds.
@@ -729,7 +729,7 @@ class FirstMotion(Base):
         prob_dn: Optional. Probability of the fm being down.
         # preds: Optional. JSON object storing the sampled first motion values.
         preds_hdf_file: Optional. The name of the hdf file in config.HDF_BASE_PATH/config.HDF_PICKCORR_DIR
-            where the predictions are stored 
+            where the predictions are stored
         # preds_hdf_index: Optional. The index in the hdf_file where the predictions are stored
         last_modified: Automatic field that keeps track of when a row was added to
                 or modified in the database in local time. Does not include microseconds.
@@ -965,6 +965,7 @@ class WaveformInfo(Base):
         filt_high: Optional. Upper end of the filter applied.
         start: Start time of the waveform in UTC. Should include fractional seconds.
         end: End time of the waveform in UTC. Should include fractional seconds.
+        samp_rate: OPTIONAL. Sampling rate of the data, in case data_id is Null
         proc_notes: Optional. Brief notes about waveform processing.
         last_modified: Automatic field that keeps track of when a row was added to
             or modified in the database in local time. Does not include microseconds.
@@ -995,6 +996,7 @@ class WaveformInfo(Base):
         DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False
     )
     proc_notes: Mapped[Optional[str]] = mapped_column(String(255))
+    samp_rate: Mapped[Optional[float]] = mapped_column(Double)
 
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(
@@ -1011,10 +1013,53 @@ class WaveformInfo(Base):
     # Many-to-one relationship with Pick
     pick: Mapped["Pick"] = relationship(back_populates="wf_info")
 
+    # column property
+    duration_samples = column_property(
+        case(
+            # Case 1: data_id is not null → use joined table's samp_rate
+            (
+                data_id.isnot(None),
+                cast(
+                    select(
+                        (
+                            func.timestampdiff(
+                                literal_column("MICROSECOND"),
+                                start,
+                                end,
+                            )
+                            / 1e6
+                        )
+                        * DailyContDataInfo.samp_rate
+                    )
+                    .where(DailyContDataInfo.id == data_id)
+                    .correlate_except(DailyContDataInfo)
+                    .scalar_subquery(),
+                    Integer,
+                ),
+            ),
+            # Case 2: data_id is null but local samp_rate is not null
+            (
+                samp_rate.isnot(None),
+                cast(
+                    (
+                        func.timestampdiff(
+                            literal_column("MICROSECOND"),
+                            start,
+                            end,
+                        )
+                        / 1e6
+                    )
+                    * samp_rate,
+                    Integer,
+                ),
+            ),
+            # Case 3: both are null → return NULL
+            else_=null(),
+        )
+    )
+
     __table_args__ = (
-        UniqueConstraint(
-            chan_id, pick_id, hdf_file, name="simplify_pk"
-        ),
+        UniqueConstraint(chan_id, pick_id, hdf_file, name="simplify_pk"),
         CheckConstraint("filt_low > 0", name="pos_filt_low"),
         CheckConstraint("filt_high > 0", name="pos_filt_high"),
         CheckConstraint("filt_low < filt_high", name="filt_order"),
@@ -1026,7 +1071,7 @@ class WaveformInfo(Base):
         return (
             f"Waveform(id={self.id!r}, data_id={self.data_id!r}, chan_id={self.chan_id!r}, "
             f"pick_id={self.pick_id!r}, filt_low={self.filt_low!r}, filt_high={self.filt_high!r}, "
-            f"start={self.start!r}, end={self.end!r}, proc_notes={self.proc_notes!r}, "
+            f"start={self.start!r}, end={self.end!r}, proc_notes={self.proc_notes!r}, samp_rate={self.samp_rate!r}, "
             f"hdf_file={self.hdf_file!r}, last_modified={self.last_modified!r})"
         )
 
