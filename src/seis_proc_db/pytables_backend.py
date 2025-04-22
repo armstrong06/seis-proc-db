@@ -248,6 +248,21 @@ class BasePyTable(ABC):
         except Exception as e:
             self.close()
             raise e
+        
+    def select_rows(self, ids_list):
+        result = []
+        for id in ids_list:
+            result.append(self.select_row(id))
+
+        return result
+    
+    def select_row(self, id):
+        row = list(self._table.where(f"id == {id}"))
+        if len(row) == 0:
+            return None
+        
+        colnames = self._table.colnames
+        return dict(zip(colnames, row[0][:]))
 
     def _reset_transaction(self):
         n_mod = len(self._transaction_modified_backup)

@@ -133,7 +133,7 @@ class TestWaveformStorage:
             wf_storage.commit()
 
             assert wf_storage.table.nrows == 1, "incorrect number of rows in table"
-            row = [row for row in wf_storage.table.where(f"id == {db_id}")][0]
+            row = wf_storage.select_row(db_id)
             assert row["id"] == db_id, "incorrect id"
             assert row["start_ind"] == 100, "incorrect start_ind"
             assert row["end_ind"] == 1100, "incorrect end_ind"
@@ -187,7 +187,7 @@ class TestWaveformStorage:
             wf_storage.commit()
 
             assert wf_storage.table.nrows == 1, "incorrect number of rows in table"
-            row = [row for row in wf_storage.table.where(f"id == {db_id}")][0]
+            row = wf_storage.select_row(db_id)
             assert np.array_equal(row["data"], new_data), "incorrect data"
             assert row["start_ind"] == 0, "incorrect start_ind"
             assert row["end_ind"] == 1200, "incorrect end_ind"
@@ -264,7 +264,7 @@ class TestDLDetectorOutputStorage:
             detout_storage.commit()
 
             assert detout_storage.table.nrows == 1, "incorrect number of rows in table"
-            row = [row for row in detout_storage.table.where(f"id == {db_id}")][0]
+            row = detout_storage.select_row(db_id)
             assert row["id"] == db_id, "incorrect id"
             assert np.array_equal(row["data"], data), "incorrect data"
             assert (
