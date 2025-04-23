@@ -61,7 +61,12 @@ class BasePyTable(ABC):
     ):
         dir_exists = os.path.exists(os.path.dirname(self._file_path))
         if not dir_exists:
-            os.makedirs(os.path.dirname(self._file_path))
+            try:
+                os.makedirs(os.path.dirname(self._file_path))
+            except:
+                self._notify(
+                f"{os.path.dirname(self._file_path)} likely created by another job..."
+            )
 
         file_exists = os.path.isfile(self._file_path)
 
@@ -134,7 +139,6 @@ class BasePyTable(ABC):
     def _maybe_flush(self):
         self._flush_counter += 1
         if self._flush_counter >= self.FLUSH_THRESHOLD:
-            print("flushing")
             self._flush()
 
     def _set_table_metadata(self, table):
