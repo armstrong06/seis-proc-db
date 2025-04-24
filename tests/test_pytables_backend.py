@@ -60,7 +60,9 @@ class TestWaveformStorage:
 
         wf_storage = pytables_backend.WaveformStorage(
             expected_array_length=1200,
+            net="JK",
             sta="TEST",
+            loc="01",
             seed_code="HHZ",
             ncomps=3,
             phase="P",
@@ -73,7 +75,7 @@ class TestWaveformStorage:
             file_name = wf_storage.file_name
             # Check that the filename is as would be expected
             assert (
-                file_name == "TEST_HHZ_P_3C_NoneHz_NoneHz_1200samps.h5"
+                file_name == "JK.TEST.01.HHZ.P.3C_NoneHz_NoneHz_1200samps.h5"
             ), "file name is not as expected"
             # Check that the file was created
             assert os.path.exists(wf_storage.file_path), "the file was not created"
@@ -113,7 +115,9 @@ class TestWaveformStorage:
     def test_append(self, mock_pytables_config):
         wf_storage = pytables_backend.WaveformStorage(
             expected_array_length=1200,
+            net="JK",
             sta="TEST",
+            loc="01",
             seed_code="HHZ",
             ncomps=3,
             phase="P",
@@ -159,7 +163,9 @@ class TestWaveformStorage:
     def test_modify(self, mock_pytables_config):
         wf_storage = pytables_backend.WaveformStorage(
             expected_array_length=1200,
+            net="JK",
             sta="TEST",
+            loc="01",
             seed_code="HHZ",
             ncomps=3,
             phase="P",
@@ -205,7 +211,9 @@ class TestDLDetectorOutputStorage:
         try:
             detout_storage = pytables_backend.DLDetectorOutputStorage(
                 expected_array_length=86400,
+                net="JK",
                 sta="TEST",
+                loc="01",
                 seed_code="HHZ",
                 ncomps=3,
                 phase="P",
@@ -215,7 +223,7 @@ class TestDLDetectorOutputStorage:
             file_name = detout_storage.file_name
             # Check that the filename is as would be expected
             assert (
-                file_name == "TEST_HHZ_P_3C_detmethod01.h5"
+                file_name == "JK.TEST.01.HHZ.P.3C.detmethod01.h5"
             ), "file name is not as expected"
             # Check that the file was created
             assert os.path.exists(detout_storage.file_path), "the file was not created"
@@ -250,7 +258,9 @@ class TestDLDetectorOutputStorage:
     def test_append(self, mock_pytables_config):
         detout_storage = pytables_backend.DLDetectorOutputStorage(
             expected_array_length=86400,
+            net="JK",
             sta="TEST",
+            loc="01",
             seed_code="HHZ",
             ncomps=3,
             phase="P",

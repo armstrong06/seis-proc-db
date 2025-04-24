@@ -59,6 +59,7 @@ class BasePyTable(ABC):
     def _open_file(
         self, table_name, table_title, table_description, table_data_col_type
     ):
+        self._notify(f"Opening {self._file_path} to store {self.TABLE_TITLE}")
         dir_exists = os.path.exists(os.path.dirname(self._file_path))
         if not dir_exists:
             try:
@@ -308,7 +309,9 @@ class WaveformStorage(BasePyTable):
     def __init__(
         self,
         expected_array_length,
+        net,
         sta,
+        loc,
         seed_code,
         ncomps,
         phase,
@@ -317,7 +320,9 @@ class WaveformStorage(BasePyTable):
         proc_notes,
         on_event=None,
     ):
+        self.net = net
         self.sta = sta
+        self.loc = loc
         self.seed_code = seed_code
         self.ncomps = ncomps
         self.phase = phase
@@ -329,12 +334,12 @@ class WaveformStorage(BasePyTable):
         super().__init__(expected_array_length, on_event=on_event)
 
     def _make_filepath(self):
-        file_name = f"{self.sta}_{self.seed_code}_{self.phase}_{self.ncomps}C_{self.filt_low!r}Hz_{self.filt_high!r}Hz_{self.expected_array_length}samps.h5"
+        file_name = f"{self.net}.{self.sta}.{self.loc}.{self.seed_code}.{self.phase}.{self.ncomps}C_{self.filt_low!r}Hz_{self.filt_high!r}Hz_{self.expected_array_length}samps.h5"
         return os.path.join(HDF_BASE_PATH, HDF_WAVEFORM_DIR, file_name)
 
     def _make_h5_file_title(self):
         return (
-            f"Waveform segments ({self.expected_array_length} samples) for {self.sta}.{self.seed_code} centered on "
+            f"Waveform segments ({self.expected_array_length} samples) for {self.net}.{self.sta}.{self.loc}.{self.seed_code} centered on "
             f"{self.phase} picks from {self.ncomps}C processing. Filtered from {self.filt_low} - {self.filt_high} Hz"
         )
 
@@ -349,7 +354,9 @@ class DLDetectorOutputStorage(BasePyTable):
     def __init__(
         self,
         expected_array_length,
+        net,
         sta,
+        loc,
         seed_code,
         phase,
         ncomps,
@@ -357,7 +364,9 @@ class DLDetectorOutputStorage(BasePyTable):
         on_event=None,
     ):
 
+        self.net = net
         self.sta = sta
+        self.loc = loc
         self.seed_code = seed_code
         self.ncomps = ncomps
         self.phase = phase
@@ -366,11 +375,11 @@ class DLDetectorOutputStorage(BasePyTable):
         super().__init__(expected_array_length, on_event=on_event)
 
     def _make_filepath(self):
-        file_name = f"{self.sta}_{self.seed_code}_{self.phase}_{self.ncomps}C_detmethod{self.det_method_id:02d}.h5"
+        file_name = f"{self.net}.{self.sta}.{self.loc}.{self.seed_code}.{self.phase}.{self.ncomps}C.detmethod{self.det_method_id:02d}.h5"
         return os.path.join(HDF_BASE_PATH, HDF_UNET_SOFTMAX_DIR, file_name)
 
     def _make_h5_file_title(self):
         return (
-            f"Deep-learning detector outputs for {self.sta}.{self.seed_code} from {self.ncomps}C {self.phase}"
+            f"Deep-learning detector outputs for {self.net}.{self.sta}.{self.loc}.{self.seed_code} from {self.ncomps}C {self.phase}"
             f"model using DetectionMethod.id={self.det_method_id}."
         )

@@ -108,8 +108,11 @@ def get_operating_station_by_name(session, sta, year):
     # This should only happen if (oddly) there were Stations with ondates within 1 min
     raise ValueError("More than one Station matching these criteria")
 
+# TODO: Implement this
+def get_operating_channels(session, min_date, end_date):
+    pass
 
-def get_operating_channels_by_station_name(session, sta, chan_pref, date):
+def get_operating_channels_by_station_name(session, sta, chan_pref, date, net=None, loc=None):
 
     # net, sta, seed_code, channel.ondate, channel.offdate
     textual_sql = text(
@@ -138,6 +141,11 @@ def get_operating_channels_by_station_name(session, sta, chan_pref, date):
         .where(Channel.seed_code.op("REGEXP")(chan_pref))
         .where(textual_sql)
     )
+    
+    if net is not None:
+        stmt = stmt.where(Station.net == net)
+    if loc is not None:
+        stmt = stmt.where(Channel.loc == loc)
 
     # print("STMT", stmt)
     result = session.execute(stmt, {"date": date}).all()
@@ -294,7 +302,7 @@ def get_common_station_channels(session, sta_id, seed_code_pref):
     return result
 
 
-def get_common_station_channels_by_name(session, sta, seed_code_pref):
+def get_common_station_channels_by_name(session, sta, seed_code_pref, net=None, loc=None):
     """Get a list of Channel objects belonging to a station name with a common sensor
     type. THERE COULD BE MORE THAN ONE STATION WITH THE SAME NAME.
 
@@ -318,6 +326,11 @@ def get_common_station_channels_by_name(session, sta, seed_code_pref):
         .join(Station, Channel.sta_id == Station.id)
         .where(Station.sta == sta, Channel.seed_code.op("REGEXP")(seed_code_pref))
     )
+
+    if net is not None:
+        stmt = stmt.where(Station.net == net)
+    if loc is not None:
+        stmt = stmt.where(Channel.loc == loc)
 
     result = session.scalars(stmt).all()
 
