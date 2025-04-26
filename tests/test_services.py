@@ -895,6 +895,8 @@ def test_insert_waveform_pytable(db_session_with_waveform_info, waveform_ex):
         assert new_wf_info.data_id == ids["data"], "wf_info data_id incorrect"
         assert new_wf_info.filt_low == 1.5, "wf_info filt_low incorrect"
         assert new_wf_info.filt_high == 17.5, "wf_info filt_high incorrect"
+        assert new_wf_info.min_val == np.min(waveform_ex["data"]), "Incorrect min_val"
+        assert new_wf_info.max_val == np.max(waveform_ex["data"]), "Incorrect min_val"
         assert new_wf_info.start == datetime.strptime(
             "2024-01-02T10:11:02.13", dateformat
         ), "wf_info start incorrect"

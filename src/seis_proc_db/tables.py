@@ -965,6 +965,10 @@ class WaveformInfo(Base):
         filt_high: Optional. Upper end of the filter applied.
         start: Start time of the waveform in UTC. Should include fractional seconds.
         end: End time of the waveform in UTC. Should include fractional seconds.
+        min_val: Optional. The minimum value of the waveform snippet stored in the hdf_file.
+            Stored for debugging purposes.
+        max_val: Optional. The maximum value of the waveform snippet stored in the hdf_file.
+            Stored for debugging purposes.
         samp_rate: OPTIONAL. Sampling rate of the data, in case data_id is Null
         proc_notes: Optional. Brief notes about waveform processing.
         last_modified: Automatic field that keeps track of when a row was added to
@@ -997,6 +1001,8 @@ class WaveformInfo(Base):
     )
     proc_notes: Mapped[Optional[str]] = mapped_column(String(255))
     samp_rate: Mapped[Optional[float]] = mapped_column(Double)
+    max_val: Mapped[Optional[float]] = mapped_column(Double)
+    min_val: Mapped[Optional[float]] = mapped_column(Double)
 
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(
@@ -1071,7 +1077,8 @@ class WaveformInfo(Base):
         return (
             f"Waveform(id={self.id!r}, data_id={self.data_id!r}, chan_id={self.chan_id!r}, "
             f"pick_id={self.pick_id!r}, filt_low={self.filt_low!r}, filt_high={self.filt_high!r}, "
-            f"start={self.start!r}, end={self.end!r}, proc_notes={self.proc_notes!r}, samp_rate={self.samp_rate!r}, "
+            f"start={self.start!r}, end={self.end!r}, proc_notes={self.proc_notes!r}, "
+            f"samp_rate={self.samp_rate!r}, min_val={self.min_val!r}, max_val={self.max_val!r}, "
             f"hdf_file={self.hdf_file!r}, last_modified={self.last_modified!r})"
         )
 

@@ -1,5 +1,6 @@
 """Store business logic"""
 
+import numpy as np
 from sqlalchemy import select, text, insert
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 from seis_proc_db.tables import *
@@ -791,6 +792,8 @@ def insert_waveform_pytable(
         filt_low=filt_low,
         filt_high=filt_high,
         proc_notes=proc_notes,
+        min_val=np.min(data),
+        max_val=np.max(data),
     )
     session.add(new_wf_info)
     session.flush()
