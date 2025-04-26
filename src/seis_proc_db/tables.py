@@ -186,7 +186,9 @@ class Channel(Base):
 
     ndays = column_property(
         select(
-            text("TIMESTAMPDIFF(DAY, ondate, coalesce(offdate, NOW()))"),
+            text(
+                "TIMESTAMPDIFF(DAY, channel.ondate, coalesce(channel.offdate, NOW()))"
+            ),
         ).scalar_subquery()
     )
 

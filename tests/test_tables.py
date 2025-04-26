@@ -119,7 +119,6 @@ def test_channel(db_session_with_stat):
     assert rchan.dip == d["dip"]
     assert rchan.clock_drift == d["clock_drift"]
     assert rchan.ondate.microsecond == 0, "ondate does include microseconds"
-    print(rchan.ndays)
     assert rchan.ndays > 0, "ndays not set"
 
 
