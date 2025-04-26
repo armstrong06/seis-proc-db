@@ -66,8 +66,8 @@ class BasePyTable(ABC):
                 os.makedirs(os.path.dirname(self._file_path))
             except:
                 self._notify(
-                f"{os.path.dirname(self._file_path)} likely created by another job..."
-            )
+                    f"{os.path.dirname(self._file_path)} likely created by another job..."
+                )
 
         file_exists = os.path.isfile(self._file_path)
 
@@ -208,6 +208,9 @@ class BasePyTable(ABC):
                 raise ValueError(
                     "start_ind and end_ind should not be passed when TABLE_START_END_INDS is False"
                 )
+        # Flush the table before modifying. If the row that needs to be found is in
+        # the I/O buffer, I do not think where will work
+        self._flush()
         n_matches = len(list(self._table.where(f"id == {db_id}")))
         if n_matches != 1:
             self.rollback()
@@ -253,19 +256,19 @@ class BasePyTable(ABC):
         except Exception as e:
             self.close()
             raise e
-        
+
     def select_rows(self, ids_list):
         result = []
         for id in ids_list:
             result.append(self.select_row(id))
 
         return result
-    
+
     def select_row(self, id):
         row = list(self._table.where(f"id == {id}"))
         if len(row) == 0:
             return None
-        
+
         colnames = self._table.colnames
         return dict(zip(colnames, row[0][:]))
 
