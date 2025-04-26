@@ -836,7 +836,9 @@ def db_session_with_waveform_info(
 
     wf_storage = pytables_backend.WaveformStorage(
         expected_array_length=2000,
+        net="JK",
         sta="TEST",
+        loc="",
         seed_code="HHZ",
         ncomps=3,
         phase="P",
@@ -885,15 +887,23 @@ def test_insert_waveform_pytable(db_session_with_waveform_info, waveform_ex):
         ).microseconds * 1e-6 < 2, (
             "WaveformInfo.last_modified and Pytables.Row.last_modified are not close"
         )
-        assert new_wf_info.hdf_file == wf_storage.file_name, "wf_info hdf_file incorrect"
+        assert (
+            new_wf_info.hdf_file == wf_storage.file_name
+        ), "wf_info hdf_file incorrect"
         assert new_wf_info.chan_id == ids["chan"], "wf_info chan id incorrect"
         assert new_wf_info.pick_id == ids["pick"], "wf_info pick_id incorrect"
         assert new_wf_info.data_id == ids["data"], "wf_info data_id incorrect"
         assert new_wf_info.filt_low == 1.5, "wf_info filt_low incorrect"
         assert new_wf_info.filt_high == 17.5, "wf_info filt_high incorrect"
-        assert new_wf_info.start == datetime.strptime("2024-01-02T10:11:02.13", dateformat), "wf_info start incorrect"
-        assert new_wf_info.end == datetime.strptime("2024-01-02T10:11:22.14", dateformat), "wf_info end incorrect"
-        assert new_wf_info.proc_notes == "Processed for repicker", "wf_info proc_notes incorrect"
+        assert new_wf_info.start == datetime.strptime(
+            "2024-01-02T10:11:02.13", dateformat
+        ), "wf_info start incorrect"
+        assert new_wf_info.end == datetime.strptime(
+            "2024-01-02T10:11:22.14", dateformat
+        ), "wf_info end incorrect"
+        assert (
+            new_wf_info.proc_notes == "Processed for repicker"
+        ), "wf_info proc_notes incorrect"
         assert new_wf_info.duration_samples == 2001, "incorrect duration"
 
     finally:
@@ -914,6 +924,7 @@ def test_get_waveform_infos(db_session_with_waveform_info):
         os.remove(wf_storage.file_path)
         assert not os.path.exists(wf_storage.file_path), "the file was not removed"
 
+
 def test_get_waveform_infos_and_data(db_session_with_waveform_info, waveform_ex):
     db_session, wf_storage, ids = db_session_with_waveform_info
     try:
@@ -928,6 +939,7 @@ def test_get_waveform_infos_and_data(db_session_with_waveform_info, waveform_ex)
         os.remove(wf_storage.file_path)
         assert not os.path.exists(wf_storage.file_path), "the file was not removed"
 
+
 def test_insert_dldetector_output_pytable(
     db_session_with_dldet_pick, mock_pytables_config
 ):
@@ -936,7 +948,9 @@ def test_insert_dldetector_output_pytable(
 
         detout_storage = pytables_backend.DLDetectorOutputStorage(
             expected_array_length=8640000,
+            net="JK",
             sta="TEST",
+            loc="",
             seed_code="HHZ",
             ncomps=3,
             phase="P",
