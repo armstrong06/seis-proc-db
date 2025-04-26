@@ -108,11 +108,37 @@ def get_operating_station_by_name(session, sta, year):
     # This should only happen if (oddly) there were Stations with ondates within 1 min
     raise ValueError("More than one Station matching these criteria")
 
-# TODO: Implement this
-def get_operating_channels(session, min_date, end_date):
-    pass
 
-def get_operating_channels_by_station_name(session, sta, chan_pref, date, net=None, loc=None):
+# TODO: Implement this
+def get_operating_channels(session, min_date, max_date):
+
+    textual_sql = text(
+        (
+            "channel.ondate <= :max_date AND "
+            "(channel.offdate >= :min_date OR channel.offdate IS NULL)"
+        )
+    )
+    stmt = (
+        select(
+            Station.net,
+            Station.sta,
+            Channel.loc,
+            Channel.seed_code,
+            Channel.ondate,
+            Channel.offdate,
+        )
+        .join_from(Station, Channel, Station.id == Channel.sta_id)
+        .where(textual_sql)
+    )
+
+    result = session.execute(stmt, {"max_date": max_date, "min_date": min_date}).all()
+
+    return result
+
+
+def get_operating_channels_by_station_name(
+    session, sta, chan_pref, date, net=None, loc=None
+):
 
     # net, sta, seed_code, channel.ondate, channel.offdate
     textual_sql = text(
@@ -141,7 +167,7 @@ def get_operating_channels_by_station_name(session, sta, chan_pref, date, net=No
         .where(Channel.seed_code.op("REGEXP")(chan_pref))
         .where(textual_sql)
     )
-    
+
     if net is not None:
         stmt = stmt.where(Station.net == net)
     if loc is not None:
@@ -302,7 +328,9 @@ def get_common_station_channels(session, sta_id, seed_code_pref):
     return result
 
 
-def get_common_station_channels_by_name(session, sta, seed_code_pref, net=None, loc=None):
+def get_common_station_channels_by_name(
+    session, sta, seed_code_pref, net=None, loc=None
+):
     """Get a list of Channel objects belonging to a station name with a common sensor
     type. THERE COULD BE MORE THAN ONE STATION WITH THE SAME NAME.
 
@@ -393,7 +421,9 @@ def upsert_detection_method(session, name, phase=None, details=None, path=None):
     session.execute(upsert_stmt)
 
 
-def insert_dldetection(session, data_id, method_id, sample, phase, width, height, inference_id=None):
+def insert_dldetection(
+    session, data_id, method_id, sample, phase, width, height, inference_id=None
+):
     # TODO: Add gap check
     new_det = DLDetection(
         data_id=data_id,
@@ -402,7 +432,7 @@ def insert_dldetection(session, data_id, method_id, sample, phase, width, height
         phase=phase,
         width=width,
         height=height,
-        inference_id=inference_id
+        inference_id=inference_id,
     )
     session.add(new_det)
     return new_det
@@ -543,6 +573,7 @@ def get_waveforms(session, pick_id, chan_id=None, data_id=None):
 
     return result
 
+
 def get_waveform_infos(session, pick_id, chan_id=None, hdf_file=None, data_id=None):
 
     stmt = select(WaveformInfo).where(WaveformInfo.pick_id == pick_id)
@@ -560,16 +591,20 @@ def get_waveform_infos(session, pick_id, chan_id=None, hdf_file=None, data_id=No
 
     return result
 
+
 def get_waveform_infos_and_data(session, storage, pick_id, chan_id=None, data_id=None):
     hdf_file = storage.file_name
-    wf_infos = get_waveform_infos(session, pick_id, chan_id=chan_id, hdf_file=hdf_file, data_id=data_id)
+    wf_infos = get_waveform_infos(
+        session, pick_id, chan_id=chan_id, hdf_file=hdf_file, data_id=data_id
+    )
     results = []
     for wf_info in wf_infos:
         row = storage.select_row(wf_info.id)
         results.append((wf_info, row))
 
     return results
-        
+
+
 # def insert_pick_with_waveform(
 #     session,
 #     sta_id,

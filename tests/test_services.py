@@ -125,6 +125,45 @@ def db_session_with_station(db_session, stat_ex):
     return db_session, inserted_stat.id
 
 
+def test_get_operating_channels(db_session):
+    min_date = datetime.strptime("2023-01-01T00:00:00.00", dateformat)
+    max_date = datetime.strptime("2024-01-01T00:00:00.00", dateformat)
+    channel_infos = services.get_operating_channels(
+        db_session,
+        min_date,
+        max_date,
+    )
+
+    summary_dict = {}
+    for ci in channel_infos:
+        key = f"{ci[0]}.{ci[1]}.{ci[2]}.{ci[3][0:2]}"
+        if ci[3][1] != "H":
+            continue
+        if key in summary_dict.keys():
+            summary_dict[key]["cnt"] += 1
+            summary_dict[key]["chans"].append(ci)
+        else:
+            summary_dict[key] = {"cnt": 1, "chans": [ci]}
+
+        assert ci[4] <= max_date, "channel.ondate is not less than max_date"
+        assert (
+            ci[5] is None or ci[5] >= min_date
+        ), "channel.offdata is not greater than min_date"
+
+    # One component stations
+    onec = {k: v for k, v in summary_dict.items() if v.get("cnt") < 3}
+    # Get 3C stations
+    threec = {
+        k: v
+        for k, v in summary_dict.items()
+        if v.get("cnt") >= 3 and v.get("cnt") % 3 == 0
+    }
+
+    assert len(onec) == 20, "Expected 20 1C stations in 2023"
+    assert len(threec) == 32, "Expected 32 3C stations in 2023"
+    assert len(onec) + len(threec) == len(summary_dict)
+
+
 def test_insert_station(db_session_with_station):
     db_session, sid = db_session_with_station
     assert db_session.get(tables.Station, sid).sta == "TEST"
