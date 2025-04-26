@@ -164,6 +164,15 @@ def test_get_operating_channels(db_session):
     assert len(onec) + len(threec) == len(summary_dict)
 
 
+def test_get_similar_channel_total_ndays(db_session):
+
+    total = services.get_similar_channel_total_ndays(
+        db_session, "US", "LKWY", "00", "BHZ"
+    )
+
+    assert total == 5548, "incorrect number of days"
+
+
 def test_insert_station(db_session_with_station):
     db_session, sid = db_session_with_station
     assert db_session.get(tables.Station, sid).sta == "TEST"

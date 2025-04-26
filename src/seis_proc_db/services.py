@@ -329,6 +329,21 @@ def get_common_station_channels(session, sta_id, seed_code_pref):
     return result
 
 
+def get_similar_channel_total_ndays(session, net, sta, loc, seed_code):
+    stmt = (
+        select(Channel.ndays)
+        .join(Station, Station.id == Channel.sta_id)
+        .where(Station.net == net)
+        .where(Station.sta == sta)
+        .where(Channel.loc == loc)
+        .where(Channel.seed_code == seed_code)
+    )
+
+    result = session.execute(stmt).all()
+
+    return np.sum(result)
+
+
 def get_common_station_channels_by_name(
     session, sta, seed_code_pref, net=None, loc=None
 ):
