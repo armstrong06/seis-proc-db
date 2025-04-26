@@ -119,6 +119,8 @@ def test_channel(db_session_with_stat):
     assert rchan.dip == d["dip"]
     assert rchan.clock_drift == d["clock_drift"]
     assert rchan.ondate.microsecond == 0, "ondate does include microseconds"
+    print(rchan.ndays)
+    assert rchan.ndays > 0, "ndays not set"
 
 
 def test_dailycontdatainfo(db_session_with_stat):
@@ -320,7 +322,7 @@ def test_dldetector_output(db_session_with_contdata):
     db_session.add(imeth)
     db_session.commit()
 
-    d = {"hdf_file": "testSta_HH_3C.hdf"} #, "hdf_index": 1000}
+    d = {"hdf_file": "testSta_HH_3C.hdf"}  # , "hdf_index": 1000}
 
     iinf = tables.DLDetectorOutput(data_id=icd.id, method_id=imeth.id, **d)
     db_session.add(iinf)
@@ -484,7 +486,7 @@ def test_pick_correction(db_session_with_pick):
         "if_high": 2.2,
         "trim_mean": 1.01,
         "trim_median": 1.02,
-        #"preds": np.zeros((300)).tolist(),
+        # "preds": np.zeros((300)).tolist(),
         "preds_hdf_file": "swag_P_TestSTA_HHZ.hdf",
         # "preds_hdf_index": 1000000
     }
@@ -533,7 +535,7 @@ def test_firstmotion(db_session_with_pick):
         "clsf": "dn",
         "prob_up": 9.5,
         "prob_dn": 90.5,
-        #"preds": np.zeros((300)).tolist(),
+        # "preds": np.zeros((300)).tolist(),
         "preds_hdf_file": "swag_TestSTA_HHZ.hdf",
         # "preds_hdf_index": 2000000
     }
@@ -546,7 +548,7 @@ def test_firstmotion(db_session_with_pick):
     assert len(imeth.fms) == 1, "fm_method.fms should have 1 value"
     assert ifm.pick is not None, "fm.pick should exist"
     assert ifm.method is not None, "fm.method should exist"
-    #assert np.array_equal(ifm.preds, np.zeros((300))), "Invalid preds"
+    # assert np.array_equal(ifm.preds, np.zeros((300))), "Invalid preds"
     assert ifm.preds_hdf_file == "swag_TestSTA_HHZ.hdf", "invalid preds_hdf_file"
     # assert ifm.preds_hdf_index == 2000000, "invalid preds_hdf_index"
     assert ifm.clsf == "dn", f"fm.clsf wrong as {ifm.clsf}"
@@ -588,7 +590,7 @@ def db_session_with_corr(db_session_with_pick):
         "if_high": 2.2,
         "trim_mean": 1.01,
         "trim_median": 1.02,
-        #"preds": np.zeros((300)).tolist(),
+        # "preds": np.zeros((300)).tolist(),
         "preds_hdf_file": "swag_P_TestSTA_HHZ.hdf",
         # "preds_hdf_index": 1000000
     }
@@ -813,7 +815,7 @@ def test_waveform_info(db_session_with_contdata_and_channel_and_pick):
     assert iwf.end.second == 22, "Invalud end second"
     assert iwf.end.microsecond == 140000, "Invalid end microsecond"
     assert iwf.hdf_file == "raw_testStation_HH_3C.hdf", "Invalid hdf_file"
-   # assert iwf.hdf_index == 0, "Invalid hdf_index"
+    # assert iwf.hdf_index == 0, "Invalid hdf_index"
     assert iwf.last_modified.year == datetime.now().year, "invalid last_modified year"
     assert iwf.last_modified.month == datetime.now().month, "invalid last_modified year"
     assert iwf.last_modified.day == datetime.now().day, "invalid last_modified year"

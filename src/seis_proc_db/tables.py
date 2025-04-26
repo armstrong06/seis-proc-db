@@ -184,6 +184,12 @@ class Channel(Base):
         server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
     )
 
+    ndays = column_property(
+        select(
+            text("TIMESTAMPDIFF(DAY, ondate, coalesce(offdate, NOW()))"),
+        ).scalar_subquery()
+    )
+
     # Many-to-One relation with Station
     station: Mapped["Station"] = relationship(back_populates="channels")
     # One-to-Many relationship with Gaps
