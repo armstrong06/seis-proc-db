@@ -27,7 +27,7 @@ class BasePyTable(ABC):
         _, file_name = os.path.split(self._file_path)
         return file_name
 
-    def __init__(self, expected_array_length, on_event=None):
+    def __init__(self, expected_array_length, on_event=None, expectedrows=10000):
 
         self._is_open = False
         self._on_event = on_event
@@ -42,6 +42,7 @@ class BasePyTable(ABC):
             self.TABLE_TITLE,
             self.TABLE_TYPE,
             self.TABLE_DTYPE,
+            expectedrows,
         )
 
         self._in_transaction = False
@@ -57,7 +58,12 @@ class BasePyTable(ABC):
         pass
 
     def _open_file(
-        self, table_name, table_title, table_description, table_data_col_type
+        self,
+        table_name,
+        table_title,
+        table_description,
+        table_data_col_type,
+        expectedrows=10000,
     ):
         self._notify(f"Opening {self._file_path} to store {self.TABLE_TITLE}")
         dir_exists = os.path.exists(os.path.dirname(self._file_path))
@@ -86,6 +92,7 @@ class BasePyTable(ABC):
                         table_data_col_type, table_description
                     ),
                     table_title,
+                    expectedrows=expectedrows,
                 )
                 table.cols.id.create_index()
 
@@ -322,6 +329,7 @@ class WaveformStorage(BasePyTable):
         filt_high,
         proc_notes,
         on_event=None,
+        expectedrows=10000,
     ):
         self.net = net
         self.sta = sta
@@ -334,7 +342,9 @@ class WaveformStorage(BasePyTable):
         self.filt_high = filt_high
         self.proc_notes = proc_notes
 
-        super().__init__(expected_array_length, on_event=on_event)
+        super().__init__(
+            expected_array_length, on_event=on_event, expectedrows=expectedrows
+        )
 
     def _make_filepath(self):
         file_name = f"{self.net}.{self.sta}.{self.loc}.{self.seed_code}.{self.phase}.{self.ncomps}C_{self.filt_low!r}Hz_{self.filt_high!r}Hz_{self.expected_array_length}samps.h5"
@@ -365,6 +375,7 @@ class DLDetectorOutputStorage(BasePyTable):
         ncomps,
         det_method_id,
         on_event=None,
+        expectedrows=10000,
     ):
 
         self.net = net
@@ -375,7 +386,9 @@ class DLDetectorOutputStorage(BasePyTable):
         self.phase = phase
         self.det_method_id = det_method_id
 
-        super().__init__(expected_array_length, on_event=on_event)
+        super().__init__(
+            expected_array_length, on_event=on_event, expectedrows=expectedrows
+        )
 
     def _make_filepath(self):
         file_name = f"{self.net}.{self.sta}.{self.loc}.{self.seed_code}.{self.phase}.{self.ncomps}C.detmethod{self.det_method_id:02d}.h5"
