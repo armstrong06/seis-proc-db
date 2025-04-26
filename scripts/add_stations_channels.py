@@ -17,7 +17,7 @@ for year in np.arange(2024, 2001, -1):
     stats = []
     for file in files:
         inv = obspy.read_inventory(file)
-        inv = inv.select(channel="[EHB]??")
+        inv = inv.select(channel="[EHB]H?")
 
         for network in inv:
             for station in network:
@@ -52,15 +52,26 @@ for year in np.arange(2024, 2001, -1):
                         "sensit_val": channel.response.instrument_sensitivity.value,
                         "overall_gain_vel": channel.response._get_overall_sensitivity_and_gain(
                             output="VEL"
-                        )[1],
+                        )[
+                            1
+                        ],
                     }
-                    if station.code == "YFT" and channel.code[:-1] == "HH" and channel.start_date == UTCDateTime("2016-06-19T00:00:00.0000"):
+                    if (
+                        station.code == "YFT"
+                        and channel.code[:-1] == "HH"
+                        and channel.start_date
+                        == UTCDateTime("2016-06-19T00:00:00.0000")
+                    ):
                         print("UPDATING YFT ENDDATE")
                         # Enddate from IRIS http://ds.iris.edu/mda/WY/YFT/?starttime=1993-10-26&endtime=2599-12-31
                         # Possibly incorrect because the colocated strong motion from that time period is still operational
                         chan_dict["offdate"] = UTCDateTime("2020-09-14T23:59:59")
-                    if station.code == "YTP" and channel.code == "EHZ" and channel.start_date == UTCDateTime("2013-08-26T00:00:00"):
-                        # It seems that the channel metadata was updated in late 2024/early 2025 to have the start date be 2013/04/01 
+                    if (
+                        station.code == "YTP"
+                        and channel.code == "EHZ"
+                        and channel.start_date == UTCDateTime("2013-08-26T00:00:00")
+                    ):
+                        # It seems that the channel metadata was updated in late 2024/early 2025 to have the start date be 2013/04/01
                         # instead of 2013/08/26. This agrees with what is on iris http://ds.iris.edu/mda/WY/YTP/?starttime=1994-08-05&endtime=2599-12-31
                         chan_dict["ondate"] = UTCDateTime("2013-04-01T00:00:00")
 
