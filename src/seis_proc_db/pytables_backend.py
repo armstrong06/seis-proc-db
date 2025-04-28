@@ -57,6 +57,17 @@ class BasePyTable(ABC):
     def _make_h5_file_title(self):
         pass
 
+    @staticmethod
+    def _get_compression_filters():
+        """Returns a tables.Filters object for providing compression information to the
+        table. It uses the default compression algorithm (zlib), which is part of the
+        standard HDF5 libray, and the lowest compression level (1).
+
+        Returns:
+            tables.Filters: filter information for the table
+        """
+        return Filters(complevel=1, complib="zlib")
+
     def _open_file(
         self,
         table_name,
@@ -93,6 +104,7 @@ class BasePyTable(ABC):
                     ),
                     table_title,
                     expectedrows=expectedrows,
+                    filters=self._get_compression_filters(),
                 )
                 table.cols.id.create_index()
 
