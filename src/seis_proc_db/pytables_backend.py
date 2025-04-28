@@ -57,6 +57,10 @@ class BasePyTable(ABC):
     def _make_h5_file_title(self):
         pass
 
+    @staticmethod
+    def _get_compression_filters():
+        return Filters(complevel=1, complib="zlib")
+
     def _open_file(
         self,
         table_name,
@@ -93,6 +97,7 @@ class BasePyTable(ABC):
                     ),
                     table_title,
                     expectedrows=expectedrows,
+                    filters=self._get_compression_filters(),
                 )
                 table.cols.id.create_index()
 
