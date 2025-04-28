@@ -13,6 +13,8 @@ class BasePyTable(ABC):
     TABLE_DTYPE = None
     TABLE_START_END_INDS = False
     FLUSH_THRESHOLD = 50
+    COMPLEVEL = 0
+    COMPLIB = None
 
     @property
     def table(self):
@@ -27,7 +29,12 @@ class BasePyTable(ABC):
         _, file_name = os.path.split(self._file_path)
         return file_name
 
-    def __init__(self, expected_array_length, on_event=None, expectedrows=10000):
+    def __init__(
+        self,
+        expected_array_length,
+        on_event=None,
+        expectedrows=10000,
+    ):
 
         self._is_open = False
         self._on_event = on_event
@@ -56,17 +63,6 @@ class BasePyTable(ABC):
     @abstractmethod
     def _make_h5_file_title(self):
         pass
-
-    @staticmethod
-    def _get_compression_filters():
-        """Returns a tables.Filters object for providing compression information to the
-        table. It uses the default compression algorithm (zlib), which is part of the
-        standard HDF5 libray, and the lowest compression level (1).
-
-        Returns:
-            tables.Filters: filter information for the table
-        """
-        return Filters(complevel=1, complib="zlib")
 
     def _open_file(
         self,
@@ -104,7 +100,7 @@ class BasePyTable(ABC):
                     ),
                     table_title,
                     expectedrows=expectedrows,
-                    filters=self._get_compression_filters(),
+                    filters=Filters(complevel=self.COMPLEVEL, complib=self.COMPLIB),
                 )
                 table.cols.id.create_index()
 
@@ -375,6 +371,8 @@ class DLDetectorOutputStorage(BasePyTable):
     TABLE_TITLE = "DL detector output"
     # TABLE_DESCRIPTION = "DlDetectorOutput"
     TABLE_DTYPE = UInt8Col
+    COMPLEVEL = 1
+    COMPLIB = "zlib"
 
     def __init__(
         self,
