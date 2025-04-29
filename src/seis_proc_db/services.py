@@ -833,6 +833,8 @@ def insert_dldetector_output_pytable(
     storage_session.append(db_id, data)
 
     return new_detout
+
+
 def insert_repicker_method(session, name, phase=None, details=None, path=None):
     new_repicker_method = RepickerMethod(
         name=name, phase=phase, details=details, path=path
@@ -872,3 +874,54 @@ def get_calibration_method(session, name):
         return None
 
     return result[0]
+
+
+def get_info_for_swag_repickers(
+    session,
+    phase,
+    start,
+    end,
+    wf_filt_low=None,
+    wf_filt_high=None,
+    hdf_file_contains=None,
+):
+    params = {}
+    stmt = (
+        select(Pick, Channel, WaveformInfo)
+        .join_from(Pick, WaveformInfo, Pick.id == WaveformInfo.pick_id)
+        .join(Channel, Channel.id == WaveformInfo.chan_id)
+        .where(Pick.phase == phase)
+        .where(Pick.ptime >= start)
+        .where(Pick.ptime < end)
+        .order_by(Pick.id, Channel.seed_code)
+    )
+
+    # Only need vertical component for P pick regressor
+    if phase == "P":
+        stmt = stmt.where(text('channel.seed_code LIKE "__Z"'))
+
+    if wf_filt_low is not None:
+        stmt = stmt.where(wf_filt_low == wf_filt_low)
+
+    if wf_filt_high is not None:
+        stmt = stmt.where(wf_filt_high == wf_filt_high)
+
+    if hdf_file_contains is not None:
+        params["hdf_file_contains"] = hdf_file_contains
+        stmt = stmt.where(text("waveform_info.hdf_file LIKE :hdf_file_contains"))
+
+    result = session.execute(stmt, params).all()
+
+    return result
+
+
+def insert_pick_correction_pytables(
+    session,
+):
+    pass
+
+
+def insert_ci(
+    session,
+):
+    pass

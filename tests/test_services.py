@@ -1078,3 +1078,30 @@ def test_get_ci_method(db_session, calibration_method_ex):
     selected_method = services.get_calibration_method(db_session, d["name"])
     assert selected_method.name ==  "TEST-Kuleshov-MSWAG-P-3M-120", "incorrect name"
 
+def test_get_info_for_swag_repickers(db_session_with_waveform_info):
+    try:
+        db_session, wf_storage, ids = db_session_with_waveform_info
+        picks_and_wf_infos = services.get_info_for_swag_repickers(db_session, 
+                                                                  "P",
+                                                                  datetime.strptime("2024-01-01T00:00:00.00", dateformat),
+                                                                  datetime.strptime("2024-01-10T00:00:00.00", dateformat))
+        print(picks_and_wf_infos)
+
+        assert len(picks_and_wf_infos) == 1, "expected exactly 1 row"
+        assert len(picks_and_wf_infos[0]) ==3, "Expected 3 objects to be returned for row"
+        assert type(picks_and_wf_infos[0][0]) == tables.Pick, "expected the first item to be a Pick"
+        assert type(picks_and_wf_infos[0][1]) == tables.Channel, "expected the second item to be a Channel"
+        assert type(picks_and_wf_infos[0][2]) == tables.WaveformInfo, "expected the third item to be a WaveformInfo"
+
+
+    finally:
+        # Clean up
+        wf_storage.close()
+        os.remove(wf_storage.file_path)
+        assert not os.path.exists(wf_storage.file_path), "the file was not removed"
+
+def test_insert_pick_correction_pytables():
+    pass
+
+def test_insert_ci():
+    pass
