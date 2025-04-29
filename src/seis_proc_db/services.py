@@ -833,3 +833,42 @@ def insert_dldetector_output_pytable(
     storage_session.append(db_id, data)
 
     return new_detout
+def insert_repicker_method(session, name, phase=None, details=None, path=None):
+    new_repicker_method = RepickerMethod(
+        name=name, phase=phase, details=details, path=path
+    )
+    session.add(new_repicker_method)
+
+    return new_repicker_method
+
+
+def get_repicker_method(session, name):
+
+    result = session.scalars(
+        select(RepickerMethod).where(RepickerMethod.name == name)
+    ).all()
+
+    if len(result) == 0:
+        return None
+
+    return result[0]
+
+
+def insert_calibration_method(session, name, phase=None, details=None, path=None):
+    new_calibration_method = CalibrationMethod(
+        name=name, phase=phase, details=details, path=path
+    )
+    session.add(new_calibration_method)
+
+    return new_calibration_method
+
+
+def get_calibration_method(session, name):
+    result = session.scalars(
+        select(CalibrationMethod).where(CalibrationMethod.name == name)
+    ).all()
+
+    if len(result) == 0:
+        return None
+
+    return result[0]

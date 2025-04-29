@@ -78,6 +78,27 @@ def detection_method_ex():
         }
     )
 
+@pytest.fixture
+def repicker_method_ex():
+    return deepcopy(
+        {
+            "name": "TEST-MSWAG-P-3M-120",
+            "phase": "P",
+            "details": "MSWAG P repicker using 3 models, each making 120 picks, from Armstrong 2023 BSSA paper",
+            "path": "the/model/files/are/stored/here",
+        }
+    )
+
+@pytest.fixture
+def calibration_method_ex():
+    return deepcopy(
+        {
+            "name": "TEST-Kuleshov-MSWAG-P-3M-120",
+            "phase": "P",
+            "details": "Uses Kuleshov et al 2018 approach to calibrate ensemble result from TEST-MSWAG-P-3M-120, from Armstrong 2023 BSSA paper",
+            "path": "the/model/files/are/stored/here",
+        }
+    )
 
 @pytest.fixture
 def pick_ex():
@@ -998,3 +1019,62 @@ def test_insert_dldetector_output_pytable(
         detout_storage.close()
         os.remove(detout_storage.file_path)
         assert not os.path.exists(detout_storage.file_path), "the file was not removed"
+
+def test_insert_repicker_method(db_session, repicker_method_ex):
+    d = repicker_method_ex
+    inserted_repick_meth = services.insert_repicker_method(
+        db_session,
+        name=d["name"],
+        phase=d["phase"],
+        details=d["details"],
+        path=d["path"],
+    )
+    db_session.commit()
+    assert inserted_repick_meth.name ==  "TEST-MSWAG-P-3M-120", "incorrect name"
+    assert inserted_repick_meth.phase == "P", "incorrect phase"
+
+
+def test_get_repicker_method(db_session, repicker_method_ex):
+    d = repicker_method_ex
+    _ = services.insert_repicker_method(
+        db_session,
+        name=d["name"],
+        phase=d["phase"],
+        details=d["details"],
+        path=d["path"],
+    )
+    db_session.commit()
+    db_session.expunge_all()
+
+    selected_method = services.get_repicker_method(db_session, d["name"])
+    assert selected_method.name ==  "TEST-MSWAG-P-3M-120", "incorrect name"
+
+
+def test_insert_ci_method(db_session, calibration_method_ex):
+    d = calibration_method_ex
+    inserted_repick_meth = services.insert_calibration_method(
+        db_session,
+        name=d["name"],
+        phase=d["phase"],
+        details=d["details"],
+        path=d["path"],
+    )
+    db_session.commit()
+    assert inserted_repick_meth.name ==  "TEST-Kuleshov-MSWAG-P-3M-120", "incorrect name"
+    assert inserted_repick_meth.phase == "P", "incorrect phase"
+
+def test_get_ci_method(db_session, calibration_method_ex):
+    d = calibration_method_ex
+    _ = services.insert_calibration_method(
+        db_session,
+        name=d["name"],
+        phase=d["phase"],
+        details=d["details"],
+        path=d["path"],
+    )
+    db_session.commit()
+    db_session.expunge_all()
+
+    selected_method = services.get_calibration_method(db_session, d["name"])
+    assert selected_method.name ==  "TEST-Kuleshov-MSWAG-P-3M-120", "incorrect name"
+
