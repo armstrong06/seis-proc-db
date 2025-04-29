@@ -949,3 +949,21 @@ def insert_pick_correction_pytable(
 
     return pick_corr
 
+
+def insert_ci(session, corr_id, method_id, percent, lb, ub):
+    new_ci = CredibleInterval(
+        corr_id=corr_id, method_id=method_id, percent=percent, lb=lb, ub=ub
+    )
+    session.add(new_ci)
+    return new_ci
+
+
+def insert_cis(session, ci_dict_list):
+    session.execute(insert(CredibleInterval), ci_dict_list)
+    
+def get_correction_cis(session, corr_id):
+
+    stmt = (select(CredibleInterval)
+            .where(CredibleInterval.corr_id == corr_id))
+    
+    return session.scalars(stmt).all()

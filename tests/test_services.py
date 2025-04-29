@@ -631,7 +631,6 @@ def test_bulk_insert_dldetections_with_gap_check_outside_gap(
     inserted_dets = services.get_dldetections(
         db_session, ids["data"], ids["method"], 70, "P"
     )
-    print(inserted_dets)
     assert (
         len(inserted_dets) == 2
     ), "incorrect number of dets returned with min_height=70"
@@ -748,7 +747,6 @@ def db_session_with_multiple_channel_gaps(
         g["chan_id"] = chan.id
         g["start"] += timedelta(minutes=((-1 + i) * 10))
         gaps.append(g)
-    print(gaps)
     services.insert_gaps(db_session, gaps)
 
     inserted_method = services.insert_detection_method(
@@ -1093,7 +1091,6 @@ def test_get_info_for_swag_repickers(db_session_with_waveform_info):
             datetime.strptime("2024-01-01T00:00:00.00", dateformat),
             datetime.strptime("2024-01-10T00:00:00.00", dateformat),
         )
-        print(picks_and_wf_infos)
 
         assert len(picks_and_wf_infos) == 1, "expected exactly 1 row"
         assert (
@@ -1116,8 +1113,12 @@ def test_get_info_for_swag_repickers(db_session_with_waveform_info):
         assert not os.path.exists(wf_storage.file_path), "the file was not removed"
 
 
-def test_insert_pick_correction_pytable(
-    db_session_with_dldet_pick, mock_pytables_config, repicker_method_ex
+@pytest.fixture
+def db_session_with_pick_corr(
+    db_session_with_dldet_pick,
+    mock_pytables_config,
+    repicker_method_ex,
+    calibration_method_ex,
 ):
     db_session, ids = db_session_with_dldet_pick
     d = repicker_method_ex
@@ -1128,40 +1129,60 @@ def test_insert_pick_correction_pytable(
         details=d["details"],
         path=d["path"],
     )
+    d = calibration_method_ex
+    cal_method = services.insert_calibration_method(
+        db_session,
+        name=d["name"],
+        phase=d["phase"],
+        details=d["details"],
+        path=d["path"],
+    )
     db_session.flush()
 
     preds = np.random.random((360,)).astype(np.float32)
 
+    corr_storage = pytables_backend.SwagPicksStorage(
+        360,
+        phase="P",
+        start="2023-01-01",
+        end="2023-01-31",
+        repicker_method_id=repicker_method.id,
+    )
+
+    pick_corr = services.insert_pick_correction_pytable(
+        db_session,
+        corr_storage,
+        ids["pick"],
+        repicker_method.id,
+        median=np.median(preds),
+        mean=np.mean(preds),
+        std=np.std(preds),
+        if_low=0,
+        if_high=1,
+        trim_median=0,
+        trim_mean=0.1,
+        predictions=preds,
+    )
+    db_session.commit()
+    corr_storage.commit()
+
+    ids["corr"] = pick_corr.id
+    ids["repicker_method"] = repicker_method.id
+    ids["cal_method"] = cal_method.id
+
+    return db_session, corr_storage, ids, preds
+
+
+def test_insert_pick_correction_pytable(db_session_with_pick_corr):
     try:
-        corr_storage = pytables_backend.SwagPicksStorage(
-            360,
-            phase="P",
-            start="2023-01-01",
-            end="2023-01-31",
-            repicker_method_id=repicker_method.id,
-        )
+        db_session, corr_storage, ids, preds = db_session_with_pick_corr
 
-        pick_corr = services.insert_pick_correction_pytable(
-            db_session,
-            corr_storage,
-            ids["pick"],
-            repicker_method.id,
-            median=np.median(preds),
-            mean=np.mean(preds),
-            std=np.std(preds),
-            if_low=0,
-            if_high=1,
-            trim_median=0,
-            trim_mean=0.1,
-            predictions=preds,
-        )
-        db_session.commit()
-        corr_storage.commit()
+        pick_corr = db_session.get(tables.PickCorrection, ids["corr"])
 
-        assert pick_corr.id is not None, "PickCorrection.id is not set"
+        assert ids["corr"] is not None, "PickCorrection.id is not set"
         assert corr_storage.table.nrows == 1, "Expected 1 rows in pytable"
-        row = [row for row in corr_storage.table.where(f"id == {pick_corr.id}")][0]
-        assert row["id"] == pick_corr.id, "incorrect id"
+        row = [row for row in corr_storage.table.where(f'id == {ids["corr"]}')][0]
+        assert row["id"] == ids["corr"], "incorrect id"
         assert np.array_equal(row["data"], preds), "incorrect data"
         assert (
             datetime.fromtimestamp(row["last_modified"]).date() == datetime.now().date()
@@ -1179,9 +1200,81 @@ def test_insert_pick_correction_pytable(
         assert not os.path.exists(corr_storage.file_path), "the file was not removed"
 
 
-def test_insert_ci():
-    pass
+def test_insert_ci(db_session_with_pick_corr):
+    try:
+        db_session, corr_storage, ids, _ = db_session_with_pick_corr
+    finally:
+        # Clean up
+        corr_storage.close()
+        os.remove(corr_storage.file_path)
+        assert not os.path.exists(corr_storage.file_path), "the file was not removed"
+
+    ci = services.insert_ci(db_session, ids["corr"], ids["cal_method"], 90, -1.22, 1.34)
+    db_session.commit()
+
+    assert ci is not None
+    assert ci.id is not None
+    assert ci.method_id == ids["cal_method"]
+    assert ci.percent == 90
+    assert ci.lb == -1.22
+    assert ci.ub == 1.34
 
 
-def test_insert_cis():
-    pass
+def test_get_cis(db_session_with_pick_corr):
+    try:
+        db_session, corr_storage, ids, _ = db_session_with_pick_corr
+    finally:
+        # Clean up
+        corr_storage.close()
+        os.remove(corr_storage.file_path)
+        assert not os.path.exists(corr_storage.file_path), "the file was not removed"
+
+    ci = services.insert_ci(db_session, ids["corr"], ids["cal_method"], 90, -1.22, 1.34)
+    db_session.commit()
+    db_session.expunge_all()
+
+    cis = services.get_correction_cis(db_session, ids["corr"])
+    assert len(cis) == 1
+    ci = cis[0]
+    assert ci is not None
+    assert ci.id is not None
+    assert ci.method_id == ids["cal_method"]
+    assert ci.percent == 90
+    assert ci.lb == -1.22
+    assert ci.ub == 1.34
+
+
+def test_insert_cis(db_session_with_pick_corr):
+    try:
+        db_session, corr_storage, ids, _ = db_session_with_pick_corr
+    finally:
+        # Clean up
+        corr_storage.close()
+        os.remove(corr_storage.file_path)
+        assert not os.path.exists(corr_storage.file_path), "the file was not removed"
+
+    cnt0 = db_session.execute(func.count(tables.CredibleInterval.id)).one()[0]
+    cis_list = [
+        {
+            "corr_id": ids["corr"],
+            "method_id": ids["cal_method"],
+            "percent": 90,
+            "lb": -1.22,
+            "ub": 1.34,
+        }
+    ]
+    services.insert_cis(db_session, cis_list)
+    db_session.commit()
+
+    cnt1 = db_session.execute(func.count(tables.CredibleInterval.id)).one()[0]
+    assert cnt1 - cnt0 == 1, "Expected 1 CI to be inserted"
+
+    cis = services.get_correction_cis(db_session, ids["corr"])
+    assert len(cis) == 1
+    ci = cis[0]
+    assert ci is not None
+    assert ci.id is not None
+    assert ci.method_id == ids["cal_method"]
+    assert ci.percent == 90
+    assert ci.lb == -1.22
+    assert ci.ub == 1.34
