@@ -609,7 +609,7 @@ def get_waveform_infos(session, pick_id, chan_id=None, hdf_file=None, data_id=No
 
 
 def get_waveform_infos_and_data(session, storage, pick_id, chan_id=None, data_id=None):
-    hdf_file = storage.file_name
+    hdf_file = storage.relative_path
     wf_infos = get_waveform_infos(
         session, pick_id, chan_id=chan_id, hdf_file=hdf_file, data_id=data_id
     )
@@ -803,7 +803,7 @@ def insert_waveform_pytable(
         pick_id=pick_id,
         start=start,
         end=end,
-        hdf_file=storage_session.file_name,
+        hdf_file=storage_session.relative_path,
         filt_low=filt_low,
         filt_high=filt_high,
         proc_notes=proc_notes,

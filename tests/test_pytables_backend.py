@@ -79,6 +79,7 @@ class TestWaveformStorage:
                 os.path.basename(os.path.dirname(wf_storage.file_path))
                 == "NoneHz_NoneHz_1200samps"
             ), "incorrect directory name"
+            assert wf_storage.relative_path == "NoneHz_NoneHz_1200samps/JK.TEST.01.HHZ.P.3C.h5", "incorrect relative path"
             # Check that the file was created
             assert os.path.exists(wf_storage.file_path), "the file was not created"
             # Check that the file is set to open

@@ -897,7 +897,7 @@ def test_insert_waveform_pytable(db_session_with_waveform_info, waveform_ex):
             "WaveformInfo.last_modified and Pytables.Row.last_modified are not close"
         )
         assert (
-            new_wf_info.hdf_file == wf_storage.file_name
+            new_wf_info.hdf_file == wf_storage.relative_path
         ), "wf_info hdf_file incorrect"
         assert new_wf_info.chan_id == ids["chan"], "wf_info chan id incorrect"
         assert new_wf_info.pick_id == ids["pick"], "wf_info pick_id incorrect"
