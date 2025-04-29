@@ -915,13 +915,37 @@ def get_info_for_swag_repickers(
     return result
 
 
-def insert_pick_correction_pytables(
+def insert_pick_correction_pytable(
     session,
+    storage,
+    pick_id,
+    method_id,
+    median,
+    mean,
+    std,
+    if_low,
+    if_high,
+    trim_median,
+    trim_mean,
+    predictions,
 ):
-    pass
+    pick_corr = PickCorrection(
+        pid=pick_id,
+        method_id=method_id,
+        median=median,
+        mean=mean,
+        std=std,
+        if_low=if_low,
+        if_high=if_high,
+        trim_median=trim_median,
+        trim_mean=trim_mean,
+        preds_hdf_file=storage.file_name,
+    )
+    session.add(pick_corr)
+    session.flush()
 
+    db_id = pick_corr.id
+    storage.append(db_id, predictions)
 
-def insert_ci(
-    session,
-):
-    pass
+    return pick_corr
+

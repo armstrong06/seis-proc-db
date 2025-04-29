@@ -78,6 +78,7 @@ def detection_method_ex():
         }
     )
 
+
 @pytest.fixture
 def repicker_method_ex():
     return deepcopy(
@@ -89,6 +90,7 @@ def repicker_method_ex():
         }
     )
 
+
 @pytest.fixture
 def calibration_method_ex():
     return deepcopy(
@@ -99,6 +101,7 @@ def calibration_method_ex():
             "path": "the/model/files/are/stored/here",
         }
     )
+
 
 @pytest.fixture
 def pick_ex():
@@ -1020,6 +1023,7 @@ def test_insert_dldetector_output_pytable(
         os.remove(detout_storage.file_path)
         assert not os.path.exists(detout_storage.file_path), "the file was not removed"
 
+
 def test_insert_repicker_method(db_session, repicker_method_ex):
     d = repicker_method_ex
     inserted_repick_meth = services.insert_repicker_method(
@@ -1030,7 +1034,7 @@ def test_insert_repicker_method(db_session, repicker_method_ex):
         path=d["path"],
     )
     db_session.commit()
-    assert inserted_repick_meth.name ==  "TEST-MSWAG-P-3M-120", "incorrect name"
+    assert inserted_repick_meth.name == "TEST-MSWAG-P-3M-120", "incorrect name"
     assert inserted_repick_meth.phase == "P", "incorrect phase"
 
 
@@ -1047,7 +1051,7 @@ def test_get_repicker_method(db_session, repicker_method_ex):
     db_session.expunge_all()
 
     selected_method = services.get_repicker_method(db_session, d["name"])
-    assert selected_method.name ==  "TEST-MSWAG-P-3M-120", "incorrect name"
+    assert selected_method.name == "TEST-MSWAG-P-3M-120", "incorrect name"
 
 
 def test_insert_ci_method(db_session, calibration_method_ex):
@@ -1060,8 +1064,9 @@ def test_insert_ci_method(db_session, calibration_method_ex):
         path=d["path"],
     )
     db_session.commit()
-    assert inserted_repick_meth.name ==  "TEST-Kuleshov-MSWAG-P-3M-120", "incorrect name"
+    assert inserted_repick_meth.name == "TEST-Kuleshov-MSWAG-P-3M-120", "incorrect name"
     assert inserted_repick_meth.phase == "P", "incorrect phase"
+
 
 def test_get_ci_method(db_session, calibration_method_ex):
     d = calibration_method_ex
@@ -1076,23 +1081,33 @@ def test_get_ci_method(db_session, calibration_method_ex):
     db_session.expunge_all()
 
     selected_method = services.get_calibration_method(db_session, d["name"])
-    assert selected_method.name ==  "TEST-Kuleshov-MSWAG-P-3M-120", "incorrect name"
+    assert selected_method.name == "TEST-Kuleshov-MSWAG-P-3M-120", "incorrect name"
+
 
 def test_get_info_for_swag_repickers(db_session_with_waveform_info):
     try:
         db_session, wf_storage, ids = db_session_with_waveform_info
-        picks_and_wf_infos = services.get_info_for_swag_repickers(db_session, 
-                                                                  "P",
-                                                                  datetime.strptime("2024-01-01T00:00:00.00", dateformat),
-                                                                  datetime.strptime("2024-01-10T00:00:00.00", dateformat))
+        picks_and_wf_infos = services.get_info_for_swag_repickers(
+            db_session,
+            "P",
+            datetime.strptime("2024-01-01T00:00:00.00", dateformat),
+            datetime.strptime("2024-01-10T00:00:00.00", dateformat),
+        )
         print(picks_and_wf_infos)
 
         assert len(picks_and_wf_infos) == 1, "expected exactly 1 row"
-        assert len(picks_and_wf_infos[0]) ==3, "Expected 3 objects to be returned for row"
-        assert type(picks_and_wf_infos[0][0]) == tables.Pick, "expected the first item to be a Pick"
-        assert type(picks_and_wf_infos[0][1]) == tables.Channel, "expected the second item to be a Channel"
-        assert type(picks_and_wf_infos[0][2]) == tables.WaveformInfo, "expected the third item to be a WaveformInfo"
-
+        assert (
+            len(picks_and_wf_infos[0]) == 3
+        ), "Expected 3 objects to be returned for row"
+        assert (
+            type(picks_and_wf_infos[0][0]) == tables.Pick
+        ), "expected the first item to be a Pick"
+        assert (
+            type(picks_and_wf_infos[0][1]) == tables.Channel
+        ), "expected the second item to be a Channel"
+        assert (
+            type(picks_and_wf_infos[0][2]) == tables.WaveformInfo
+        ), "expected the third item to be a WaveformInfo"
 
     finally:
         # Clean up
@@ -1100,8 +1115,73 @@ def test_get_info_for_swag_repickers(db_session_with_waveform_info):
         os.remove(wf_storage.file_path)
         assert not os.path.exists(wf_storage.file_path), "the file was not removed"
 
-def test_insert_pick_correction_pytables():
-    pass
+
+def test_insert_pick_correction_pytable(
+    db_session_with_dldet_pick, mock_pytables_config, repicker_method_ex
+):
+    db_session, ids = db_session_with_dldet_pick
+    d = repicker_method_ex
+    repicker_method = services.insert_repicker_method(
+        db_session,
+        name=d["name"],
+        phase=d["phase"],
+        details=d["details"],
+        path=d["path"],
+    )
+    db_session.flush()
+
+    preds = np.random.random((360,)).astype(np.float32)
+
+    try:
+        corr_storage = pytables_backend.SwagPicksStorage(
+            360,
+            phase="P",
+            start="2023-01-01",
+            end="2023-01-31",
+            repicker_method_id=repicker_method.id,
+        )
+
+        pick_corr = services.insert_pick_correction_pytable(
+            db_session,
+            corr_storage,
+            ids["pick"],
+            repicker_method.id,
+            median=np.median(preds),
+            mean=np.mean(preds),
+            std=np.std(preds),
+            if_low=0,
+            if_high=1,
+            trim_median=0,
+            trim_mean=0.1,
+            predictions=preds,
+        )
+        db_session.commit()
+        corr_storage.commit()
+
+        assert pick_corr.id is not None, "PickCorrection.id is not set"
+        assert corr_storage.table.nrows == 1, "Expected 1 rows in pytable"
+        row = [row for row in corr_storage.table.where(f"id == {pick_corr.id}")][0]
+        assert row["id"] == pick_corr.id, "incorrect id"
+        assert np.array_equal(row["data"], preds), "incorrect data"
+        assert (
+            datetime.fromtimestamp(row["last_modified"]).date() == datetime.now().date()
+        ), "incorrect last_modified date"
+        assert (
+            datetime.fromtimestamp(row["last_modified"]) - pick_corr.last_modified
+        ).microseconds * 1e-6 < 2, (
+            "PickCorrection.last_modified and Pytables.Row.last_modified are not close"
+        )
+
+    finally:
+        # Clean up
+        corr_storage.close()
+        os.remove(corr_storage.file_path)
+        assert not os.path.exists(corr_storage.file_path), "the file was not removed"
+
 
 def test_insert_ci():
+    pass
+
+
+def test_insert_cis():
     pass
