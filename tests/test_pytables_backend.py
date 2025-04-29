@@ -74,9 +74,11 @@ class TestWaveformStorage:
         try:
             file_name = wf_storage.file_name
             # Check that the filename is as would be expected
+            assert file_name == "JK.TEST.01.HHZ.P.3C.h5", "file name is not as expected"
             assert (
-                file_name == "JK.TEST.01.HHZ.P.3C_NoneHz_NoneHz_1200samps.h5"
-            ), "file name is not as expected"
+                os.path.basename(os.path.dirname(wf_storage.file_path))
+                == "NoneHz_NoneHz_1200samps"
+            ), "incorrect directory name"
             # Check that the file was created
             assert os.path.exists(wf_storage.file_path), "the file was not created"
             # Check that the file is set to open

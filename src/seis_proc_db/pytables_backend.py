@@ -359,7 +359,7 @@ class WaveformStorage(BasePyTable):
         )
 
     def _make_filepath(self):
-        file_name = f"{self.net}.{self.sta}.{self.loc}.{self.seed_code}.{self.phase}.{self.ncomps}C_{self.filt_low!r}Hz_{self.filt_high!r}Hz_{self.expected_array_length}samps.h5"
+        file_name = f"{self.filt_low!r}Hz_{self.filt_high!r}Hz_{self.expected_array_length}samps/{self.net}.{self.sta}.{self.loc}.{self.seed_code}.{self.phase}.{self.ncomps}C.h5"
         return os.path.join(HDF_BASE_PATH, HDF_WAVEFORM_DIR, file_name)
 
     def _make_h5_file_title(self):
