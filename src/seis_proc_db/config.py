@@ -20,3 +20,5 @@ HDF_BASE_PATH = os.getenv("SPDB_HDF_BASE_PATH")
 HDF_WAVEFORM_DIR = "waveforms"
 # Directory name for HDF detector posterior probs
 HDF_UNET_SOFTMAX_DIR = "unet_softmax_values"
+# Directory name for HDF swag repicker predictions
+HDF_PICKCORR_DIR = "pick_corrections"

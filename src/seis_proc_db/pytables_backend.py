@@ -3,7 +3,12 @@ import os
 import warnings
 from abc import ABC, abstractmethod
 from datetime import datetime
-from seis_proc_db.config import HDF_BASE_PATH, HDF_WAVEFORM_DIR, HDF_UNET_SOFTMAX_DIR
+from seis_proc_db.config import (
+    HDF_BASE_PATH,
+    HDF_WAVEFORM_DIR,
+    HDF_UNET_SOFTMAX_DIR,
+    HDF_PICKCORR_DIR,
+)
 
 
 class BasePyTable(ABC):
@@ -363,7 +368,6 @@ class WaveformStorage(BasePyTable):
     @property
     def relative_path(self):
         return os.path.relpath(self._file_path, self._base_dir)
-        
 
     def _make_filepath(self):
         file_name = f"{self.filt_low!r}Hz_{self.filt_high!r}Hz_{self.expected_array_length}samps/{self.net}.{self.sta}.{self.loc}.{self.seed_code}.{self.phase}.{self.ncomps}C.h5"
@@ -413,7 +417,6 @@ class DLDetectorOutputStorage(BasePyTable):
             expected_array_length, on_event=on_event, expectedrows=expectedrows
         )
 
-
     def _make_filepath(self):
         file_name = f"{self.net}.{self.sta}.{self.loc}.{self.seed_code}.{self.phase}.{self.ncomps}C.detmethod{self.det_method_id:02d}.h5"
         return os.path.join(self._base_dir, file_name)
@@ -423,3 +426,35 @@ class DLDetectorOutputStorage(BasePyTable):
             f"Deep-learning detector outputs for {self.net}.{self.sta}.{self.loc}.{self.seed_code} from {self.ncomps}C {self.phase}"
             f"model using DetectionMethod.id={self.det_method_id}."
         )
+
+
+class SwagPicksStorage(BasePyTable):
+    TABLE_NAME = "swag_picks"
+    TABLE_TITLE = "SWAG Repicker Predictions"
+    TABLE_DTYPE = Float32Col
+
+    def __init__(
+        self,
+        expected_array_length,
+        start,
+        end,
+        phase,
+        repicker_method_id,
+        on_event=None,
+        expectedrows=10000,
+    ):
+        self.start = start
+        self.end = end
+        self.phase = phase
+        self.repicker_method_id = repicker_method_id
+        self._base_dir = os.path.join(HDF_BASE_PATH, HDF_PICKCORR_DIR)
+
+        super().__init__(expected_array_length, on_event, expectedrows)
+
+    def _make_filepath(self):
+        file_name = f"repicker{self.repicker_method_id:02d}_{self.phase}_{self.start!r}_{self.end!r}.h5"
+        return os.path.join(self._base_dir, file_name)
+
+    def _make_h5_file_title(self):
+        return (f"Pick Corrections from SWAG Repicker method {self.repicker_method_id:02d} for {self.phase}"
+                f"picks occurring between {self.start} and {self.end}.")
