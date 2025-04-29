@@ -452,7 +452,7 @@ class SwagPicksStorage(BasePyTable):
         super().__init__(expected_array_length, on_event, expectedrows)
 
     def _make_filepath(self):
-        file_name = f"repicker{self.repicker_method_id:02d}_{self.phase}_{self.start!r}_{self.end!r}.h5"
+        file_name = f"repicker{self.repicker_method_id:02d}_{self.phase}_{self.start}_{self.end}.h5"
         return os.path.join(self._base_dir, file_name)
 
     def _make_h5_file_title(self):

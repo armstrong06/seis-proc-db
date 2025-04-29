@@ -296,3 +296,43 @@ class TestDLDetectorOutputStorage:
             assert not os.path.exists(
                 detout_storage.file_path
             ), "the file was not removed"
+
+class TestSwagPicksStorage:
+    def test_init(self, mock_pytables_config):
+
+        repicker_storage = pytables_backend.SwagPicksStorage(
+            expected_array_length=450,
+            start="2023-01-01",
+            end="2023-01-31",
+            phase="P",
+            repicker_method_id=1
+        )
+
+        try:
+            file_name = repicker_storage.file_name
+            # Check that the filename is as would be expected
+            assert file_name == "repicker01_P_2023-01-01_2023-01-31.h5", "file name is not as expected"
+            # Check that the file was created
+            assert os.path.exists(repicker_storage.file_path), "the file was not created"
+            # Check that the file is set to open
+            assert repicker_storage._is_open, "the file is not registered as open"
+            table = repicker_storage.table
+            # Check table info
+            assert table.cols.id.is_indexed, "id column in table is not indexed"
+            assert table.will_query_use_indexing(
+                "id == 1"
+            ), "table will not use an index search for query by id"
+            assert table.name == "swag_picks", "the table name is incorrect"
+            assert table.title == "SWAG Repicker Predictions", "the table title is incorrect"
+            # Check table attributes
+            assert table.attrs.phase == "P", "the table phase attr is incorrect"
+            assert (
+                table.attrs.expected_array_length == 450
+            ), "the table expected_array_length attr is incorrect"
+            assert table.attrs.start == "2023-01-01", "the table start attr is incorrect"
+            assert table.attrs.end == "2023-01-31", "the table end attr is incorrect"
+        finally:
+            # Clean up
+            repicker_storage.close()
+            os.remove(repicker_storage.file_path)
+            assert not os.path.exists(repicker_storage.file_path), "the file was not removed"
