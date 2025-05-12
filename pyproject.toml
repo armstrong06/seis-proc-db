@@ -7,7 +7,7 @@ name = "seis-proc-db"
 dynamic = ["version"]
 dependencies = [
     "sqlalchemy~=2.0.0",
-    "mysqlclient~=2.2.7"
+    "mysqlclient~=2.2.7" # This needs to be installed through pip and not mamba or it breaks?
 ]
 requires-python = ">= 3.11"
 authors = [
