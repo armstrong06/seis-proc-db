@@ -465,6 +465,7 @@ class DLDetectorOutput(Base):
     # Many-to-one relationship with DetectionMethod
     method: Mapped["DetectionMethod"] = relationship(back_populates="dldetector_output")
     # one-to-Many relationship with DLDetection
+    # TODO: Remove this
     dldets: WriteOnlyMapped[List["DLDetection"]] = relationship(
         back_populates="dldetector_output"
     )
@@ -519,6 +520,7 @@ class DLDetection(Base):
     phase: Mapped[str] = mapped_column(String(4))
     width: Mapped[float] = mapped_column(Double)
     height: Mapped[int] = mapped_column(SmallInteger)
+    # TODO: REMOVE this
     inference_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("dldetector_output.id"), nullable=True
     )
@@ -537,6 +539,7 @@ class DLDetection(Base):
     # Many-to-one relationship with DetectionMethod
     method: Mapped["DetectionMethod"] = relationship(back_populates="dldets")
     # Many-to-one relationship with DLDetectorOutput
+    # TODO: Remove this
     dldetector_output: Mapped["DLDetectorOutput"] = relationship(
         back_populates="dldets"
     )
