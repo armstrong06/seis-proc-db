@@ -456,5 +456,7 @@ class SwagPicksStorage(BasePyTable):
         return os.path.join(self._base_dir, file_name)
 
     def _make_h5_file_title(self):
-        return (f"Pick Corrections from SWAG Repicker method {self.repicker_method_id:02d} for {self.phase}"
-                f"picks occurring between {self.start} and {self.end}.")
+        return (
+            f"Pick Corrections from SWAG Repicker method {self.repicker_method_id:02d} for {self.phase}"
+            f"picks occurring between {self.start} and {self.end}."
+        )

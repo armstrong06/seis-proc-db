@@ -844,6 +844,20 @@ def insert_repicker_method(session, name, phase=None, details=None, path=None):
     return new_repicker_method
 
 
+def upsert_repicker_method(session, name, phase=None, details=None, path=None):
+    insert_stmt = mysql_insert(RepickerMethod).values(
+        name=name, phase=phase, details=details, path=path
+    )
+    update_dict = {
+        col.name: insert_stmt.inserted[col.name]
+        for col in RepickerMethod.__table__.columns
+        if col.name != "id"
+    }
+    upsert_stmt = insert_stmt.on_duplicate_key_update(**update_dict)
+
+    session.execute(upsert_stmt)
+
+
 def get_repicker_method(session, name):
 
     result = session.scalars(
@@ -863,6 +877,20 @@ def insert_calibration_method(session, name, phase=None, details=None, path=None
     session.add(new_calibration_method)
 
     return new_calibration_method
+
+
+def upsert_calibration_method(session, name, phase=None, details=None, path=None):
+    insert_stmt = mysql_insert(CalibrationMethod).values(
+        name=name, phase=phase, details=details, path=path
+    )
+    update_dict = {
+        col.name: insert_stmt.inserted[col.name]
+        for col in CalibrationMethod.__table__.columns
+        if col.name != "id"
+    }
+    upsert_stmt = insert_stmt.on_duplicate_key_update(**update_dict)
+
+    session.execute(upsert_stmt)
 
 
 def get_calibration_method(session, name):
@@ -890,10 +918,11 @@ def get_info_for_swag_repickers(
         select(Pick, Channel, WaveformInfo)
         .join_from(Pick, WaveformInfo, Pick.id == WaveformInfo.pick_id)
         .join(Channel, Channel.id == WaveformInfo.chan_id)
+        .join(Station, Pick.sta_id == Station.id)
         .where(Pick.phase == phase)
         .where(Pick.ptime >= start)
         .where(Pick.ptime < end)
-        .order_by(Pick.id, Channel.seed_code)
+        .order_by(Station.id, Pick.chan_pref, Pick.id, Channel.seed_code)
     )
 
     # Only need vertical component for P pick regressor
@@ -960,10 +989,10 @@ def insert_ci(session, corr_id, method_id, percent, lb, ub):
 
 def insert_cis(session, ci_dict_list):
     session.execute(insert(CredibleInterval), ci_dict_list)
-    
+
+
 def get_correction_cis(session, corr_id):
 
-    stmt = (select(CredibleInterval)
-            .where(CredibleInterval.corr_id == corr_id))
-    
+    stmt = select(CredibleInterval).where(CredibleInterval.corr_id == corr_id)
+
     return session.scalars(stmt).all()
