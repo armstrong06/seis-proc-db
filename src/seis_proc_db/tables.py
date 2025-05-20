@@ -41,9 +41,9 @@ class ISAMethod(Base):
 
     __abstract__ = True
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
-    name: Mapped[str] = mapped_column(String(50))
-    details: Mapped[Optional[str]] = mapped_column(String(255))
-    path: Mapped[Optional[str]] = mapped_column(String(255))
+    name: Mapped[str] = mapped_column(String(100))
+    details: Mapped[Optional[str]] = mapped_column(String(1000))
+    path: Mapped[Optional[str]] = mapped_column(String(4096))
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(
         TIMESTAMP,
