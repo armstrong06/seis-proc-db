@@ -590,7 +590,7 @@ def get_waveforms(session, pick_id, chan_id=None, data_id=None):
     return result
 
 
-def get_waveform_infos(session, pick_id, chan_id=None, hdf_file=None, data_id=None):
+def get_waveform_infos(session, pick_id, chan_id=None, hdf_file=None, data_id=None, wf_source_id=None):
 
     stmt = select(WaveformInfo).where(WaveformInfo.pick_id == pick_id)
 
@@ -602,6 +602,9 @@ def get_waveform_infos(session, pick_id, chan_id=None, hdf_file=None, data_id=No
 
     if data_id is not None:
         stmt = stmt.where(WaveformInfo.data_id == data_id)
+
+    if wf_source_id is not None:
+        stmt = stmt.where(WaveformInfo.wf_source_id == wf_source_id)
 
     result = session.scalars(stmt).all()
 
@@ -788,6 +791,7 @@ def insert_waveform_pytable(
     data_id,
     chan_id,
     pick_id,
+    wf_source_id,
     start,
     end,
     data,
@@ -801,6 +805,7 @@ def insert_waveform_pytable(
         data_id=data_id,
         chan_id=chan_id,
         pick_id=pick_id,
+        wf_source_id=wf_source_id,
         start=start,
         end=end,
         hdf_file=storage_session.relative_path,
@@ -878,6 +883,13 @@ def insert_calibration_method(session, name, phase=None, details=None, path=None
 
     return new_calibration_method
 
+def insert_waveform_source(session, name, details=None, path=None):
+    new_wf_source = WaveformSource(
+        name=name, details=details, path=path
+    )
+    session.add(new_wf_source)
+
+    return new_wf_source
 
 def upsert_calibration_method(session, name, phase=None, details=None, path=None):
     insert_stmt = mysql_insert(CalibrationMethod).values(
@@ -912,6 +924,7 @@ def get_info_for_swag_repickers(
     wf_filt_low=None,
     wf_filt_high=None,
     hdf_file_contains=None,
+    wf_source_id=None,
 ):
     params = {}
     stmt = (
@@ -930,10 +943,13 @@ def get_info_for_swag_repickers(
         stmt = stmt.where(text('channel.seed_code LIKE "__Z"'))
 
     if wf_filt_low is not None:
-        stmt = stmt.where(wf_filt_low == wf_filt_low)
+        stmt = stmt.where(WaveformInfo.wf_filt_low == wf_filt_low)
 
     if wf_filt_high is not None:
-        stmt = stmt.where(wf_filt_high == wf_filt_high)
+        stmt = stmt.where(WaveformInfo.wf_filt_high == wf_filt_high)
+
+    if wf_source_id is not None:
+        stmt = stmt.where(WaveformInfo.wf_source_id == wf_source_id)
 
     if hdf_file_contains is not None:
         params["hdf_file_contains"] = hdf_file_contains
@@ -949,6 +965,7 @@ def insert_pick_correction_pytable(
     storage,
     pick_id,
     method_id,
+    wf_source_id,
     median,
     mean,
     std,
@@ -961,6 +978,7 @@ def insert_pick_correction_pytable(
     pick_corr = PickCorrection(
         pid=pick_id,
         method_id=method_id,
+        wf_source_id=wf_source_id,
         median=median,
         mean=mean,
         std=std,

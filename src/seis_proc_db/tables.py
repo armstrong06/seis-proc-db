@@ -387,7 +387,7 @@ class CalibrationMethod(ISAMethod):
     def __repr__(self) -> str:
         return (
             f"CalibrationMethod(id={self.id!r}, name={self.name!r}, details={self.details!r}, "
-            f"path={self.path!r}, last_modified={self.last_modified!r})"
+            f"path={self.path!r}, phase={self.phase!r}, last_modified={self.last_modified!r})"
         )
 
 
@@ -433,6 +433,20 @@ class DetectionMethod(ISAMethod):
             f"path={self.path!r}, phase={self.phase!r} last_modified={self.last_modified!r})"
         )
 
+class WaveformSource(ISAMethod):
+    """Stores some info about the type/version of the source/method for extracting waveform snippets.
+    """
+
+    __tablename__ = "waveform_source"
+
+    # One-to-Many relationship with CredibleIntervals
+    wf_info: WriteOnlyMapped[List["WaveformInfo"]] = relationship(back_populates="source")
+
+    def __repr__(self) -> str:
+        return (
+            f"WaveformSource(id={self.id!r}, name={self.name!r}, details={self.details!r}, "
+            f"path={self.path!r}, last_modified={self.last_modified!r})"
+        )
 
 class DLDetectorOutput(Base):
 
@@ -660,6 +674,7 @@ class PickCorrection(Base):
         id: Not meaningful pick correction identifier that is used as the PK.
         pid: Identifer of the Pick the correction is associated with.
         method_id: Identifier of the RepickerMethod used.
+        wf_source_id: ID of the WaveformSource describing which data was used in the inference. 
         median: Median value of all samples
         mean: Mean value of all samples
         std: Standard deviation of all samples
@@ -687,6 +702,9 @@ class PickCorrection(Base):
         nullable=False,
     )
     ##
+    wf_source_id =  mapped_column(
+        ForeignKey("waveform_source.id", onupdate="cascade", ondelete="cascade"), nullable=False
+    )
     median: Mapped[float] = mapped_column(Double)
     mean: Mapped[float] = mapped_column(Double)
     std: Mapped[float] = mapped_column(Double)
@@ -886,7 +904,6 @@ class Gap(Base):
     end: Mapped[datetime] = mapped_column(
         DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False
     )
-    # TODO: Get rid of these
     # startsamp: Mapped[Optional[int]] = mapped_column(Integer)
     # endsamp: Mapped[Optional[int]] = mapped_column(Integer)
     avail_sig_sec: Mapped[float] = mapped_column(Double, default=0.0)
@@ -969,6 +986,8 @@ class WaveformInfo(Base):
         id: Not meaningful waveform identifier that is used as the PK.
         chan_id: ID of the Channel recording the waveform.
         pick_id: ID of the Pick the waveform is centered on.
+        wf_source_id: ID of the WaveformSource describing where the snippet came from 
+            or how it was gathered.
         hdf_file: The name of the hdf file in config.HDF_BASE_PATH/config.HDF_WAVEFORM_DIR
             where the waveform is stored
         data_id: Optional. ID of DailyContDataInfo describing where the waveform was grabbed from.
@@ -986,6 +1005,7 @@ class WaveformInfo(Base):
             or modified in the database in local time. Does not include microseconds.
     """
 
+    # TODO: Update this to include waveform_gather_method
     __tablename__ = "waveform_info"
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
@@ -996,12 +1016,16 @@ class WaveformInfo(Base):
     pick_id = mapped_column(
         ForeignKey("pick.id", onupdate="cascade", ondelete="cascade"), nullable=False
     )
-    hdf_file: Mapped[str] = mapped_column(String(255))
+    wf_source_id = mapped_column(
+        ForeignKey("waveform_source.id", onupdate="cascade", ondelete="cascade"), nullable=False
+    )
     ##
+    hdf_file: Mapped[str] = mapped_column(String(255))
     data_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("contdatainfo.id", onupdate="cascade", ondelete="restrict"),
-        nullable=False,
+        nullable=True,
     )
+    # TODO: Decide if adding filters to PK
     filt_low: Mapped[Optional[float]] = mapped_column(Double)
     filt_high: Mapped[Optional[float]] = mapped_column(Double)
     start: Mapped[datetime] = mapped_column(
@@ -1029,6 +1053,8 @@ class WaveformInfo(Base):
     channel: Mapped["Channel"] = relationship(back_populates="wf_info")
     # Many-to-one relationship with Pick
     pick: Mapped["Pick"] = relationship(back_populates="wf_info")
+    # Many-to-one relationship with WaveformSource
+    source: Mapped["WaveformSource"] = relationship(back_populates="wf_info")
 
     # column property
     duration_samples = column_property(
@@ -1076,7 +1102,7 @@ class WaveformInfo(Base):
     )
 
     __table_args__ = (
-        UniqueConstraint(chan_id, pick_id, hdf_file, name="simplify_pk"),
+        UniqueConstraint(chan_id, pick_id, wf_source_id, name="simplify_pk"),
         CheckConstraint("filt_low > 0", name="pos_filt_low"),
         CheckConstraint("filt_high > 0", name="pos_filt_high"),
         CheckConstraint("filt_low < filt_high", name="filt_order"),

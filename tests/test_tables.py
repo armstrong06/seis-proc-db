@@ -477,6 +477,17 @@ def test_pick_correction(db_session_with_pick):
     assert len(imeth.corrs) == 0, "repicker_method.corrs before adding corr"
     #
 
+    # Add waveform source #
+    d = {
+        "name": "TEST-ExtractContData",
+        "details": "Extract waveform snippets from the contdata processed with DataLoader",
+    }
+
+    isource = tables.WaveformSource(**d)
+    db_session.add(isource)
+    db_session.commit()
+    #
+
     d = {
         "median": 1.1,
         "mean": 1.2,
@@ -490,7 +501,7 @@ def test_pick_correction(db_session_with_pick):
         # "preds_hdf_index": 1000000
     }
 
-    icorr = tables.PickCorrection(pid=ipick.id, method_id=imeth.id, **d)
+    icorr = tables.PickCorrection(pid=ipick.id, method_id=imeth.id, wf_source_id=isource.id, **d)
     db_session.add(icorr)
     db_session.commit()
 
@@ -581,6 +592,17 @@ def db_session_with_corr(db_session_with_pick):
     assert len(imeth.corrs) == 0, "repicker_method.corrs before adding corr"
     #
 
+    # Add waveform source #
+    d = {
+        "name": "TEST-ExtractContData",
+        "details": "Extract waveform snippets from the contdata processed with DataLoader",
+    }
+
+    isource = tables.WaveformSource(**d)
+    db_session.add(isource)
+    db_session.commit()
+    #
+
     d = {
         "median": 1.1,
         "mean": 1.2,
@@ -594,7 +616,7 @@ def db_session_with_corr(db_session_with_pick):
         # "preds_hdf_index": 1000000
     }
 
-    icorr = tables.PickCorrection(pid=ipick.id, method_id=imeth.id, **d)
+    icorr = tables.PickCorrection(pid=ipick.id, method_id=imeth.id, wf_source_id=isource.id, **d)
     db_session.add(icorr)
     db_session.commit()
 
@@ -791,6 +813,18 @@ def test_waveform(db_session_with_contdata_and_channel_and_pick):
 
 def test_waveform_info(db_session_with_contdata_and_channel_and_pick):
     db_session, icd, ichan, ipick = db_session_with_contdata_and_channel_and_pick
+
+    # Add waveform source #
+    d = {
+        "name": "TEST-ExtractContData",
+        "details": "Extract waveform snippets from the contdata processed with DataLoader",
+    }
+
+    isource = tables.WaveformSource(**d)
+    db_session.add(isource)
+    db_session.commit()
+    #
+
     d = {
         "filt_low": 1.5,
         "filt_high": 17.5,
@@ -800,7 +834,7 @@ def test_waveform_info(db_session_with_contdata_and_channel_and_pick):
         "hdf_file": "raw_testStation_HH_3C.hdf",
         # "hdf_index": 0,
     }
-    iwf = tables.WaveformInfo(data_id=icd.id, chan_id=ichan.id, pick_id=ipick.id, **d)
+    iwf = tables.WaveformInfo(data_id=icd.id, chan_id=ichan.id, pick_id=ipick.id, wf_source_id=isource.id, **d)
     db_session.add(iwf)
     db_session.commit()
 

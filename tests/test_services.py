@@ -878,7 +878,17 @@ def db_session_with_waveform_info(
         proc_notes="raw waveforms",
     )
 
-    db_session, ids = db_session_with_dldet_pick
+    # Add waveform source #
+    d = {
+        "name": "TEST-ExtractContData",
+        "details": "Extract waveform snippets from the contdata processed with DataLoader",
+    }
+
+    isource = tables.WaveformSource(**d)
+    db_session.add(isource)
+    db_session.commit()
+    ids["wf_source"] = isource.id
+    #
 
     new_wf_info = services.insert_waveform_pytable(
         db_session,
@@ -886,6 +896,7 @@ def db_session_with_waveform_info(
         data_id=ids["data"],
         chan_id=ids["chan"],
         pick_id=ids["pick"],
+        wf_source_id=ids["wf_source"],
         **waveform_ex,
     )
 
@@ -1137,6 +1148,16 @@ def db_session_with_pick_corr(
         details=d["details"],
         path=d["path"],
     )
+    
+    # Add waveform source #
+    d = {
+        "name": "TEST-ExtractContData",
+        "details": "Extract waveform snippets from the contdata processed with DataLoader",
+    }
+
+    wf_source = services.insert_waveform_source(db_session, d["name"], d["details"])
+    #
+
     db_session.flush()
 
     preds = np.random.random((360,)).astype(np.float32)
@@ -1154,6 +1175,7 @@ def db_session_with_pick_corr(
         corr_storage,
         ids["pick"],
         repicker_method.id,
+        wf_source.id,
         median=np.median(preds),
         mean=np.mean(preds),
         std=np.std(preds),
@@ -1169,6 +1191,7 @@ def db_session_with_pick_corr(
     ids["corr"] = pick_corr.id
     ids["repicker_method"] = repicker_method.id
     ids["cal_method"] = cal_method.id
+    ids["wf_source"] = wf_source.id
 
     return db_session, corr_storage, ids, preds
 
