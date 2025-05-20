@@ -805,6 +805,16 @@ def upsert_waveform_source(session, name, details=None, path=None):
 
     session.execute(upsert_stmt)
 
+def get_waveform_source(session, name):
+    result = session.scalars(
+        select(WaveformSource).where(WaveformSource.name == name)
+    ).all()
+
+    if len(result) == 0:
+        return None
+
+    return result[0]
+
 def insert_waveform_pytable(
     session,
     storage_session,
