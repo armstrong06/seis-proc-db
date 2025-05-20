@@ -784,6 +784,26 @@ def bulk_insert_dldetections_with_gap_check(session, dldets_dict):
     # with engine.begin() as conn:
     #     conn.execute(insert_stmt)
 
+def insert_waveform_source(session, name, details=None, path=None):
+    new_wf_source = WaveformSource(
+        name=name, details=details, path=path
+    )
+    session.add(new_wf_source)
+
+    return new_wf_source
+
+def upsert_waveform_source(session, name, details=None, path=None):
+    insert_stmt = mysql_insert(WaveformSource).values(
+        name=name, details=details, path=path
+    )
+    update_dict = {
+        col.name: insert_stmt.inserted[col.name]
+        for col in WaveformSource.__table__.columns
+        if col.name != "id"
+    }
+    upsert_stmt = insert_stmt.on_duplicate_key_update(**update_dict)
+
+    session.execute(upsert_stmt)
 
 def insert_waveform_pytable(
     session,
@@ -883,13 +903,6 @@ def insert_calibration_method(session, name, phase=None, details=None, path=None
 
     return new_calibration_method
 
-def insert_waveform_source(session, name, details=None, path=None):
-    new_wf_source = WaveformSource(
-        name=name, details=details, path=path
-    )
-    session.add(new_wf_source)
-
-    return new_wf_source
 
 def upsert_calibration_method(session, name, phase=None, details=None, path=None):
     insert_stmt = mysql_insert(CalibrationMethod).values(
