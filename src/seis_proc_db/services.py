@@ -590,7 +590,9 @@ def get_waveforms(session, pick_id, chan_id=None, data_id=None):
     return result
 
 
-def get_waveform_infos(session, pick_id, chan_id=None, hdf_file=None, data_id=None, wf_source_id=None):
+def get_waveform_infos(
+    session, pick_id, chan_id=None, hdf_file=None, data_id=None, wf_source_id=None
+):
 
     stmt = select(WaveformInfo).where(WaveformInfo.pick_id == pick_id)
 
@@ -784,13 +786,13 @@ def bulk_insert_dldetections_with_gap_check(session, dldets_dict):
     # with engine.begin() as conn:
     #     conn.execute(insert_stmt)
 
+
 def insert_waveform_source(session, name, details=None, path=None):
-    new_wf_source = WaveformSource(
-        name=name, details=details, path=path
-    )
+    new_wf_source = WaveformSource(name=name, details=details, path=path)
     session.add(new_wf_source)
 
     return new_wf_source
+
 
 def upsert_waveform_source(session, name, details=None, path=None):
     insert_stmt = mysql_insert(WaveformSource).values(
@@ -805,6 +807,7 @@ def upsert_waveform_source(session, name, details=None, path=None):
 
     session.execute(upsert_stmt)
 
+
 def get_waveform_source(session, name):
     result = session.scalars(
         select(WaveformSource).where(WaveformSource.name == name)
@@ -814,6 +817,7 @@ def get_waveform_source(session, name):
         return None
 
     return result[0]
+
 
 def insert_waveform_pytable(
     session,
@@ -939,22 +943,59 @@ def get_calibration_method(session, name):
     return result[0]
 
 
+def get_priority_waveform_info(session, sources: list[str]):
+
+    # Build CASE expression to assign source priority by name
+    source_priority = case(
+        {name: i for i, name in enumerate(sources)},
+        value=WaveformSource.name,
+        else_=len(sources),
+    )
+
+    stmt = (
+        select(WaveformInfo)
+        .join(WaveformSource, WaveformInfo.source_id == WaveformSource.id)
+        .where(WaveformSource.name.in_(sources))
+        .order_by(source_priority)
+        .limit(1)
+    )
+
+    result = session.execute(stmt).scalar_one_or_none()
+    return result
+
+
 def get_info_for_swag_repickers(
     session,
     phase,
     start,
     end,
+    sources: list[str],
     wf_filt_low=None,
     wf_filt_high=None,
     hdf_file_contains=None,
-    wf_source_id=None,
 ):
-    params = {}
+    # Build CASE expression to assign source priority by name
+    source_priority = case(
+        {name: i for i, name in enumerate(sources)},
+        value=WaveformSource.name,
+        else_=len(sources),
+    )
+    
+    wf_info_subq = (
+        select(WaveformInfo.id)
+        .join(WaveformSource, WaveformInfo.wf_source_id == WaveformSource.id)
+        .where(WaveformSource.name.in_(sources))
+        .order_by(source_priority)
+        .limit(1)
+        .scalar_subquery()
+    )
+
     stmt = (
         select(Pick, Channel, WaveformInfo)
         .join_from(Pick, WaveformInfo, Pick.id == WaveformInfo.pick_id)
         .join(Channel, Channel.id == WaveformInfo.chan_id)
         .join(Station, Pick.sta_id == Station.id)
+        .where(WaveformInfo.id == wf_info_subq)
         .where(Pick.phase == phase)
         .where(Pick.ptime >= start)
         .where(Pick.ptime < end)
@@ -971,9 +1012,7 @@ def get_info_for_swag_repickers(
     if wf_filt_high is not None:
         stmt = stmt.where(WaveformInfo.wf_filt_high == wf_filt_high)
 
-    if wf_source_id is not None:
-        stmt = stmt.where(WaveformInfo.wf_source_id == wf_source_id)
-
+    params = {}
     if hdf_file_contains is not None:
         params["hdf_file_contains"] = hdf_file_contains
         stmt = stmt.where(text("waveform_info.hdf_file LIKE :hdf_file_contains"))

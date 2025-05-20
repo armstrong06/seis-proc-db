@@ -1101,6 +1101,7 @@ def test_get_info_for_swag_repickers(db_session_with_waveform_info):
             "P",
             datetime.strptime("2024-01-01T00:00:00.00", dateformat),
             datetime.strptime("2024-01-10T00:00:00.00", dateformat),
+            ["TEST-ExtractContData"]
         )
 
         assert len(picks_and_wf_infos) == 1, "expected exactly 1 row"
@@ -1148,7 +1149,7 @@ def db_session_with_pick_corr(
         details=d["details"],
         path=d["path"],
     )
-    
+
     # Add waveform source #
     d = {
         "name": "TEST-ExtractContData",
