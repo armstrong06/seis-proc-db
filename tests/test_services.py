@@ -949,6 +949,9 @@ def test_insert_waveform_pytable(db_session_with_waveform_info, waveform_ex):
             new_wf_info.proc_notes == "Processed for repicker"
         ), "wf_info proc_notes incorrect"
         assert new_wf_info.duration_samples == 2001, "incorrect duration"
+        print(new_wf_info.pick_id, new_wf_info.start, new_wf_info.samp_rate)
+        print(new_wf_info.pick_index, new_wf_info.duration_samples)
+        assert new_wf_info.pick_index == 1000, "incorrect pick_index"
 
     finally:
         # Clean up
@@ -1101,7 +1104,7 @@ def test_get_info_for_swag_repickers(db_session_with_waveform_info):
             "P",
             datetime.strptime("2024-01-01T00:00:00.00", dateformat),
             datetime.strptime("2024-01-10T00:00:00.00", dateformat),
-            ["TEST-ExtractContData"]
+            ["TEST-ExtractContData"],
         )
 
         assert len(picks_and_wf_infos) == 1, "expected exactly 1 row"

@@ -433,20 +433,23 @@ class DetectionMethod(ISAMethod):
             f"path={self.path!r}, phase={self.phase!r} last_modified={self.last_modified!r})"
         )
 
+
 class WaveformSource(ISAMethod):
-    """Stores some info about the type/version of the source/method for extracting waveform snippets.
-    """
+    """Stores some info about the type/version of the source/method for extracting waveform snippets."""
 
     __tablename__ = "waveform_source"
 
     # One-to-Many relationship with CredibleIntervals
-    wf_info: WriteOnlyMapped[List["WaveformInfo"]] = relationship(back_populates="source")
+    wf_info: WriteOnlyMapped[List["WaveformInfo"]] = relationship(
+        back_populates="source"
+    )
 
     def __repr__(self) -> str:
         return (
             f"WaveformSource(id={self.id!r}, name={self.name!r}, details={self.details!r}, "
             f"path={self.path!r}, last_modified={self.last_modified!r})"
         )
+
 
 class DLDetectorOutput(Base):
 
@@ -674,7 +677,7 @@ class PickCorrection(Base):
         id: Not meaningful pick correction identifier that is used as the PK.
         pid: Identifer of the Pick the correction is associated with.
         method_id: Identifier of the RepickerMethod used.
-        wf_source_id: ID of the WaveformSource describing which data was used in the inference. 
+        wf_source_id: ID of the WaveformSource describing which data was used in the inference.
         median: Median value of all samples
         mean: Mean value of all samples
         std: Standard deviation of all samples
@@ -702,8 +705,9 @@ class PickCorrection(Base):
         nullable=False,
     )
     ##
-    wf_source_id =  mapped_column(
-        ForeignKey("waveform_source.id", onupdate="cascade", ondelete="cascade"), nullable=False
+    wf_source_id = mapped_column(
+        ForeignKey("waveform_source.id", onupdate="cascade", ondelete="cascade"),
+        nullable=False,
     )
     median: Mapped[float] = mapped_column(Double)
     mean: Mapped[float] = mapped_column(Double)
@@ -986,7 +990,7 @@ class WaveformInfo(Base):
         id: Not meaningful waveform identifier that is used as the PK.
         chan_id: ID of the Channel recording the waveform.
         pick_id: ID of the Pick the waveform is centered on.
-        wf_source_id: ID of the WaveformSource describing where the snippet came from 
+        wf_source_id: ID of the WaveformSource describing where the snippet came from
             or how it was gathered.
         hdf_file: The name of the hdf file in config.HDF_BASE_PATH/config.HDF_WAVEFORM_DIR
             where the waveform is stored
@@ -1017,7 +1021,8 @@ class WaveformInfo(Base):
         ForeignKey("pick.id", onupdate="cascade", ondelete="cascade"), nullable=False
     )
     wf_source_id = mapped_column(
-        ForeignKey("waveform_source.id", onupdate="cascade", ondelete="cascade"), nullable=False
+        ForeignKey("waveform_source.id", onupdate="cascade", ondelete="cascade"),
+        nullable=False,
     )
     ##
     hdf_file: Mapped[str] = mapped_column(String(255))
@@ -1056,7 +1061,76 @@ class WaveformInfo(Base):
     # Many-to-one relationship with WaveformSource
     source: Mapped["WaveformSource"] = relationship(back_populates="wf_info")
 
-    # column property
+    # column propertys
+    # pick_index = column_property(
+    #     select(
+    #         func.round(
+    #             (
+    #                 func.timestampdiff(literal_column("MICROSECOND"), start, Pick.ptime)
+    #                 / 1e6
+    #             )
+    #             * samp_rate,
+    #         )
+    #     )
+    #     .where(Pick.id == pick_id)
+    #     .correlate_except(Pick)
+    #     .scalar_subquery()
+    # )
+    # This is overly complicated because samp_rate is allowed to be null. It would probably
+    # be better to just store the samp_rate, regardless of if it attached to the dailycontdatainfo
+    # or not...
+    pick_index = column_property(
+        case(
+            # Case 1: data_id is not null → use joined table's samp_rate
+            (
+                data_id.isnot(None),
+                select(
+                    cast(
+                        func.round(
+                            (
+                                func.timestampdiff(
+                                    literal_column("MICROSECOND"),
+                                    start,
+                                    Pick.ptime,
+                                )
+                                / 1e6
+                            )
+                            * DailyContDataInfo.samp_rate,
+                            0,
+                        ),
+                        Integer,
+                    )
+                )
+                .where((Pick.id == pick_id) & (DailyContDataInfo.id == data_id))
+                .correlate_except(Pick, DailyContDataInfo)
+                .scalar_subquery(),
+            ),
+            # Case 2: data_id is null but local samp_rate is not null
+            (
+                samp_rate.isnot(None),
+                select(
+                    cast(
+                        func.round(
+                            (
+                                func.timestampdiff(
+                                    literal_column("MICROSECOND"), start, Pick.ptime
+                                )
+                                / 1e6
+                            )
+                            * samp_rate,
+                            0,
+                        ),
+                        Integer,
+                    )
+                )
+                .where(Pick.id == pick_id)
+                .correlate_except(Pick)
+                .scalar_subquery(),
+            ),
+            # Case 3: both are null → return NULL
+            else_=null(),
+        )
+    )
     duration_samples = column_property(
         case(
             # Case 1: data_id is not null → use joined table's samp_rate

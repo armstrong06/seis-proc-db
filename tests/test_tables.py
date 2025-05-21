@@ -501,7 +501,9 @@ def test_pick_correction(db_session_with_pick):
         # "preds_hdf_index": 1000000
     }
 
-    icorr = tables.PickCorrection(pid=ipick.id, method_id=imeth.id, wf_source_id=isource.id, **d)
+    icorr = tables.PickCorrection(
+        pid=ipick.id, method_id=imeth.id, wf_source_id=isource.id, **d
+    )
     db_session.add(icorr)
     db_session.commit()
 
@@ -616,7 +618,9 @@ def db_session_with_corr(db_session_with_pick):
         # "preds_hdf_index": 1000000
     }
 
-    icorr = tables.PickCorrection(pid=ipick.id, method_id=imeth.id, wf_source_id=isource.id, **d)
+    icorr = tables.PickCorrection(
+        pid=ipick.id, method_id=imeth.id, wf_source_id=isource.id, **d
+    )
     db_session.add(icorr)
     db_session.commit()
 
@@ -834,7 +838,9 @@ def test_waveform_info(db_session_with_contdata_and_channel_and_pick):
         "hdf_file": "raw_testStation_HH_3C.hdf",
         # "hdf_index": 0,
     }
-    iwf = tables.WaveformInfo(data_id=icd.id, chan_id=ichan.id, pick_id=ipick.id, wf_source_id=isource.id, **d)
+    iwf = tables.WaveformInfo(
+        data_id=icd.id, chan_id=ichan.id, pick_id=ipick.id, wf_source_id=isource.id, **d
+    )
     db_session.add(iwf)
     db_session.commit()
 
@@ -848,6 +854,7 @@ def test_waveform_info(db_session_with_contdata_and_channel_and_pick):
     assert iwf.end.second == 22, "Invalud end second"
     assert iwf.end.microsecond == 140000, "Invalid end microsecond"
     assert iwf.hdf_file == "raw_testStation_HH_3C.hdf", "Invalid hdf_file"
+    assert iwf.pick_index == 1000, "incorrect pick index"
     # assert iwf.hdf_index == 0, "Invalid hdf_index"
     assert iwf.last_modified.year == datetime.now().year, "invalid last_modified year"
     assert iwf.last_modified.month == datetime.now().month, "invalid last_modified year"
