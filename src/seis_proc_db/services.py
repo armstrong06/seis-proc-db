@@ -911,18 +911,32 @@ def get_repicker_method(session, name):
     return result[0]
 
 
-def insert_calibration_method(session, name, phase=None, details=None, path=None):
+def insert_calibration_method(
+    session, name, phase=None, details=None, path=None, loc_type=None, scale_type=None
+):
     new_calibration_method = CalibrationMethod(
-        name=name, phase=phase, details=details, path=path
+        name=name,
+        phase=phase,
+        details=details,
+        path=path,
+        loc_type=loc_type,
+        scale_type=scale_type,
     )
     session.add(new_calibration_method)
 
     return new_calibration_method
 
 
-def upsert_calibration_method(session, name, phase=None, details=None, path=None):
+def upsert_calibration_method(
+    session, name, phase=None, details=None, path=None, loc_type=None, scale_type=None
+):
     insert_stmt = mysql_insert(CalibrationMethod).values(
-        name=name, phase=phase, details=details, path=path
+        name=name,
+        phase=phase,
+        details=details,
+        path=path,
+        loc_type=loc_type,
+        scale_type=scale_type,
     )
     update_dict = {
         col.name: insert_stmt.inserted[col.name]
@@ -979,6 +993,7 @@ def insert_pick_correction_pytable(
     if_high,
     trim_median,
     trim_mean,
+    trim_std,
     predictions,
 ):
     pick_corr = PickCorrection(
@@ -992,6 +1007,7 @@ def insert_pick_correction_pytable(
         if_high=if_high,
         trim_median=trim_median,
         trim_mean=trim_mean,
+        trim_std=trim_std,
         preds_hdf_file=storage.file_name,
     )
     session.add(pick_corr)

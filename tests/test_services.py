@@ -99,6 +99,8 @@ def calibration_method_ex():
             "phase": "P",
             "details": "Uses Kuleshov et al 2018 approach to calibrate ensemble result from TEST-MSWAG-P-3M-120, from Armstrong 2023 BSSA paper",
             "path": "the/model/files/are/stored/here",
+            "loc_type": "trim_median",
+            "scale_type": "trim_std",
         }
     )
 
@@ -1074,6 +1076,8 @@ def test_insert_ci_method(db_session, calibration_method_ex):
         phase=d["phase"],
         details=d["details"],
         path=d["path"],
+        loc_type=d["loc_type"],
+        scale_type=d["scale_type"],
     )
     db_session.commit()
     assert inserted_repick_meth.name == "TEST-Kuleshov-MSWAG-P-3M-120", "incorrect name"
@@ -1088,44 +1092,14 @@ def test_get_ci_method(db_session, calibration_method_ex):
         phase=d["phase"],
         details=d["details"],
         path=d["path"],
+        loc_type=d["loc_type"],
+        scale_type=d["scale_type"],
     )
     db_session.commit()
     db_session.expunge_all()
 
     selected_method = services.get_calibration_method(db_session, d["name"])
     assert selected_method.name == "TEST-Kuleshov-MSWAG-P-3M-120", "incorrect name"
-
-
-def test_get_info_for_swag_repickers(db_session_with_waveform_info):
-    try:
-        db_session, wf_storage, ids = db_session_with_waveform_info
-        picks_and_wf_infos = services.get_info_for_swag_repickers(
-            db_session,
-            "P",
-            datetime.strptime("2024-01-01T00:00:00.00", dateformat),
-            datetime.strptime("2024-01-10T00:00:00.00", dateformat),
-            ["TEST-ExtractContData"],
-        )
-
-        assert len(picks_and_wf_infos) == 1, "expected exactly 1 row"
-        assert (
-            len(picks_and_wf_infos[0]) == 3
-        ), "Expected 3 objects to be returned for row"
-        assert (
-            type(picks_and_wf_infos[0][0]) == tables.Pick
-        ), "expected the first item to be a Pick"
-        assert (
-            type(picks_and_wf_infos[0][1]) == tables.Channel
-        ), "expected the second item to be a Channel"
-        assert (
-            type(picks_and_wf_infos[0][2]) == tables.WaveformInfo
-        ), "expected the third item to be a WaveformInfo"
-
-    finally:
-        # Clean up
-        wf_storage.close()
-        os.remove(wf_storage.file_path)
-        assert not os.path.exists(wf_storage.file_path), "the file was not removed"
 
 
 @pytest.fixture
@@ -1151,6 +1125,8 @@ def db_session_with_pick_corr(
         phase=d["phase"],
         details=d["details"],
         path=d["path"],
+        loc_type=d["loc_type"],
+        scale_type=d["scale_type"],
     )
 
     # Add waveform source #
@@ -1306,3 +1282,40 @@ def test_insert_cis(db_session_with_pick_corr):
     assert ci.percent == 90
     assert ci.lb == -1.22
     assert ci.ub == 1.34
+
+
+class TestWaveforms:
+    def test_get_info_for_swag_repickers(self, db_session_with_waveform_info):
+        wf_storage = None
+        try:
+            db_session, wf_storage, ids = db_session_with_waveform_info
+            picks_and_wf_infos = services.Waveforms.get_sorted_waveform_info(
+                db_session,
+                "P",
+                datetime.strptime("2024-01-01T00:00:00.00", dateformat),
+                datetime.strptime("2024-01-10T00:00:00.00", dateformat),
+                ["TEST-ExtractContData"],
+            )
+
+            assert len(picks_and_wf_infos) == 1, "expected exactly 1 row"
+            assert (
+                len(picks_and_wf_infos[0]) == 3
+            ), "Expected 3 objects to be returned for row"
+            assert (
+                type(picks_and_wf_infos[0][0]) == tables.Pick
+            ), "expected the first item to be a Pick"
+            assert (
+                type(picks_and_wf_infos[0][1]) == tables.Channel
+            ), "expected the second item to be a Channel"
+            assert (
+                type(picks_and_wf_infos[0][2]) == tables.WaveformInfo
+            ), "expected the third item to be a WaveformInfo"
+
+        finally:
+            # Clean up
+            if wf_storage is not None:
+                wf_storage.close()
+                os.remove(wf_storage.file_path)
+                assert not os.path.exists(
+                    wf_storage.file_path
+                ), "the file was not removed"
