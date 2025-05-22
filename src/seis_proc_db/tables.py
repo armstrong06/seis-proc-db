@@ -374,12 +374,18 @@ class CalibrationMethod(ISAMethod):
 
     Attributes:
         phase: Optional. Phase type the model was designed for, if applicable.
+        loc_type: Optional. Indicates what value is used for the "center" of the distribution
+            (i.e., mean) when computing the percent point function (ppf).
+        scale_type: Optional. Indicates what value is used for the "spread" of the distribution
+            (i.e., std. dev.) when computing the ppf.
 
     """
 
     __tablename__ = "calibration_method"
 
     phase: Mapped[Optional[str]] = mapped_column(String(4))
+    loc_type: Mapped[Optional[str]] = mapped_column(String(50))
+    scale_type: Mapped[Optional[str]] = mapped_column(String(50))
 
     # One-to-Many relationship with CredibleIntervals
     cis: Mapped[List["CredibleInterval"]] = relationship(back_populates="method")
@@ -387,7 +393,8 @@ class CalibrationMethod(ISAMethod):
     def __repr__(self) -> str:
         return (
             f"CalibrationMethod(id={self.id!r}, name={self.name!r}, details={self.details!r}, "
-            f"path={self.path!r}, phase={self.phase!r}, last_modified={self.last_modified!r})"
+            f"path={self.path!r}, phase={self.phase!r}, loc_type={self.loc_type!r}, "
+            f"scale_type={self.scale_type!r}, last_modified={self.last_modified!r})"
         )
 
 
