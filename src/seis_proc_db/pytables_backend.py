@@ -115,7 +115,7 @@ class BasePyTable(ABC):
 
                 self._set_table_metadata(table)
             else:
-                table = h5file.get_node(f"/{self.TABLE_NAME}")
+                table = h5file.get_node(f"/{table_name}")
 
             self._h5_file = h5file
             self._table = table
@@ -460,3 +460,72 @@ class SwagPicksStorage(BasePyTable):
             f"Pick Corrections from SWAG Repicker method {self.repicker_method_id:02d} for {self.phase}"
             f"picks occurring between {self.start} and {self.end}."
         )
+
+
+class BasePytableReader(ABC):
+    TABLE_NAME = None
+
+    @property
+    def table(self):
+        return self._table
+
+    @property
+    def file_name(self):
+        _, file_name = os.path.split(self.file_path)
+        return file_name
+
+    @property
+    def file_dir(self):
+        file_dir, _ = os.path.split(self.file_path)
+        return file_dir
+
+    def __init__(self, stored_hdf_info, output_base_dir):
+        self.stored_hdf_info = stored_hdf_info
+        self.output_base_dir = output_base_dir
+        self.file_path = os.path.join(output_base_dir, stored_hdf_info)
+        self._h5_file = None
+        self._table = None
+
+        self._open_file_read()
+
+    def _open_file_read(
+        self,
+    ):
+        try:
+            h5file = open_file(
+                self.file_path,
+                mode="r",
+            )
+            table = h5file.get_node(f"/{self.TABLE_NAME}")
+
+            self._h5_file = h5file
+            self._table = table
+            self._is_open = True
+        except Exception as e:
+            if h5file is not None:
+                h5file.close()
+
+            raise e
+
+    def select_rows(self, ids_list):
+        result = []
+        for id in ids_list:
+            result.append(self.select_row(id))
+
+        return result
+
+    def select_row(self, id):
+        row = list(self._table.where(f"id == {id}"))
+        if len(row) == 0:
+            return None
+
+        colnames = self._table.colnames
+        return dict(zip(colnames, row[0][:]))
+
+
+class WaveformStorageReader(BasePytableReader):
+    TABLE_NAME = "waveform"
+
+    def __init__(self, stored_hdf_path):
+        base_dir = os.path.join(HDF_BASE_PATH, HDF_WAVEFORM_DIR)
+        super().__init__(stored_hdf_path, base_dir)

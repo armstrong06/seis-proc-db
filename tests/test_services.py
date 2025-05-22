@@ -1187,6 +1187,7 @@ def db_session_with_pick_corr(
         if_high=1,
         trim_median=0,
         trim_mean=0.1,
+        trim_std=0.05,
         predictions=preds,
     )
     db_session.commit()

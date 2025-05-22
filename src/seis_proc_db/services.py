@@ -1,10 +1,12 @@
 """Store business logic"""
 
 import numpy as np
+import os
 from sqlalchemy import select, text, insert
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 from seis_proc_db.tables import *
 from seis_proc_db.config import DETECTION_GAP_BUFFER_SECONDS
+from seis_proc_db.pytables_backend import WaveformStorageReader
 
 
 def insert_station(session, net, sta, ondate, lat, lon, elev, offdate=None):
@@ -964,64 +966,6 @@ def get_priority_waveform_info(session, sources: list[str]):
     return result
 
 
-def get_info_for_swag_repickers(
-    session,
-    phase,
-    start,
-    end,
-    sources: list[str],
-    wf_filt_low=None,
-    wf_filt_high=None,
-    hdf_file_contains=None,
-):
-    # Build CASE expression to assign source priority by name
-    source_priority = case(
-        {name: i for i, name in enumerate(sources)},
-        value=WaveformSource.name,
-        else_=len(sources),
-    )
-    
-    wf_info_subq = (
-        select(WaveformInfo.id)
-        .join(WaveformSource, WaveformInfo.wf_source_id == WaveformSource.id)
-        .where(WaveformSource.name.in_(sources))
-        .order_by(source_priority)
-        .limit(1)
-        .scalar_subquery()
-    )
-
-    stmt = (
-        select(Pick, Channel, WaveformInfo)
-        .join_from(Pick, WaveformInfo, Pick.id == WaveformInfo.pick_id)
-        .join(Channel, Channel.id == WaveformInfo.chan_id)
-        .join(Station, Pick.sta_id == Station.id)
-        .where(WaveformInfo.id == wf_info_subq)
-        .where(Pick.phase == phase)
-        .where(Pick.ptime >= start)
-        .where(Pick.ptime < end)
-        .order_by(Station.id, Pick.chan_pref, Pick.id, Channel.seed_code)
-    )
-
-    # Only need vertical component for P pick regressor
-    if phase == "P":
-        stmt = stmt.where(text('channel.seed_code LIKE "__Z"'))
-
-    if wf_filt_low is not None:
-        stmt = stmt.where(WaveformInfo.wf_filt_low == wf_filt_low)
-
-    if wf_filt_high is not None:
-        stmt = stmt.where(WaveformInfo.wf_filt_high == wf_filt_high)
-
-    params = {}
-    if hdf_file_contains is not None:
-        params["hdf_file_contains"] = hdf_file_contains
-        stmt = stmt.where(text("waveform_info.hdf_file LIKE :hdf_file_contains"))
-
-    result = session.execute(stmt, params).all()
-
-    return result
-
-
 def insert_pick_correction_pytable(
     session,
     storage,
@@ -1076,3 +1020,247 @@ def get_correction_cis(session, corr_id):
     stmt = select(CredibleInterval).where(CredibleInterval.corr_id == corr_id)
 
     return session.scalars(stmt).all()
+
+
+class Waveforms:
+
+    @staticmethod
+    def get_sorted_waveform_info(
+        session,
+        phase,
+        start,
+        end,
+        sources: list[str],
+        limit_to_3c=False,
+        wf_filt_low=None,
+        wf_filt_high=None,
+        hdf_file_contains=None,
+    ):
+        # Build CASE expression to assign source priority by name
+        source_priority = case(
+            {name: i for i, name in enumerate(sources)},
+            value=WaveformSource.name,
+            else_=len(sources),
+        )
+
+        wf_info_subq = (
+            select(WaveformInfo.id)
+            .join(WaveformSource, WaveformInfo.wf_source_id == WaveformSource.id)
+            .where(WaveformSource.name.in_(sources))
+            .order_by(source_priority)
+            .limit(1)
+            .scalar_subquery()
+        )
+
+        stmt = (
+            select(Pick, Channel, WaveformInfo)
+            .join_from(Pick, WaveformInfo, Pick.id == WaveformInfo.pick_id)
+            .join(Channel, Channel.id == WaveformInfo.chan_id)
+            .join(Station, Pick.sta_id == Station.id)
+            .where(WaveformInfo.id == wf_info_subq)
+            .where(Pick.phase == phase)
+            .where(Pick.ptime >= start)
+            .where(Pick.ptime < end)
+            .order_by(Station.id, Pick.chan_pref, Pick.id, Channel.seed_code)
+        )
+
+        # Only need vertical component for P pick regressor
+        if phase == "P":
+            stmt = stmt.where(text('channel.seed_code LIKE "__Z"'))
+        elif limit_to_3c:
+            group_by_subq = (
+                select(WaveformInfo.pick_id, WaveformInfo.wf_source_id)
+                .group_by(WaveformInfo.pick_id, WaveformInfo.wf_source_id)
+                .having(func.count(WaveformInfo.id) > 3)
+                .subquery()
+            )
+            stmt = stmt.join(
+                group_by_subq,
+                (WaveformInfo.pick_id == group_by_subq.c.pick_id)
+                & (WaveformInfo.wf_source_id == group_by_subq.c.wf_source_id),
+            )
+
+        if wf_filt_low is not None:
+            stmt = stmt.where(WaveformInfo.wf_filt_low == wf_filt_low)
+
+        if wf_filt_high is not None:
+            stmt = stmt.where(WaveformInfo.wf_filt_high == wf_filt_high)
+
+        params = {}
+        if hdf_file_contains is not None:
+            params["hdf_file_contains"] = hdf_file_contains
+            stmt = stmt.where(text("waveform_info.hdf_file LIKE :hdf_file_contains"))
+
+        result = session.execute(stmt, params).all()
+
+        return result
+
+    def gather_3c_waveforms(
+        self,
+        session,
+        n_samples,
+        channel_index_mapping_fn,
+        wf_process_fn,
+        start,
+        end,
+        phase,
+        sources,
+        wf_filt_low=None,
+        wf_filt_high=None,
+        hdf_file_contains=None,
+    ):
+
+        # Get the relevant waveform information from the database and sort so waveforms
+        # belonging to the same pick are next to each other
+        all_infos = self.get_sorted_waveform_info(
+            session,
+            phase,
+            start,
+            end,
+            sources,
+            limit_to_3c=True,
+            wf_filt_low=wf_filt_low,
+            wf_filt_high=wf_filt_high,
+            hdf_file_contains=hdf_file_contains,
+        )
+
+        n_picks = len(all_infos // 3)
+        # Waveform information to return
+        X = np.zeros((n_picks, n_samples, 3))
+        # Pick ids to return for inserting results back into the db
+        # Waveform source information to return for inserting results back into the db
+        pick_source_ids = []
+
+        pick_ind = -1
+        wf_i0 = -1
+        wf_i1 = -1
+        wf_storages = {}
+        # Iterate over the picks
+        for pick_cnt in np.range(0, len(n_picks)):
+            # Get the 3 rows corresponding to the different components for the pick
+            pick_wf_infos = all_infos[pick_cnt : pick_cnt + 3]
+            # Check the pytables that are loaded and load new ones if necessary
+            pytables_loaded = self._check_3c_wf_files(
+                wf_storages, pick_wf_infos, channel_index_mapping_fn
+            )
+            if not pytables_loaded:
+                wf_storages = self._set_3c_wf_storage(
+                    all_infos[pick_cnt : pick_cnt + 3], channel_index_mapping_fn
+                )
+
+            # Get the start and end inds of the waveforms assuming the pick is at the
+            # center of the window
+            if pick_ind < 0:
+                pick_ind = wf_storages[0].table.attrs.expected_array_length // 2
+                wf_i0 = pick_ind - n_samples // 2
+                wf_i1 = pick_ind + n_samples // 2
+
+            # Iterate over the different components for the pick
+            curr_pid = -1
+            curr_wf_source_id = -1
+            pick_wfs = np.zeros((1, n_samples, 3))
+            ids = {}
+            sufficient_signal = True
+            for i, info in enumerate(pick_wf_infos):
+                pid = info[0].id
+                wf_source_id = info[-1].wf_source_id
+                # Get the appropriate channel index given the seed code
+                seed_code = info[1].seed_code
+                comp_ind = channel_index_mapping_fn(3, seed_code)
+                # Few checks to make sure waveforms belong together
+                if curr_pid < 0:
+                    curr_pid = pid
+                    curr_wf_source_id = wf_source_id
+                else:
+                    assert pid == curr_pid, "Pick IDS do not match"
+                    assert (
+                        wf_source_id == curr_wf_source_id
+                    ), "Waveform source ids do not match"
+
+                # Get the waveform from the pytable
+                wf_info_id = info[-1].id
+                wf_row = wf_storages[comp_ind].select_row(wf_info_id)
+                if wf_row["start_ind"] > wf_i0 or wf_row["end_ind"] < wf_i1:
+                    sufficient_signal = False
+                    break
+                pick_wfs[0, :, comp_ind] = wf_row["data"][wf_i0:wf_i1]
+
+            # DO THE WAVEFORM PROCESSING TOGETHER
+            if sufficient_signal:
+                processed_wfs = wf_process_fn(pick_wfs)
+                # Save waveforms
+                ids["pick_id"] = curr_pid
+                ids["wf_source_id"] = curr_wf_source_id
+                pick_source_ids.append(ids)
+                X[pick_cnt, :, :] = processed_wfs
+
+        assert (
+            len(pick_source_ids) == X.shape[0]
+        ), "incorrect number of pick ids compared to waveforms"
+        return pick_source_ids, X
+
+    def _check_3c_wf_files(self, wf_storages, pick_info, channel_index_mapping_fn):
+        """Check that the necessary pytables files storing waveforms are loaded
+
+        Args:
+            wf_files (dict): dictionary of pytables files
+            pick_info (list): list of tuples containing relevant waveform information from
+            the database for 1 pick.
+
+        Returns:
+            bool: Whether the pytables files are correct (True) or need to be loaded (False)
+        """
+        if len(wf_storages.keys()) == 0:
+            return False
+        seed_code = pick_info[1].seed_code
+        comp_ind = channel_index_mapping_fn(3, seed_code)
+        wf_hdf_file = pick_info[-1].hdf_file
+        if wf_storages[comp_ind].stored_hdf_info != wf_hdf_file:
+            return False
+
+        return True
+
+    def _set_3c_wf_storage(self, pick_infos, channel_index_mapping_fn, phase):
+        """Load 3 pytables files for the different components
+
+        Args:
+            pick_info (list): list of tuples containing relevant waveform information from
+            the database for 1 pick.
+
+        Returns:
+            dict: dictionary of pytables files
+        """
+        wf_storages = {}
+        for info in pick_infos:
+            wf_hdf_file = info[-1].hdf_file
+            seed_code = info[1].seed_code
+            comp_ind = channel_index_mapping_fn(3, seed_code)
+            # Reload the files after resetting them
+            if comp_ind not in wf_storages.keys():
+                storage = WaveformStorageReader(wf_hdf_file)
+                wf_storages[comp_ind] = storage
+
+        # Check that the pytables metadata agree with eachother
+        for i in range(1, 3):
+            self._compare_pytables_attrs(wf_storages[i - 1], wf_storages[i], phase)
+
+        return wf_storages
+
+    def _compare_pytables_attrs(self, prev_storage, curr_storage, phase):
+        assert os.path.dirname(prev_storage.file_dir) == os.path.dirname(
+            curr_storage.file_dir
+        ), "loaded files do not come from the same directory"
+
+        prev_attrs = prev_storage.table.attrs
+        curr_attrs = curr_storage.table.attrs
+        assert prev_attrs.sta == curr_attrs.sta, "Station names do not match"
+        assert (
+            prev_attrs.filt_low == curr_attrs.filt_low
+        ), "filt_low values do not match"
+        assert (
+            prev_attrs.filt_high == curr_attrs.filt_high
+        ), "filt_high values do not match"
+        assert curr_attrs["phase"] == phase, "phase is not as expected"
+        assert (
+            prev_attrs.expected_array_length == curr_attrs.expected_array_length
+        ), "expected_array_lengths do not match"
