@@ -746,8 +746,9 @@ class PickCorrection(Base):
     def __repr__(self) -> str:
         return (
             f"PickCorrection(id={self.id!r}, pid={self.pid!r}, method_id={self.method_id!r}, "
-            f"median={self.median!r}, mean={self.mean!r}, std={self.std!r}, if_low={self.if_low!r}, "
-            f"if_high={self.if_high!r}, trim_mean={self.trim_mean!r}, trim_median={self.trim_median!r}, "
+            f"median={self.median!r}, mean={self.mean!r}, std={self.std!r}, "
+            f"if_low={self.if_low!r}, if_high={self.if_high!r}, trim_mean={self.trim_mean!r}, "
+            f"trim_median={self.trim_median!r}, trim_std={self.trim_std!r}, "
             f"preds_hdf_file={self.preds_hdf_file!r}, last_modified={self.last_modified!r})"
         )
 
