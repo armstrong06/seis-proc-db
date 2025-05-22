@@ -685,6 +685,7 @@ class PickCorrection(Base):
         if_high: Upper inner fence value for all samples
         trim_median: Median value of samples within the inner fence
         trim_mean: Mean value of samples within the inner fence
+        trim_std: Standard deviation within the inner fence
         # preds: JSON object storing the sampled pick correction values
         preds_hdf_file: The name of the hdf file in config.HDF_BASE_PATH/config.HDF_PICKCORR_DIR
             where the predictions are stored
@@ -716,6 +717,7 @@ class PickCorrection(Base):
     if_high: Mapped[float] = mapped_column(Double)
     trim_median: Mapped[float] = mapped_column(Double)
     trim_mean: Mapped[float] = mapped_column(Double)
+    trim_std: Mapped[float] = mapped_column(Double)
     # preds: Mapped[JSON] = mapped_column(JSON)
     preds_hdf_file: Mapped[str] = mapped_column(String(255))
     # preds_hdf_index: Mapped[int] = mapped_column(Integer)
