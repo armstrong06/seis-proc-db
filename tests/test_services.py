@@ -1285,7 +1285,204 @@ def test_insert_cis(db_session_with_pick_corr):
 
 
 class TestWaveforms:
-    def test_get_info_for_swag_repickers(self, db_session_with_waveform_info):
+    @pytest.fixture
+    def db_session_with_many_waveform_info(self, db_session, mock_pytables_config):
+
+        # Insert the stations
+        sta_dict = {
+            "ondate": datetime.strptime("2010-01-01T00:00:00.00", dateformat),
+            "lat": 44.7155,
+            "lon": -110.67917,
+            "elev": 2336,
+        }
+        sta1 = services.insert_station(db_session, "JK", "TST1", **sta_dict)
+        sta2 = services.insert_station(db_session, "JK", "TST2", **sta_dict)
+        db_session.flush()
+
+        # Insert the channels
+        chan_info = {
+            "loc": "01",
+            "ondate": datetime.strptime("2010-01-01T00:00:00.00", dateformat),
+            "samp_rate": 100.0,
+            "clock_drift": 1e-5,
+            "sensor_desc": "Nanometrics something or other",
+            "sensit_units": "M/S",
+            "sensit_val": 9e9,
+            "sensit_freq": 5,
+            "lat": 44.7155,
+            "lon": -110.67917,
+            "elev": 2336,
+            "depth": 100,
+            "azimuth": 90,
+            "dip": -90,
+            "offdate": None,
+            "overall_gain_vel": None,
+        }
+        all_channel_dict = {}
+        for id in [sta1.id, sta2.id]:
+            for code in ["HHZ", "HHE", "HHN"]:
+                chan_info["seed_code"] = code
+                chan_info["sta_id"] = id
+                all_channel_dict[f"{id}.{code}"] = services.insert_channel(
+                    db_session, chan_info
+                )
+
+        db_session.flush()
+
+        # Insert P Picks
+        pick_cnt0 = db_session.execute(func.count(tables.Pick.id)).one()[0]
+        p_dict = {
+            "chan_pref": "HH",
+            "phase": "P",
+            "ptime": datetime.strptime("2010-02-01T00:00:00.00", dateformat),
+            "auth": "TEST",
+        }
+        p1 = services.insert_pick(db_session, sta1.id, **p_dict)
+        p_dict["ptime"] = datetime.strptime("2010-02-02T00:00:00.00", dateformat)
+        p2 = services.insert_pick(db_session, sta2.id, **p_dict)
+        p_dict["ptime"] = datetime.strptime("2010-02-03T00:00:00.00", dateformat)
+        p3 = services.insert_pick(db_session, sta2.id, **p_dict)
+
+        # Insert S Picks
+        s_dict = {
+            "chan_pref": "HH",
+            "phase": "S",
+            "ptime": datetime.strptime("2010-02-01T12:00:00.00", dateformat),
+            "auth": "TEST",
+        }
+        s1 = services.insert_pick(db_session, sta1.id, **s_dict)
+        s_dict["ptime"] = datetime.strptime("2010-02-02T12:00:00.00", dateformat)
+        s2 = services.insert_pick(db_session, sta1.id, **s_dict)
+        s_dict["ptime"] = datetime.strptime("2010-02-03T12:00:00.00", dateformat)
+        s3 = services.insert_pick(db_session, sta2.id, **s_dict)
+
+        # Insert waveform sources
+        wf_source1 = services.insert_waveform_source(
+            db_session, "TEST-ExtractContData", "Extract snippets"
+        )
+        wf_source2 = services.insert_waveform_source(
+            db_session, "TEST-DownloadSegment", "Download waveform segment from IRIS"
+        )
+        wf_source3 = services.insert_waveform_source(
+            db_session, "TEST-ProcessExtracted", "Filter extracted waveforms"
+        )
+        db_session.flush()
+        for src in [wf_source1, wf_source2, wf_source3]:
+            print(src.id, src.name)
+        pick_cnt1 = db_session.execute(func.count(tables.Pick.id)).one()[0]
+        assert pick_cnt1 - pick_cnt0 == 6, "Expected to insert 6 picks."
+
+        try:
+            # Open waveform storages
+            wf_storages = {}
+            for id in [sta1.id, sta2.id]:
+                for code in ["HHZ", "HHE", "HHN"]:
+                    for phase in ["P", "S"]:
+                        for filt_low, filt_high in [(None, None), (1, 17)]:
+                            wf_storage = pytables_backend.WaveformStorage(
+                                expected_array_length=100,
+                                net="JK",
+                                sta=str(id),
+                                loc="01",
+                                seed_code=code,
+                                ncomps=3,
+                                phase=phase,
+                                filt_low=filt_low,
+                                filt_high=filt_high,
+                                proc_notes="test",
+                            )
+                            wf_storages[
+                                f"{id}.{code}.{phase}.{filt_low}.{filt_high}"
+                            ] = wf_storage
+
+            ### Insert waveform infos ###
+
+            def insert_wf_info(
+                phase, pick, chan_code, wf_source, value, filt_low=None, filt_high=None
+            ):
+                _ = services.insert_waveform_pytable(
+                    db_session,
+                    wf_storages[
+                        f"{pick.sta_id}.{chan_code}.{phase}.{filt_low}.{filt_high}"
+                    ],
+                    all_channel_dict[f"{pick.sta_id}.{chan_code}"].id,
+                    pick.id,
+                    wf_source.id,
+                    start=pick.ptime - timedelta(seconds=0.5),
+                    end=pick.ptime + timedelta(seconds=0.5),
+                    data=np.full(100, value),
+                    filt_low=filt_low,
+                    filt_high=filt_high,
+                )
+
+            wfinfo_cnt0 = db_session.execute(func.count(tables.WaveformInfo.id)).one()[
+                0
+            ]
+            # Info for P Pick 1 - a 1C P pick that is on a different station, earlier than the others, and had a different filter band
+            insert_wf_info("P", p1, "HHZ", wf_source3, 1, 1, 17)
+
+            # Info for P Pick 2 - a 3C P pick
+            for i, code in enumerate(["HHE", "HHN", "HHZ"]):
+                insert_wf_info("P", p2, code, wf_source1, 2 + i)
+
+            # Info for P Pick 2 from a different source
+            insert_wf_info("P", p2, "HHZ", wf_source2, 5)
+
+            # Info for P Pick 3 - Same info as Pick 2 (source 1) but at a later time
+            insert_wf_info("P", p3, "HHZ", wf_source1, 6)
+
+            # Info for S Pick 1
+            for i, code in enumerate(["HHE", "HHN", "HHZ"]):
+                insert_wf_info("S", s1, code, wf_source1, 10 + i)
+
+            # Info for S Pick 1 - but from a different source
+            for i, code in enumerate(["HHE", "HHN", "HHZ"]):
+                insert_wf_info("S", s1, code, wf_source2, 13 + i)
+
+            # Info for S pick 2 - From the same source as S Pick 1 but incomplete channels
+            insert_wf_info("S", s2, "HHE", wf_source1, 16)
+
+            # Info for S pick 3 - From a different station, later than others, and has a different filter band
+            for i, code in enumerate(["HHE", "HHN", "HHZ"]):
+                insert_wf_info("S", s3, code, wf_source3, 17 + i)
+
+            db_session.commit()
+            wfinfo_cnt1 = db_session.execute(func.count(tables.WaveformInfo.id)).one()[
+                0
+            ]
+            assert (
+                wfinfo_cnt1 - wfinfo_cnt0 == 16
+            ), "Expected to insert 16 waveform infos"
+        finally:
+            for _, wf_storage in wf_storages.items():
+                if wf_storage._is_open:
+                    wf_storage.close()
+                    os.remove(wf_storage.file_path)
+
+        return db_session
+
+    def test_get_sorted_waveform_info_P_no_filters(
+        self, db_session_with_many_waveform_info
+    ):
+        """Should return 5 rows. Will not return the pick 2 from source 2 because of the source priority list.
+
+        Args:
+            db_session_with_many_waveform_info (_type_): _description_
+        """
+        db_session = db_session_with_many_waveform_info
+        wf_infos = services.Waveforms.get_sorted_waveform_info(
+            db_session,
+            "P",
+            datetime.strptime("2010-01-01T00:00:00.00", dateformat),
+            datetime.strptime("2011-01-01T00:00:00.00", dateformat),
+            [ "TEST-ProcessExtracted", "TEST-ExtractContData", "TEST-DownloadSegment"],
+        )
+        print(wf_infos)
+        for wf_info in wf_infos:
+            print(wf_info[-1].wf_source_id)
+        assert len(wf_infos) == 5, "incorrect number of rows returned. Expected 5. "
+
+    def test_get_sorted_waveform_info_simple(self, db_session_with_waveform_info):
         wf_storage = None
         try:
             db_session, wf_storage, ids = db_session_with_waveform_info
