@@ -485,6 +485,7 @@ class BasePytableReader(ABC):
         self.file_path = os.path.join(output_base_dir, stored_hdf_info)
         self._h5_file = None
         self._table = None
+        self._is_open=False
 
         self._open_file_read()
 
@@ -521,6 +522,11 @@ class BasePytableReader(ABC):
 
         colnames = self._table.colnames
         return dict(zip(colnames, row[0][:]))
+    
+    def close(self):
+        if self._h5_file is not None and self._is_open:
+            self._h5_file.close()
+            self._is_open = False
 
 
 class WaveformStorageReader(BasePytableReader):

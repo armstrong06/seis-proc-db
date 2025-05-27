@@ -336,3 +336,56 @@ class TestSwagPicksStorage:
             repicker_storage.close()
             os.remove(repicker_storage.file_path)
             assert not os.path.exists(repicker_storage.file_path), "the file was not removed"
+
+def test_waveform_storage_reader():
+    wf_storage = pytables_backend.WaveformStorage(
+            expected_array_length=1200,
+            net="JK",
+            sta="TEST",
+            loc="01",
+            seed_code="HHZ",
+            ncomps=3,
+            phase="P",
+            filt_low=None,
+            filt_high=None,
+            proc_notes="raw waveforms",
+        )
+    
+
+    try:
+        wf_file = wf_storage.file_path
+        db_id = 1
+        data = np.random.rand(1200).astype(np.float32)
+        start_ind = 100
+        end_ind = 1100
+        data[0:start_ind] = 0
+        data[end_ind:] = 0
+        wf_storage.append(db_id, data, start_ind, end_ind)
+        wf_storage.commit()
+        wf_storage.close()
+
+        wf_reader = pytables_backend.WaveformStorageReader(wf_file)
+        assert wf_reader.table is not None, "table is not set"
+        file_dir, file_name = os.path.split(wf_file)
+        assert wf_reader.file_name == file_name, "incorrect file name"
+        assert wf_reader.file_dir == file_dir, "incorrect dir"
+        row = wf_reader.select_row(db_id)
+        assert row is not None, "No row was returned"
+        assert row["id"] == db_id, "incorrect id"
+        assert np.array_equal(data, row["data"]), "incorrect data"
+        assert start_ind == row["start_ind"], "incorrect start ind"
+        assert end_ind == row["end_ind"], "incorrect end ind"
+        rows = wf_reader.select_rows([db_id])
+        assert len(rows) == 1, "expected 1 row to be returned"
+
+        wf_reader.close()
+        assert wf_reader._is_open == False, "should be closed"
+
+    finally:
+        # Clean up
+        if wf_storage._is_open:
+            wf_storage.close()
+        if wf_reader._is_open:
+            wf_reader.close()
+        os.remove(wf_storage.file_path)
+        assert not os.path.exists(wf_storage.file_path), "the file was not removed"
