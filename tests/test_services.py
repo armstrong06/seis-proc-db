@@ -1292,6 +1292,7 @@ class TestWaveforms:
     @pytest.fixture
     def db_session_with_many_waveform_info(self, db_session, mock_pytables_config):
 
+        ids = {}
         # Insert the stations
         sta_dict = {
             "ondate": datetime.strptime("2010-01-01T00:00:00.00", dateformat),
@@ -1375,8 +1376,19 @@ class TestWaveforms:
             filt_high=17,
         )
         db_session.flush()
-        for src in [wf_source1, wf_source2, wf_source3]:
-            print(src.id, src.name)
+        # for src in [wf_source1, wf_source2, wf_source3]:
+        #     print(src.id, src.name)
+
+        ids["p_pick1"] = p1.id
+        ids["p_pick2"] = p2.id
+        ids["p_pick3"] = p3.id
+        ids["s_pick1"] = s1.id
+        ids["s_pick2"] = s2.id
+        ids["s_pick3"] = s3.id
+        ids["wf_source1"] = wf_source1.id
+        ids["wf_source2"] = wf_source2.id
+        ids["wf_source3"] = wf_source3.id
+
         pick_cnt1 = db_session.execute(func.count(tables.Pick.id)).one()[0]
         assert pick_cnt1 - pick_cnt0 == 6, "Expected to insert 6 picks."
 
@@ -1437,11 +1449,11 @@ class TestWaveforms:
 
             # Info for S Pick 1
             for i, code in enumerate(["HHE", "HHN", "HHZ"]):
-                insert_wf_info("S", s1, code, wf_source1, 10 + i)
+                insert_wf_info("S", s1, code, wf_source2, 10 + i)
 
-            # Info for S Pick 1 - but from a different source
+            # Info for S Pick 1 - but from a different (higher priority) source
             for i, code in enumerate(["HHE", "HHN", "HHZ"]):
-                insert_wf_info("S", s1, code, wf_source2, 13 + i)
+                insert_wf_info("S", s1, code, wf_source1, 13 + i)
 
             # Info for S pick 2 - From the same source as S Pick 1 but incomplete channels
             insert_wf_info("S", s2, "HHE", wf_source1, 16)
@@ -1463,28 +1475,730 @@ class TestWaveforms:
                     wf_storage.close()
                     os.remove(wf_storage.file_path)
 
-        return db_session
+        return db_session, ids
 
-    def test_get_sorted_waveform_info_P_no_filters(
+    def test_get_sorted_waveform_info_P_freq_limits(
         self, db_session_with_many_waveform_info
     ):
-        """Should return 5 rows. Will not return the pick 2 from source 2 because of the source priority list.
+        """Should return 1 rows.
 
         Args:
             db_session_with_many_waveform_info (_type_): _description_
         """
-        db_session = db_session_with_many_waveform_info
+        db_session, ids = db_session_with_many_waveform_info
         wf_infos = services.Waveforms.get_sorted_waveform_info(
             db_session,
             "P",
             datetime.strptime("2010-01-01T00:00:00.00", dateformat),
             datetime.strptime("2011-01-01T00:00:00.00", dateformat),
-            [ "TEST-ProcessExtracted", "TEST-ExtractContData", "TEST-DownloadSegment"],
+            ["TEST-ProcessExtracted", "TEST-ExtractContData", "TEST-DownloadSegment"],
+            wf_filt_low=1.0,
+            wf_filt_high=17.0,
         )
-        print(wf_infos)
-        for wf_info in wf_infos:
-            print(wf_info[-1].wf_source_id)
-        assert len(wf_infos) == 5, "incorrect number of rows returned. Expected 5. "
+
+        assert len(wf_infos) == 1, "incorrect number of rows returned. Expected 1."
+
+        # First wf
+        assert (
+            wf_infos[0][-1].pick_id == ids["p_pick1"]
+        ), "Incorrect PID for the first waveform"
+
+    def test_get_sorted_waveform_info_S_freq_limits(
+        self, db_session_with_many_waveform_info
+    ):
+        """Should return 3 rows.
+
+        Args:
+            db_session_with_many_waveform_info (_type_): _description_
+        """
+        db_session, ids = db_session_with_many_waveform_info
+        wf_infos = services.Waveforms.get_sorted_waveform_info(
+            db_session,
+            "S",
+            datetime.strptime("2010-01-01T00:00:00.00", dateformat),
+            datetime.strptime("2011-01-01T00:00:00.00", dateformat),
+            ["TEST-ProcessExtracted", "TEST-ExtractContData", "TEST-DownloadSegment"],
+            wf_filt_low=1.0,
+            wf_filt_high=17.0,
+        )
+
+        assert len(wf_infos) == 3, "incorrect number of rows returned. Expected 3."
+
+        # First wf
+        assert (
+            wf_infos[0][-1].pick_id == ids["s_pick3"]
+        ), "Incorrect PID for the first waveform"
+        assert (
+            wf_infos[0][-1].wf_source_id == ids["wf_source3"]
+        ), "Incorrect wf_source_id for the first waveform"
+        assert (
+            wf_infos[0][1].seed_code == "HHE"
+        ), "Incorrect seed_code for the first waveform"
+        # Ninth wf
+        assert (
+            wf_infos[1][-1].pick_id == ids["s_pick3"]
+        ), "Incorrect PID for the second waveform"
+        assert (
+            wf_infos[1][-1].wf_source_id == ids["wf_source3"]
+        ), "Incorrect wf_source_id for the second waveform"
+        assert (
+            wf_infos[1][1].seed_code == "HHN"
+        ), "Incorrect seed_code for the second waveform"
+        # Tenth wf
+        assert (
+            wf_infos[2][-1].pick_id == ids["s_pick3"]
+        ), "Incorrect PID for the third waveform"
+        assert (
+            wf_infos[2][-1].wf_source_id == ids["wf_source3"]
+        ), "Incorrect wf_source_id for the third waveform"
+        assert (
+            wf_infos[2][1].seed_code == "HHZ"
+        ), "Incorrect seed_code for the third waveform"
+
+    def test_get_sorted_waveform_info_P_vertical_and_threeC_only_error(
+        self, db_session_with_many_waveform_info
+    ):
+        """Should raise a ValueError.
+
+        Args:
+            db_session_with_many_waveform_info (_type_): _description_
+        """
+        db_session, ids = db_session_with_many_waveform_info
+
+        with pytest.raises(ValueError):
+            wf_infos = services.Waveforms.get_sorted_waveform_info(
+                db_session,
+                "P",
+                datetime.strptime("2010-01-01T00:00:00.00", dateformat),
+                datetime.strptime("2011-01-01T00:00:00.00", dateformat),
+                [
+                    "TEST-ProcessExtracted",
+                    "TEST-ExtractContData",
+                    "TEST-DownloadSegment",
+                ],
+                threeC_only=True,
+                vertical_only=True,
+            )
+
+    def test_get_sorted_waveform_info_P_threeC_only(
+        self, db_session_with_many_waveform_info
+    ):
+        """Should return 3 rows.
+
+        Args:
+            db_session_with_many_waveform_info (_type_): _description_
+        """
+        db_session, ids = db_session_with_many_waveform_info
+        wf_infos = services.Waveforms.get_sorted_waveform_info(
+            db_session,
+            "P",
+            datetime.strptime("2010-01-01T00:00:00.00", dateformat),
+            datetime.strptime("2011-01-01T00:00:00.00", dateformat),
+            ["TEST-ProcessExtracted", "TEST-ExtractContData", "TEST-DownloadSegment"],
+            threeC_only=True,
+        )
+
+        assert len(wf_infos) == 3, "incorrect number of rows returned. Expected 3."
+
+        # First wf
+        assert (
+            wf_infos[0][-1].pick_id == ids["p_pick2"]
+        ), "Incorrect PID for the first waveform"
+        assert (
+            wf_infos[0][-1].wf_source_id == ids["wf_source1"]
+        ), "Incorrect wf_source_id for the first waveform"
+        assert (
+            wf_infos[0][1].seed_code == "HHE"
+        ), "Incorrect seed_code for the first waveform"
+        # Second wf
+        assert (
+            wf_infos[1][-1].pick_id == ids["p_pick2"]
+        ), "Incorrect PID for the second waveform"
+        assert (
+            wf_infos[1][-1].wf_source_id == ids["wf_source1"]
+        ), "Incorrect wf_source_id for the second waveform"
+        assert (
+            wf_infos[1][1].seed_code == "HHN"
+        ), "Incorrect seed_code for the second waveform"
+        # Third wf
+        assert (
+            wf_infos[2][-1].pick_id == ids["p_pick2"]
+        ), "Incorrect PID for the third waveform"
+        assert (
+            wf_infos[2][-1].wf_source_id == ids["wf_source1"]
+        ), "Incorrect wf_source_id for the third waveform"
+        assert (
+            wf_infos[2][1].seed_code == "HHZ"
+        ), "Incorrect seed_code for the third waveform"
+
+    def test_get_sorted_waveform_info_S_threeC_only(
+        self, db_session_with_many_waveform_info
+    ):
+        """Should return 9 rows. For pick 1, the source 2 should be after source 1.
+
+        Args:
+            db_session_with_many_waveform_info (_type_): _description_
+        """
+        db_session, ids = db_session_with_many_waveform_info
+        wf_infos = services.Waveforms.get_sorted_waveform_info(
+            db_session,
+            "S",
+            datetime.strptime("2010-01-01T00:00:00.00", dateformat),
+            datetime.strptime("2011-01-01T00:00:00.00", dateformat),
+            ["TEST-ProcessExtracted", "TEST-ExtractContData", "TEST-DownloadSegment"],
+            threeC_only=True,
+        )
+
+        assert len(wf_infos) == 9, "incorrect number of rows returned. Expected 9."
+
+        # First wf
+        assert (
+            wf_infos[0][-1].pick_id == ids["s_pick1"]
+        ), "Incorrect PID for the first waveform"
+        assert (
+            wf_infos[0][-1].wf_source_id == ids["wf_source1"]
+        ), "Incorrect wf_source_id for the first waveform"
+        assert (
+            wf_infos[0][1].seed_code == "HHE"
+        ), "Incorrect seed_code for the first waveform"
+        # Second wf
+        assert (
+            wf_infos[1][-1].pick_id == ids["s_pick1"]
+        ), "Incorrect PID for the second waveform"
+        assert (
+            wf_infos[1][-1].wf_source_id == ids["wf_source1"]
+        ), "Incorrect wf_source_id for the second waveform"
+        assert (
+            wf_infos[1][1].seed_code == "HHN"
+        ), "Incorrect seed_code for the second waveform"
+        # Third wf
+        assert (
+            wf_infos[2][-1].pick_id == ids["s_pick1"]
+        ), "Incorrect PID for the third waveform"
+        assert (
+            wf_infos[2][-1].wf_source_id == ids["wf_source1"]
+        ), "Incorrect wf_source_id for the third waveform"
+        assert (
+            wf_infos[2][1].seed_code == "HHZ"
+        ), "Incorrect seed_code for the third waveform"
+        # Fourth wf
+        assert (
+            wf_infos[3][-1].pick_id == ids["s_pick1"]
+        ), "Incorrect PID for the fourth waveform"
+        assert (
+            wf_infos[3][-1].wf_source_id == ids["wf_source2"]
+        ), "Incorrect wf_source_id for the fourth waveform"
+        assert (
+            wf_infos[3][1].seed_code == "HHE"
+        ), "Incorrect seed_code for the fourth waveform"
+        # Fifth wf
+        assert (
+            wf_infos[4][-1].pick_id == ids["s_pick1"]
+        ), "Incorrect PID for the fifth waveform"
+        assert (
+            wf_infos[4][-1].wf_source_id == ids["wf_source2"]
+        ), "Incorrect wf_source_id for the fifth waveform"
+        assert (
+            wf_infos[4][1].seed_code == "HHN"
+        ), "Incorrect seed_code for the fifth waveform"
+        # Sixth wf
+        assert (
+            wf_infos[5][-1].pick_id == ids["s_pick1"]
+        ), "Incorrect PID for the sixth waveform"
+        assert (
+            wf_infos[5][-1].wf_source_id == ids["wf_source2"]
+        ), "Incorrect wf_source_id for the sixth waveform"
+        assert (
+            wf_infos[5][1].seed_code == "HHZ"
+        ), "Incorrect seed_code for the sixth waveform"
+        # Seventh wf
+        assert (
+            wf_infos[6][-1].pick_id == ids["s_pick3"]
+        ), "Incorrect PID for the seventh waveform"
+        assert (
+            wf_infos[6][-1].wf_source_id == ids["wf_source3"]
+        ), "Incorrect wf_source_id for the seventh waveform"
+        assert (
+            wf_infos[6][1].seed_code == "HHE"
+        ), "Incorrect seed_code for the seventh waveform"
+        # Eigth wf
+        assert (
+            wf_infos[7][-1].pick_id == ids["s_pick3"]
+        ), "Incorrect PID for the eigth waveform"
+        assert (
+            wf_infos[7][-1].wf_source_id == ids["wf_source3"]
+        ), "Incorrect wf_source_id for the eigth waveform"
+        assert (
+            wf_infos[7][1].seed_code == "HHN"
+        ), "Incorrect seed_code for the eigth waveform"
+        # Ninth wf
+        assert (
+            wf_infos[8][-1].pick_id == ids["s_pick3"]
+        ), "Incorrect PID for the ninth waveform"
+        assert (
+            wf_infos[8][-1].wf_source_id == ids["wf_source3"]
+        ), "Incorrect wf_source_id for the ninth waveform"
+        assert (
+            wf_infos[8][1].seed_code == "HHZ"
+        ), "Incorrect seed_code for the ninth waveform"
+
+    def test_get_sorted_waveform_info_P_vertical_only(
+        self, db_session_with_many_waveform_info
+    ):
+        """Should return 4 rows. For pick 2, the source 2 should be after source 1.
+
+        Args:
+            db_session_with_many_waveform_info (_type_): _description_
+        """
+        db_session, ids = db_session_with_many_waveform_info
+        wf_infos = services.Waveforms.get_sorted_waveform_info(
+            db_session,
+            "P",
+            datetime.strptime("2010-01-01T00:00:00.00", dateformat),
+            datetime.strptime("2011-01-01T00:00:00.00", dateformat),
+            ["TEST-ProcessExtracted", "TEST-ExtractContData", "TEST-DownloadSegment"],
+            vertical_only=True,
+        )
+
+        assert len(wf_infos) == 4, "incorrect number of rows returned. Expected 4."
+
+        # First wf
+        assert (
+            wf_infos[0][-1].pick_id == ids["p_pick1"]
+        ), "Incorrect PID for the first waveform"
+        # Second wf
+        assert (
+            wf_infos[1][-1].pick_id == ids["p_pick2"]
+        ), "Incorrect PID for the second waveform"
+        assert (
+            wf_infos[1][-1].wf_source_id == ids["wf_source1"]
+        ), "Incorrect wf_source_id for the second waveform"
+        assert (
+            wf_infos[1][1].seed_code == "HHZ"
+        ), "Incorrect seed_code for the second waveform"
+        # Third wf
+        assert (
+            wf_infos[2][-1].pick_id == ids["p_pick2"]
+        ), "Incorrect PID for the third waveform"
+        assert (
+            wf_infos[2][-1].wf_source_id == ids["wf_source2"]
+        ), "Incorrect wf_source_id for the third waveform"
+        assert (
+            wf_infos[2][1].seed_code == "HHZ"
+        ), "Incorrect seed_code for the third waveform"
+        # Fourth wf
+        assert (
+            wf_infos[3][-1].pick_id == ids["p_pick3"]
+        ), "Incorrect PID for the fourth waveform"
+
+    def test_get_sorted_waveform_info_S_vertical_only(
+        self, db_session_with_many_waveform_info
+    ):
+        """Should return 3 rows. For pick 1, the source 2 should be after source 1.
+
+        Args:
+            db_session_with_many_waveform_info (_type_): _description_
+        """
+        db_session, ids = db_session_with_many_waveform_info
+        wf_infos = services.Waveforms.get_sorted_waveform_info(
+            db_session,
+            "S",
+            datetime.strptime("2010-01-01T00:00:00.00", dateformat),
+            datetime.strptime("2011-01-01T00:00:00.00", dateformat),
+            ["TEST-ProcessExtracted", "TEST-ExtractContData", "TEST-DownloadSegment"],
+            vertical_only=True,
+        )
+
+        assert len(wf_infos) == 3, "incorrect number of rows returned. Expected 3."
+
+        # First wf
+        assert (
+            wf_infos[0][-1].pick_id == ids["s_pick1"]
+        ), "Incorrect PID for the first waveform"
+        assert (
+            wf_infos[0][-1].wf_source_id == ids["wf_source1"]
+        ), "Incorrect wf_source_id for the first waveform"
+        assert (
+            wf_infos[0][1].seed_code == "HHZ"
+        ), "Incorrect seed_code for the first waveform"
+        # Second wf
+        assert (
+            wf_infos[1][-1].pick_id == ids["s_pick1"]
+        ), "Incorrect PID for the second waveform"
+        assert (
+            wf_infos[1][-1].wf_source_id == ids["wf_source2"]
+        ), "Incorrect wf_source_id for the second waveform"
+        assert (
+            wf_infos[1][1].seed_code == "HHZ"
+        ), "Incorrect seed_code for the second waveform"
+        # Third wf
+        assert (
+            wf_infos[2][-1].pick_id == ids["s_pick3"]
+        ), "Incorrect PID for the third waveform"
+        assert (
+            wf_infos[2][-1].wf_source_id == ids["wf_source3"]
+        ), "Incorrect wf_source_id for the third waveform"
+        assert (
+            wf_infos[2][1].seed_code == "HHZ"
+        ), "Incorrect seed_code for the third waveform"
+
+    def test_get_sorted_waveform_info_P_limit_sources(
+        self, db_session_with_many_waveform_info
+    ):
+        """Should return 1 rows.
+
+        Args:
+            db_session_with_many_waveform_info (_type_): _description_
+        """
+        db_session, ids = db_session_with_many_waveform_info
+        wf_infos = services.Waveforms.get_sorted_waveform_info(
+            db_session,
+            "P",
+            datetime.strptime("2010-01-01T00:00:00.00", dateformat),
+            datetime.strptime("2011-01-01T00:00:00.00", dateformat),
+            ["TEST-DownloadSegment"],
+        )
+
+        assert len(wf_infos) == 1, "incorrect number of rows returned. Expected 1."
+
+        # First wf
+        assert (
+            wf_infos[0][-1].pick_id == ids["p_pick2"]
+        ), "Incorrect PID for the first waveform"
+        assert (
+            wf_infos[0][-1].wf_source_id == ids["wf_source2"]
+        ), "Incorrect wf_source_id for the first waveform"
+        assert (
+            wf_infos[0][1].seed_code == "HHZ"
+        ), "Incorrect seed_code for the first waveform"
+
+    def test_get_sorted_waveform_info_S_limit_sources(
+        self, db_session_with_many_waveform_info
+    ):
+        """Should return 3 rows.
+
+        Args:
+            db_session_with_many_waveform_info (_type_): _description_
+        """
+        db_session, ids = db_session_with_many_waveform_info
+        wf_infos = services.Waveforms.get_sorted_waveform_info(
+            db_session,
+            "S",
+            datetime.strptime("2010-01-01T00:00:00.00", dateformat),
+            datetime.strptime("2011-01-01T00:00:00.00", dateformat),
+            ["TEST-DownloadSegment"],
+        )
+
+        assert len(wf_infos) == 3, "incorrect number of rows returned. Expected 3."
+
+        # First wf
+        assert (
+            wf_infos[0][-1].pick_id == ids["s_pick1"]
+        ), "Incorrect PID for the first waveform"
+        assert (
+            wf_infos[0][-1].wf_source_id == ids["wf_source2"]
+        ), "Incorrect wf_source_id for the first waveform"
+        assert (
+            wf_infos[0][1].seed_code == "HHE"
+        ), "Incorrect seed_code for the first waveform"
+        # Second wf
+        assert (
+            wf_infos[1][-1].pick_id == ids["s_pick1"]
+        ), "Incorrect PID for the second waveform"
+        assert (
+            wf_infos[1][-1].wf_source_id == ids["wf_source2"]
+        ), "Incorrect wf_source_id for the second waveform"
+        assert (
+            wf_infos[1][1].seed_code == "HHN"
+        ), "Incorrect seed_code for the second waveform"
+        # Third wf
+        assert (
+            wf_infos[2][-1].pick_id == ids["s_pick1"]
+        ), "Incorrect PID for the third waveform"
+        assert (
+            wf_infos[2][-1].wf_source_id == ids["wf_source2"]
+        ), "Incorrect wf_source_id for the third waveform"
+        assert (
+            wf_infos[2][1].seed_code == "HHZ"
+        ), "Incorrect seed_code for the third waveform"
+
+    def test_get_sorted_waveform_info_P_temporal(
+        self, db_session_with_many_waveform_info
+    ):
+        """Should return 4 rows. For pick 2, the source 2 should be after source 1.
+
+        Args:
+            db_session_with_many_waveform_info (_type_): _description_
+        """
+        db_session, ids = db_session_with_many_waveform_info
+        wf_infos = services.Waveforms.get_sorted_waveform_info(
+            db_session,
+            "P",
+            datetime.strptime("2010-02-02T00:00:00.00", dateformat),
+            datetime.strptime("2010-02-02T23:00:00.00", dateformat),
+            ["TEST-ProcessExtracted", "TEST-ExtractContData", "TEST-DownloadSegment"],
+        )
+
+        assert len(wf_infos) == 4, "incorrect number of rows returned. Expected 4."
+
+        # First wf
+        assert (
+            wf_infos[0][-1].pick_id == ids["p_pick2"]
+        ), "Incorrect PID for the first waveform"
+        assert (
+            wf_infos[0][-1].wf_source_id == ids["wf_source1"]
+        ), "Incorrect wf_source_id for the first waveform"
+        assert (
+            wf_infos[0][1].seed_code == "HHE"
+        ), "Incorrect seed_code for the first waveform"
+        # Second wf
+        assert (
+            wf_infos[1][-1].pick_id == ids["p_pick2"]
+        ), "Incorrect PID for the second waveform"
+        assert (
+            wf_infos[1][-1].wf_source_id == ids["wf_source1"]
+        ), "Incorrect wf_source_id for the second waveform"
+        assert (
+            wf_infos[1][1].seed_code == "HHN"
+        ), "Incorrect seed_code for the second waveform"
+        # Third wf
+        assert (
+            wf_infos[2][-1].pick_id == ids["p_pick2"]
+        ), "Incorrect PID for the third waveform"
+        assert (
+            wf_infos[2][-1].wf_source_id == ids["wf_source1"]
+        ), "Incorrect wf_source_id for the third waveform"
+        assert (
+            wf_infos[2][1].seed_code == "HHZ"
+        ), "Incorrect seed_code for the third waveform"
+        # Fourth wf
+        assert (
+            wf_infos[3][-1].pick_id == ids["p_pick2"]
+        ), "Incorrect PID for the fourth waveform"
+        assert (
+            wf_infos[3][-1].wf_source_id == ids["wf_source2"]
+        ), "Incorrect wf_source_id for the fourth waveform"
+        assert (
+            wf_infos[3][1].seed_code == "HHZ"
+        ), "Incorrect seed_code for the fourth waveform"
+
+    def test_get_sorted_waveform_info_S_temporal(
+        self, db_session_with_many_waveform_info
+    ):
+        """Should return 1 rows.
+
+        Args:
+            db_session_with_many_waveform_info (_type_): _description_
+        """
+        db_session, ids = db_session_with_many_waveform_info
+        wf_infos = services.Waveforms.get_sorted_waveform_info(
+            db_session,
+            "S",
+            datetime.strptime("2010-02-02T00:00:00.00", dateformat),
+            datetime.strptime("2010-02-03T00:00:00.00", dateformat),
+            ["TEST-ProcessExtracted", "TEST-ExtractContData", "TEST-DownloadSegment"],
+        )
+
+        assert len(wf_infos) == 1, "incorrect number of rows returned. Expected 1."
+
+        # First wf
+        assert (
+            wf_infos[0][-1].pick_id == ids["s_pick2"]
+        ), "Incorrect PID for the first waveform"
+        assert (
+            wf_infos[0][-1].wf_source_id == ids["wf_source1"]
+        ), "Incorrect wf_source_id for the first waveform"
+        assert (
+            wf_infos[0][1].seed_code == "HHE"
+        ), "Incorrect seed_code for the first waveform"
+
+    def test_get_sorted_waveform_info_P_no_filters(
+        self, db_session_with_many_waveform_info
+    ):
+        """Should return 6 rows. For pick 2, the source 2 should be after source 1.
+
+        Args:
+            db_session_with_many_waveform_info (_type_): _description_
+        """
+        db_session, ids = db_session_with_many_waveform_info
+        wf_infos = services.Waveforms.get_sorted_waveform_info(
+            db_session,
+            "P",
+            datetime.strptime("2010-01-01T00:00:00.00", dateformat),
+            datetime.strptime("2011-01-01T00:00:00.00", dateformat),
+            ["TEST-ProcessExtracted", "TEST-ExtractContData", "TEST-DownloadSegment"],
+        )
+
+        assert len(wf_infos) == 6, "incorrect number of rows returned. Expected 6."
+
+        # First wf
+        assert (
+            wf_infos[0][-1].pick_id == ids["p_pick1"]
+        ), "Incorrect PID for the first waveform"
+        # Second wf
+        assert (
+            wf_infos[1][-1].pick_id == ids["p_pick2"]
+        ), "Incorrect PID for the second waveform"
+        assert (
+            wf_infos[1][-1].wf_source_id == ids["wf_source1"]
+        ), "Incorrect wf_source_id for the second waveform"
+        assert (
+            wf_infos[1][1].seed_code == "HHE"
+        ), "Incorrect seed_code for the second waveform"
+        # Third wf
+        assert (
+            wf_infos[2][-1].pick_id == ids["p_pick2"]
+        ), "Incorrect PID for the third waveform"
+        assert (
+            wf_infos[2][-1].wf_source_id == ids["wf_source1"]
+        ), "Incorrect wf_source_id for the third waveform"
+        assert (
+            wf_infos[2][1].seed_code == "HHN"
+        ), "Incorrect seed_code for the third waveform"
+        # Fourth wf
+        assert (
+            wf_infos[3][-1].pick_id == ids["p_pick2"]
+        ), "Incorrect PID for the fourth waveform"
+        assert (
+            wf_infos[3][-1].wf_source_id == ids["wf_source1"]
+        ), "Incorrect wf_source_id for the fourth waveform"
+        assert (
+            wf_infos[3][1].seed_code == "HHZ"
+        ), "Incorrect seed_code for the fourth waveform"
+        # Fifth wf
+        assert (
+            wf_infos[4][-1].pick_id == ids["p_pick2"]
+        ), "Incorrect PID for the fifth waveform"
+        assert (
+            wf_infos[4][-1].wf_source_id == ids["wf_source2"]
+        ), "Incorrect wf_source_id for the fifth waveform"
+        assert (
+            wf_infos[4][1].seed_code == "HHZ"
+        ), "Incorrect seed_code for the fifth waveform"
+        # Sixth wf
+        assert (
+            wf_infos[5][-1].pick_id == ids["p_pick3"]
+        ), "Incorrect PID for the sixth waveform"
+
+    def test_get_sorted_waveform_info_S_no_filters(
+        self, db_session_with_many_waveform_info
+    ):
+        """Should return 10 rows. For pick 1, the source 2 should be after source 1.
+
+        Args:
+            db_session_with_many_waveform_info (_type_): _description_
+        """
+        db_session, ids = db_session_with_many_waveform_info
+        wf_infos = services.Waveforms.get_sorted_waveform_info(
+            db_session,
+            "S",
+            datetime.strptime("2010-01-01T00:00:00.00", dateformat),
+            datetime.strptime("2011-01-01T00:00:00.00", dateformat),
+            ["TEST-ProcessExtracted", "TEST-ExtractContData", "TEST-DownloadSegment"],
+        )
+
+        assert len(wf_infos) == 10, "incorrect number of rows returned. Expected 10."
+
+        # First wf
+        assert (
+            wf_infos[0][-1].pick_id == ids["s_pick1"]
+        ), "Incorrect PID for the first waveform"
+        assert (
+            wf_infos[0][-1].wf_source_id == ids["wf_source1"]
+        ), "Incorrect wf_source_id for the first waveform"
+        assert (
+            wf_infos[0][1].seed_code == "HHE"
+        ), "Incorrect seed_code for the first waveform"
+        # Second wf
+        assert (
+            wf_infos[1][-1].pick_id == ids["s_pick1"]
+        ), "Incorrect PID for the second waveform"
+        assert (
+            wf_infos[1][-1].wf_source_id == ids["wf_source1"]
+        ), "Incorrect wf_source_id for the second waveform"
+        assert (
+            wf_infos[1][1].seed_code == "HHN"
+        ), "Incorrect seed_code for the second waveform"
+        # Third wf
+        assert (
+            wf_infos[2][-1].pick_id == ids["s_pick1"]
+        ), "Incorrect PID for the third waveform"
+        assert (
+            wf_infos[2][-1].wf_source_id == ids["wf_source1"]
+        ), "Incorrect wf_source_id for the third waveform"
+        assert (
+            wf_infos[2][1].seed_code == "HHZ"
+        ), "Incorrect seed_code for the third waveform"
+        # Fourth wf
+        assert (
+            wf_infos[3][-1].pick_id == ids["s_pick1"]
+        ), "Incorrect PID for the fourth waveform"
+        assert (
+            wf_infos[3][-1].wf_source_id == ids["wf_source2"]
+        ), "Incorrect wf_source_id for the fourth waveform"
+        assert (
+            wf_infos[3][1].seed_code == "HHE"
+        ), "Incorrect seed_code for the fourth waveform"
+        # Fifth wf
+        assert (
+            wf_infos[4][-1].pick_id == ids["s_pick1"]
+        ), "Incorrect PID for the fifth waveform"
+        assert (
+            wf_infos[4][-1].wf_source_id == ids["wf_source2"]
+        ), "Incorrect wf_source_id for the fifth waveform"
+        assert (
+            wf_infos[4][1].seed_code == "HHN"
+        ), "Incorrect seed_code for the fifth waveform"
+        # Sixth wf
+        assert (
+            wf_infos[5][-1].pick_id == ids["s_pick1"]
+        ), "Incorrect PID for the sixth waveform"
+        assert (
+            wf_infos[5][-1].wf_source_id == ids["wf_source2"]
+        ), "Incorrect wf_source_id for the sixth waveform"
+        assert (
+            wf_infos[5][1].seed_code == "HHZ"
+        ), "Incorrect seed_code for the sixth waveform"
+        # Seventh wf
+        assert (
+            wf_infos[6][-1].pick_id == ids["s_pick2"]
+        ), "Incorrect PID for the seventh waveform"
+        assert (
+            wf_infos[6][-1].wf_source_id == ids["wf_source1"]
+        ), "Incorrect wf_source_id for the seventh waveform"
+        assert (
+            wf_infos[6][1].seed_code == "HHE"
+        ), "Incorrect seed_code for the seventh waveform"
+        # Eighth wf
+        assert (
+            wf_infos[7][-1].pick_id == ids["s_pick3"]
+        ), "Incorrect PID for the eigth waveform"
+        assert (
+            wf_infos[7][-1].wf_source_id == ids["wf_source3"]
+        ), "Incorrect wf_source_id for the eigth waveform"
+        assert (
+            wf_infos[7][1].seed_code == "HHE"
+        ), "Incorrect seed_code for the eigth waveform"
+        # Ninth wf
+        assert (
+            wf_infos[8][-1].pick_id == ids["s_pick3"]
+        ), "Incorrect PID for the ninth waveform"
+        assert (
+            wf_infos[8][-1].wf_source_id == ids["wf_source3"]
+        ), "Incorrect wf_source_id for the ninth waveform"
+        assert (
+            wf_infos[8][1].seed_code == "HHN"
+        ), "Incorrect seed_code for the ninth waveform"
+        # Tenth wf
+        assert (
+            wf_infos[9][-1].pick_id == ids["s_pick3"]
+        ), "Incorrect PID for the tenth waveform"
+        assert (
+            wf_infos[9][-1].wf_source_id == ids["wf_source3"]
+        ), "Incorrect wf_source_id for the tenth waveform"
+        assert (
+            wf_infos[9][1].seed_code == "HHZ"
+        ), "Incorrect seed_code for the tenth waveform"
 
     def test_get_sorted_waveform_info_simple(self, db_session_with_waveform_info):
         wf_storage = None

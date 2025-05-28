@@ -1065,25 +1065,18 @@ class Waveforms:
         threeC_only=False,
         wf_filt_low=None,
         wf_filt_high=None,
-        hdf_file_contains=None,
+        # hdf_file_contains=None,
     ):
         if vertical_only and threeC_only:
-            raise ValueError("Cannot set vertical_only and threeC_only at the same time")
-        
+            raise ValueError(
+                "Cannot set vertical_only and threeC_only at the same time"
+            )
+
         # Build CASE expression to assign source priority by name
         source_priority = case(
             {name: i for i, name in enumerate(sources)},
             value=WaveformSource.name,
             else_=len(sources),
-        )
-
-        wf_info_subq = (
-            select(WaveformInfo.id)
-            .join(WaveformSource, WaveformInfo.wf_source_id == WaveformSource.id)
-            .where(WaveformSource.name.in_(sources))
-            .order_by(source_priority)
-            .limit(1)
-            .scalar_subquery()
         )
 
         stmt = (
@@ -1095,7 +1088,10 @@ class Waveforms:
             .where(Pick.phase == phase)
             .where(Pick.ptime >= start)
             .where(Pick.ptime < end)
-            .order_by(Station.id, Pick.chan_pref, Pick.id, Channel.seed_code)
+            .where(WaveformSource.name.in_(sources))
+            .order_by(
+                Station.id, Pick.chan_pref, Pick.id, source_priority, Channel.seed_code
+            )
         )
 
         # Only need vertical component for P pick regressor
@@ -1105,7 +1101,7 @@ class Waveforms:
             group_by_subq = (
                 select(WaveformInfo.pick_id, WaveformInfo.wf_source_id)
                 .group_by(WaveformInfo.pick_id, WaveformInfo.wf_source_id)
-                .having(func.count(WaveformInfo.id) > 3)
+                .having(func.count(WaveformInfo.id) == 3)
                 .subquery()
             )
             stmt = stmt.join(
@@ -1120,12 +1116,13 @@ class Waveforms:
         if wf_filt_high is not None:
             stmt = stmt.where(WaveformSource.filt_high == wf_filt_high)
 
-        params = {}
-        if hdf_file_contains is not None:
-            params["hdf_file_contains"] = hdf_file_contains
-            stmt = stmt.where(text("waveform_info.hdf_file LIKE :hdf_file_contains"))
+        # params = {}
+        # if hdf_file_contains is not None:
+        #     params["hdf_file_contains"] = hdf_file_contains
+        #     stmt = stmt.where(text("waveform_info.hdf_file LIKE :hdf_file_contains"))
+        # result = session.execute(stmt, params).all()
 
-        result = session.execute(stmt, params).all()
+        result = session.execute(stmt).all()
 
         return result
 
@@ -1142,6 +1139,7 @@ class Waveforms:
         wf_filt_low=None,
         wf_filt_high=None,
         hdf_file_contains=None,
+        include_multiple_wf_sources=False,
     ):
 
         # Get the relevant waveform information from the database and sort so waveforms
@@ -1170,6 +1168,8 @@ class Waveforms:
         wf_i1 = -1
         wf_storages = {}
         # Iterate over the picks
+        prev_pid = -1
+        prev_wf_source_id = -1
         for pick_cnt in np.range(0, len(n_picks)):
             # Get the 3 rows corresponding to the different components for the pick
             pick_wf_infos = all_infos[pick_cnt : pick_cnt + 3]
@@ -1194,7 +1194,7 @@ class Waveforms:
             curr_wf_source_id = -1
             pick_wfs = np.zeros((1, n_samples, 3))
             ids = {}
-            sufficient_signal = True
+            keep_waveforms = True  # Set to False if there is insufficient signal or exlucuding multiple sources
             for i, info in enumerate(pick_wf_infos):
                 pid = info[0].id
                 wf_source_id = info[-1].wf_source_id
@@ -1205,6 +1205,13 @@ class Waveforms:
                 if curr_pid < 0:
                     curr_pid = pid
                     curr_wf_source_id = wf_source_id
+                    if (
+                        not include_multiple_wf_sources
+                        and curr_pid == prev_pid
+                        and curr_wf_source_id != prev_wf_source_id
+                    ):
+                        keep_waveforms = False
+                        break
                 else:
                     assert pid == curr_pid, "Pick IDS do not match"
                     assert (
@@ -1215,18 +1222,21 @@ class Waveforms:
                 wf_info_id = info[-1].id
                 wf_row = wf_storages[comp_ind].select_row(wf_info_id)
                 if wf_row["start_ind"] > wf_i0 or wf_row["end_ind"] < wf_i1:
-                    sufficient_signal = False
+                    keep_waveforms = False
                     break
                 pick_wfs[0, :, comp_ind] = wf_row["data"][wf_i0:wf_i1]
 
             # DO THE WAVEFORM PROCESSING TOGETHER
-            if sufficient_signal:
+            if keep_waveforms:
                 processed_wfs = wf_process_fn(pick_wfs)
                 # Save waveforms
                 ids["pick_id"] = curr_pid
                 ids["wf_source_id"] = curr_wf_source_id
                 pick_source_ids.append(ids)
                 X[pick_cnt, :, :] = processed_wfs
+
+            prev_wf_source_id = curr_wf_source_id
+            prev_pid = curr_pid
 
         # Remove any empty rows due to insufficient data
         X = X[0:pick_cnt, :, :]
@@ -1248,6 +1258,7 @@ class Waveforms:
         wf_filt_low=None,
         wf_filt_high=None,
         hdf_file_contains=None,
+        include_multiple_wf_sources=False,
     ):
 
         # Get the relevant waveform information from the database and sort so waveforms
@@ -1275,19 +1286,28 @@ class Waveforms:
         wf_i0 = -1
         wf_i1 = -1
         wf_storage = None
+        prev_pid = -1
+        prev_wf_source_id = -1
         # Iterate over the picks
         for i, info in enumerate(all_infos):
             ids = {}
             # Get the start and end inds of the waveforms assuming the pick is at the
             # center of the window
             if pick_ind < 0:
-                wf_storage = None # TODO
+                wf_storage = None  # TODO
                 pick_ind = wf_storage.table.attrs.expected_array_length // 2
                 wf_i0 = pick_ind - n_samples // 2
                 wf_i1 = pick_ind + n_samples // 2
 
             pid = info[0].id
             wf_source_id = info[-1].wf_source_id
+
+            if (
+                not include_multiple_wf_sources
+                and pid == prev_pid
+                and wf_source_id != prev_wf_source_id
+            ):
+                continue
 
             # Get the waveform from the pytable
             wf_info_id = info[-1].id
@@ -1302,6 +1322,8 @@ class Waveforms:
             ids["wf_source_id"] = wf_source_id
             pick_source_ids.append(ids)
             X[i, :, :] = processed_wfs
+            prev_wf_source_id = wf_source_id
+            prev_pid = pid
 
         # Remove any empty rows due to insufficient data
         X = X[0:i, :, :]
@@ -1309,8 +1331,9 @@ class Waveforms:
         assert (
             len(pick_source_ids) == X.shape[0]
         ), "incorrect number of pick ids compared to waveforms"
+
         return pick_source_ids, X
-    
+
     def _check_3c_wf_files(self, wf_storages, pick_info, channel_index_mapping_fn):
         """Check that the necessary pytables files storing waveforms are loaded
 
