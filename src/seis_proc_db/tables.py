@@ -156,7 +156,7 @@ class Channel(Base):
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
     sta_id: Mapped[int] = mapped_column(
-        ForeignKey("station.id", onupdate="cascade", ondelete="restrict"),
+        ForeignKey("station.id", onupdate="restrict", ondelete="restrict"),
         nullable=False,
     )
     seed_code: Mapped[str] = mapped_column(String(3), nullable=False)
@@ -266,7 +266,7 @@ class DailyContDataInfo(Base):
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
     sta_id = mapped_column(
-        ForeignKey("station.id", onupdate="cascade", ondelete="restrict"),
+        ForeignKey("station.id", onupdate="restrict", ondelete="restrict"),
         nullable=False,
     )
     chan_pref: Mapped[str] = mapped_column(String(3), nullable=False)
@@ -494,11 +494,11 @@ class DLDetectorOutput(Base):
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
     data_id = mapped_column(
-        ForeignKey("contdatainfo.id", onupdate="cascade", ondelete="restrict"),
+        ForeignKey("contdatainfo.id", onupdate="restrict", ondelete="restrict"),
         nullable=False,
     )
     method_id = mapped_column(
-        ForeignKey("detection_method.id", onupdate="cascade", ondelete="restrict"),
+        ForeignKey("detection_method.id", onupdate="restrict", ondelete="restrict"),
         nullable=False,
     )
     ##
@@ -562,11 +562,11 @@ class DLDetection(Base):
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
     data_id = mapped_column(
-        ForeignKey("contdatainfo.id", onupdate="cascade", ondelete="restrict"),
+        ForeignKey("contdatainfo.id", onupdate="restrict", ondelete="restrict"),
         nullable=False,
     )
     method_id = mapped_column(
-        ForeignKey("detection_method.id", onupdate="cascade", ondelete="restrict"),
+        ForeignKey("detection_method.id", onupdate="restrict", ondelete="restrict"),
         nullable=False,
     )
     sample: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -652,7 +652,7 @@ class Pick(Base):
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
     sta_id = mapped_column(
-        ForeignKey("station.id", onupdate="cascade", ondelete="restrict"),
+        ForeignKey("station.id", onupdate="restrict", ondelete="restrict"),
         nullable=False,
     )
     chan_pref: Mapped[str] = mapped_column(String(3), nullable=False)
@@ -668,7 +668,7 @@ class Pick(Base):
     amp: Mapped[Optional[float]] = mapped_column(Double)
     # FK from Detections
     detid: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("dldetection.id", onupdate="cascade", ondelete="cascade")
+        ForeignKey("dldetection.id", onupdate="restrict", ondelete="cascade")
     )
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(
@@ -736,15 +736,15 @@ class PickCorrection(Base):
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
     pid = mapped_column(
-        ForeignKey("pick.id", onupdate="cascade", ondelete="cascade"), nullable=False
+        ForeignKey("pick.id", onupdate="restrict", ondelete="cascade"), nullable=False
     )
     method_id = mapped_column(
-        ForeignKey("repicker_method.id", onupdate="cascade", ondelete="restrict"),
+        ForeignKey("repicker_method.id", onupdate="restrict", ondelete="restrict"),
         nullable=False,
     )
     ##
     wf_source_id = mapped_column(
-        ForeignKey("waveform_source.id", onupdate="cascade", ondelete="cascade"),
+        ForeignKey("waveform_source.id", onupdate="restrict", ondelete="restrict"),
         nullable=False,
     )
     median: Mapped[float] = mapped_column(Double)
@@ -774,7 +774,7 @@ class PickCorrection(Base):
     source: Mapped["WaveformSource"] = relationship(back_populates="corrs")
     # One-to-Many relationship with CredibleIntervals
     cis: Mapped[List["CredibleInterval"]] = relationship(back_populates="corr")
-
+    
     __table_args__ = (
         UniqueConstraint(pid, method_id, name="simplify_pk"),
         CheckConstraint("if_low < if_high", name="if_order"),
@@ -814,10 +814,10 @@ class FirstMotion(Base):
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
     pid = mapped_column(
-        ForeignKey("pick.id", onupdate="cascade", ondelete="cascade"), nullable=False
+        ForeignKey("pick.id", onupdate="restrict", ondelete="cascade"), nullable=False
     )
     method_id = mapped_column(
-        ForeignKey("fm_method.id", onupdate="cascade", ondelete="restrict"),
+        ForeignKey("fm_method.id", onupdate="restrict", ondelete="restrict"),
         nullable=False,
     )
     # TODO: Get this constraint to work..
@@ -875,11 +875,11 @@ class CredibleInterval(Base):
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
     corr_id = mapped_column(
-        ForeignKey("pick_corr.id", onupdate="cascade", ondelete="cascade"),
+        ForeignKey("pick_corr.id", onupdate="restrict", ondelete="cascade"),
         nullable=False,
     )
     method_id = mapped_column(
-        ForeignKey("calibration_method.id", onupdate="cascade", ondelete="restrict"),
+        ForeignKey("calibration_method.id", onupdate="restrict", ondelete="restrict"),
         nullable=False,
     )
     percent: Mapped[int] = mapped_column(SmallInteger, nullable=False)
@@ -936,11 +936,11 @@ class Gap(Base):
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
     data_id = mapped_column(
-        ForeignKey("contdatainfo.id", onupdate="cascade", ondelete="restrict"),
+        ForeignKey("contdatainfo.id", onupdate="restrict", ondelete="restrict"),
         nullable=False,
     )
     chan_id = mapped_column(
-        ForeignKey("channel.id", onupdate="cascade", ondelete="restrict"),
+        ForeignKey("channel.id", onupdate="restrict", ondelete="restrict"),
         nullable=False,
     )
     start: Mapped[datetime] = mapped_column(
@@ -1056,20 +1056,20 @@ class WaveformInfo(Base):
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
     chan_id = mapped_column(
-        ForeignKey("channel.id", onupdate="cascade", ondelete="restrict"),
+        ForeignKey("channel.id", onupdate="restrict", ondelete="restrict"),
         nullable=False,
     )
     pick_id = mapped_column(
-        ForeignKey("pick.id", onupdate="cascade", ondelete="cascade"), nullable=False
+        ForeignKey("pick.id", onupdate="restrict", ondelete="cascade"), nullable=False
     )
     wf_source_id = mapped_column(
-        ForeignKey("waveform_source.id", onupdate="cascade", ondelete="cascade"),
+        ForeignKey("waveform_source.id", onupdate="restrict", ondelete="cascade"),
         nullable=False,
     )
     ##
     hdf_file: Mapped[str] = mapped_column(String(255))
     data_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("contdatainfo.id", onupdate="cascade", ondelete="restrict"),
+        ForeignKey("contdatainfo.id", onupdate="restrict", ondelete="restrict"),
         nullable=True,
     )
     #filt_low: Mapped[Optional[float]] = mapped_column(Double)
@@ -1259,15 +1259,15 @@ class Waveform(Base):
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
     data_id = mapped_column(
-        ForeignKey("contdatainfo.id", onupdate="cascade", ondelete="restrict"),
+        ForeignKey("contdatainfo.id", onupdate="restrict", ondelete="restrict"),
         nullable=False,
     )
     chan_id = mapped_column(
-        ForeignKey("channel.id", onupdate="cascade", ondelete="restrict"),
+        ForeignKey("channel.id", onupdate="restrict", ondelete="restrict"),
         nullable=False,
     )
     pick_id = mapped_column(
-        ForeignKey("pick.id", onupdate="cascade", ondelete="cascade"), nullable=False
+        ForeignKey("pick.id", onupdate="restrict", ondelete="cascade"), nullable=False
     )
     ##
     # TODO: Add more fields to PK if needed (storing processed and unprocessed wfs, diff durations)
