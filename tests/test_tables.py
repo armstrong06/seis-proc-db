@@ -779,22 +779,22 @@ def db_session_with_contdata_and_channel_and_pick(db_session_with_contdata_and_c
     return db_session, icd, ichan, ipick
 
 
-def test_waveform(db_session_with_contdata_and_channel_and_pick):
-    db_session, icd, ichan, ipick = db_session_with_contdata_and_channel_and_pick
+def test_waveform(db_session_with_contdata_and_channel_and_pick_and_wfsource):
+    db_session, icd, ichan, ipick, isource = db_session_with_contdata_and_channel_and_pick_and_wfsource
     # assert len(icd.wfs) == 0, "ContData should have no waveforms yet"
     # assert len(ichan.wfs) == 0, "Channel should have no waveforms yet"
     # assert len(ipick.wfs) == 0, "Pick should have no waveforms yet"
 
     d = {
-        "filt_low": 1.5,
-        "filt_high": 17.5,
+        # "filt_low": 1.5,
+        # "filt_high": 17.5,
         "start": datetime.strptime("2024-01-02T10:11:02.13", dateformat),
         "end": datetime.strptime("2024-01-02T10:11:22.14", dateformat),
-        "proc_notes": "Processed for repicker",
+        #"proc_notes": "Processed for repicker",
         "data": np.zeros((2000)).tolist(),
     }
 
-    iwf = tables.Waveform(data_id=icd.id, chan_id=ichan.id, pick_id=ipick.id, **d)
+    iwf = tables.Waveform(data_id=icd.id, chan_id=ichan.id, pick_id=ipick.id, wf_source_id=isource.id, **d)
     db_session.add(iwf)
     db_session.commit()
 
@@ -805,8 +805,8 @@ def test_waveform(db_session_with_contdata_and_channel_and_pick):
     assert iwf.pick is not None, "Waveform should have a pick"
     assert iwf.channel is not None, "Waveform should have a channel"
 
-    assert iwf.filt_low == 1.5, "Invalid filt_low"
-    assert iwf.filt_high == 17.5, "Invalid filt_high"
+    # assert iwf.filt_low == 1.5, "Invalid filt_low"
+    # assert iwf.filt_high == 17.5, "Invalid filt_high"
     assert iwf.start.second == 2, "Invalid start second"
     assert iwf.start.microsecond == 130000, "Invalid start microsecond"
     assert iwf.end.second == 22, "Invalud end second"

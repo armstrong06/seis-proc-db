@@ -593,7 +593,9 @@ def test_insert_dldetection(db_session_with_dldetection):
 
 
 @pytest.fixture
-def db_session_with_dldet_pick(db_session_with_dldetection, pick_ex, channel_ex):
+def db_session_with_dldet_pick(
+    db_session_with_dldetection, pick_ex, waveform_source_ex
+):
     db_session, ids = db_session_with_dldetection
 
     inserted_pick = services.insert_pick(
@@ -602,6 +604,11 @@ def db_session_with_dldet_pick(db_session_with_dldetection, pick_ex, channel_ex)
     db_session.commit()
 
     ids["pick"] = inserted_pick.id
+
+    # Add waveform source because it will be needed when adding a waveform to the pick#
+    isource = services.insert_waveform_source(db_session, **waveform_source_ex)
+    db_session.commit()
+    ids["wf_source"] = isource.id
 
     return db_session, ids
 
@@ -806,6 +813,7 @@ def db_session_with_pick_waveform(db_session_with_dldet_pick, waveform_ex):
         data_id=ids["data"],
         chan_id=ids["chan"],
         pick_id=ids["pick"],
+        wf_source_id=ids["wf_source"],
         **waveform_ex,
     )
 
@@ -823,7 +831,7 @@ def test_insert_waveform(db_session_with_pick_waveform):
 
     assert new_wf.id is not None, "ID is not set"
     assert len(new_wf.data) == 2000, "data length is invalid"
-    #assert new_wf.filt_low == 1.5, "filt_low is invalid"
+    # assert new_wf.filt_low == 1.5, "filt_low is invalid"
 
 
 def test_get_waveforms(db_session_with_pick_waveform):
@@ -834,16 +842,23 @@ def test_get_waveforms(db_session_with_pick_waveform):
 
 
 def test_insert_pick_and_waveform_manual(
-    db_session_with_dldetection, pick_ex, waveform_ex
+    db_session_with_dldetection, pick_ex, waveform_ex, waveform_source_ex
 ):
     db_session, ids = db_session_with_dldetection
+    wf_source = services.insert_waveform_source(db_session, **waveform_source_ex)
+    db_session.flush()
 
     inserted_pick = services.insert_pick(
         db_session, sta_id=ids["sta"], detid=ids["dldet"], **pick_ex
     )
+    
     # db_session.commit()
     new_wf = tables.Waveform(
-        data_id=ids["data"], chan_id=ids["chan"], pick_id=None, **waveform_ex
+        data_id=ids["data"],
+        chan_id=ids["chan"],
+        pick_id=None,
+        wf_source_id=wf_source.id,
+        **waveform_ex,
     )
     inserted_pick.wfs.add(new_wf)
     # new_wf = services.insert_waveform(
@@ -878,16 +893,13 @@ def test_get_picks(db_session_with_dldet_pick):
 
 @pytest.fixture
 def db_session_with_waveform_info(
-    db_session_with_dldet_pick, waveform_ex, mock_pytables_config, waveform_source_ex
+    db_session_with_dldet_pick,
+    waveform_ex,
+    mock_pytables_config,
 ):
     db_session, ids = db_session_with_dldet_pick
 
-    # Add waveform source #
-    isource = services.insert_waveform_source(db_session, **waveform_source_ex)
-    db_session.commit()
-    ids["wf_source"] = isource.id
-
-    # Add pytable 
+    # Add pytable
     wf_storage = pytables_backend.WaveformStorage(
         expected_array_length=2000,
         net="JK",
@@ -896,7 +908,7 @@ def db_session_with_waveform_info(
         seed_code="HHZ",
         ncomps=3,
         phase="P",
-        wf_source_id=ids["wf_source"]
+        wf_source_id=ids["wf_source"],
     )
     #
 
@@ -1138,10 +1150,6 @@ def db_session_with_pick_corr(
         scale_type=d["scale_type"],
     )
 
-    # Add waveform source #
-    wf_source = services.insert_waveform_source(db_session, **waveform_source_ex)
-    #
-
     db_session.flush()
 
     preds = np.random.random((360,)).astype(np.float32)
@@ -1159,7 +1167,7 @@ def db_session_with_pick_corr(
         corr_storage,
         ids["pick"],
         repicker_method.id,
-        wf_source.id,
+        ids["wf_source"],
         median=np.median(preds),
         mean=np.mean(preds),
         std=np.std(preds),
@@ -1176,7 +1184,6 @@ def db_session_with_pick_corr(
     ids["corr"] = pick_corr.id
     ids["repicker_method"] = repicker_method.id
     ids["cal_method"] = cal_method.id
-    ids["wf_source"] = wf_source.id
 
     return db_session, corr_storage, ids, preds
 

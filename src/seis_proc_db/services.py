@@ -557,9 +557,7 @@ def insert_waveform(
     start,
     end,
     data,
-    filt_low=None,
-    filt_high=None,
-    proc_notes=None,
+    wf_source_id,
 ):
     new_wf = Waveform(
         data_id=data_id,
@@ -568,9 +566,7 @@ def insert_waveform(
         start=start,
         end=end,
         data=data,
-        filt_low=filt_low,
-        filt_high=filt_high,
-        proc_notes=proc_notes,
+        wf_source_id=wf_source_id
     )
     session.add(new_wf)
 

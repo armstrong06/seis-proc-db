@@ -442,15 +442,15 @@ class DetectionMethod(ISAMethod):
 
 
 class WaveformSource(ISAMethod):
-    """Stores some info about the type/version of the source/method for gathering waveform snippets 
-    and any processing that was used. 
-    
+    """Stores some info about the type/version of the source/method for gathering waveform snippets
+    and any processing that was used.
+
     Attributes:
         filt_low: Optional. Lower end of the filter applied.
         filt_high: Optional. Upper end of the filter applied.
         detrend: Optional. Type of detrend that was applied (e.g., demean, linear, simple)
         normalize: Optional. How the trace was normalized.
-        common_samp_rate: Optional. Sampling rate that all traces are resampled to, if necessary. 
+        common_samp_rate: Optional. Sampling rate that all traces are resampled to, if necessary.
     """
 
     __tablename__ = "waveform_source"
@@ -466,6 +466,8 @@ class WaveformSource(ISAMethod):
         back_populates="source"
     )
     # One-to-Many relationship with CredibleIntervals
+    wfs: WriteOnlyMapped[List["Waveform"]] = relationship(back_populates="source")
+    # One-to-Many relationship with CredibleIntervals
     corrs: WriteOnlyMapped[List["PickCorrection"]] = relationship(
         back_populates="source"
     )
@@ -478,7 +480,7 @@ class WaveformSource(ISAMethod):
         CheckConstraint("common_samp_rate > 0", name="pos_common_samp_rate"),
         {"mysql_engine": MYSQL_ENGINE},
     )
-     
+
     def __repr__(self) -> str:
         return (
             f"WaveformSource(id={self.id!r}, name={self.name!r}, details={self.details!r}, "
@@ -774,7 +776,7 @@ class PickCorrection(Base):
     source: Mapped["WaveformSource"] = relationship(back_populates="corrs")
     # One-to-Many relationship with CredibleIntervals
     cis: Mapped[List["CredibleInterval"]] = relationship(back_populates="corr")
-    
+
     __table_args__ = (
         UniqueConstraint(pid, method_id, name="simplify_pk"),
         CheckConstraint("if_low < if_high", name="if_order"),
@@ -1072,15 +1074,15 @@ class WaveformInfo(Base):
         ForeignKey("contdatainfo.id", onupdate="restrict", ondelete="restrict"),
         nullable=True,
     )
-    #filt_low: Mapped[Optional[float]] = mapped_column(Double)
-    #filt_high: Mapped[Optional[float]] = mapped_column(Double)
+    # filt_low: Mapped[Optional[float]] = mapped_column(Double)
+    # filt_high: Mapped[Optional[float]] = mapped_column(Double)
     start: Mapped[datetime] = mapped_column(
         DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False
     )
     end: Mapped[datetime] = mapped_column(
         DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False
     )
-    #proc_notes: Mapped[Optional[str]] = mapped_column(String(255))
+    # proc_notes: Mapped[Optional[str]] = mapped_column(String(255))
     samp_rate: Mapped[Optional[float]] = mapped_column(Double)
     max_val: Mapped[Optional[float]] = mapped_column(Double)
     min_val: Mapped[Optional[float]] = mapped_column(Double)
@@ -1227,7 +1229,7 @@ class WaveformInfo(Base):
 
     def __repr__(self) -> str:
         return (
-            f"Waveform(id={self.id!r}, data_id={self.data_id!r}, chan_id={self.chan_id!r}, "
+            f"WaveformInfo(id={self.id!r}, data_id={self.data_id!r}, chan_id={self.chan_id!r}, "
             f"pick_id={self.pick_id!r}, start={self.start!r}, end={self.end!r},"
             # f"filt_low={self.filt_low!r}, filt_high={self.filt_high!r}, proc_notes={self.proc_notes!r}, "
             f"samp_rate={self.samp_rate!r}, min_val={self.min_val!r}, max_val={self.max_val!r}, "
@@ -1242,15 +1244,14 @@ class Waveform(Base):
     Attributes:
         Base (_type_): _description_
         id: Not meaningful waveform identifier that is used as the PK.
-        data_id: ID of DailyContDataInfo describing where the waveform was grabbed from.
         chan_id: ID of the Channel recording the waveform.
         pick_id: ID of the Pick the waveform is centered on.
-        filt_low: Optional. Lower end of the filter applied.
-        filt_high: Optional. Upper end of the filter applied.
+        wf_source_id: ID of the WaveformSource describing where the snippet came from
+            or how it was gathered.
         data: Waveform data in some format of path to data...
         start: Start time of the waveform in UTC. Should include fractional seconds.
         end: End time of the waveform in UTC. Should include fractional seconds.
-        proc_notes: Optional. Brief notes about waveform processing.
+        data_id: Optional. ID of DailyContDataInfo describing where the waveform was grabbed from.
         last_modified: Automatic field that keeps track of when a row was added to
             or modified in the database in local time. Does not include microseconds.
     """
@@ -1258,10 +1259,6 @@ class Waveform(Base):
     __tablename__ = "waveform"
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
-    data_id = mapped_column(
-        ForeignKey("contdatainfo.id", onupdate="restrict", ondelete="restrict"),
-        nullable=False,
-    )
     chan_id = mapped_column(
         ForeignKey("channel.id", onupdate="restrict", ondelete="restrict"),
         nullable=False,
@@ -1269,17 +1266,21 @@ class Waveform(Base):
     pick_id = mapped_column(
         ForeignKey("pick.id", onupdate="restrict", ondelete="cascade"), nullable=False
     )
+    wf_source_id = mapped_column(
+        ForeignKey("waveform_source.id", onupdate="restrict", ondelete="cascade"),
+        nullable=False,
+    )
     ##
-    # TODO: Add more fields to PK if needed (storing processed and unprocessed wfs, diff durations)
-    filt_low: Mapped[Optional[float]] = mapped_column(Double)
-    filt_high: Mapped[Optional[float]] = mapped_column(Double)
+    data_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("contdatainfo.id", onupdate="restrict", ondelete="restrict"),
+        nullable=True,
+    )
     start: Mapped[datetime] = mapped_column(
         DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False
     )
     end: Mapped[datetime] = mapped_column(
         DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False
     )
-    proc_notes: Mapped[Optional[str]] = mapped_column(String(255))
     data = mapped_column(JSON, nullable=False)
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(
@@ -1295,12 +1296,11 @@ class Waveform(Base):
     channel: Mapped["Channel"] = relationship(back_populates="wfs")
     # Many-to-one relationship with Pick
     pick: Mapped["Pick"] = relationship(back_populates="wfs")
+    # Many-to-one relationship with WaveformSource
+    source: Mapped["WaveformSource"] = relationship(back_populates="wfs")
 
     __table_args__ = (
-        UniqueConstraint(data_id, chan_id, pick_id, name="simplify_pk"),
-        CheckConstraint("filt_low > 0", name="pos_filt_low"),
-        CheckConstraint("filt_high > 0", name="pos_filt_high"),
-        CheckConstraint("filt_low < filt_high", name="filt_order"),
+        UniqueConstraint(chan_id, pick_id, wf_source_id, name="simplify_pk"),
         CheckConstraint("start < end", name="times_order"),
         {"mysql_engine": MYSQL_ENGINE},
     )
@@ -1308,9 +1308,8 @@ class Waveform(Base):
     def __repr__(self) -> str:
         return (
             f"Waveform(id={self.id!r}, data_id={self.data_id!r}, chan_id={self.chan_id!r}, "
-            f"pick_id={self.pick_id!r}, filt_low={self.filt_low!r}, filt_high={self.filt_high!r}, "
-            f"start={self.start!r}, end={self.end!r}, proc_notes={self.proc_notes!r}, "
-            f"data={self.data[0:3]!r}, last_modified={self.last_modified!r})"
+            f"wf_source_id={self.wf_source_id!r}, pick_id={self.pick_id!r}, start={self.start!r}, "
+            f"end={self.end!r}, data={self.data[0:3]!r}, last_modified={self.last_modified!r})"
         )
 
 
