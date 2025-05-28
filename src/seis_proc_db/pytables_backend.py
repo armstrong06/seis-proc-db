@@ -342,9 +342,10 @@ class WaveformStorage(BasePyTable):
         seed_code,
         ncomps,
         phase,
-        filt_low,
-        filt_high,
-        proc_notes,
+        wf_source_id,
+        # filt_low,
+        # filt_high,
+        # proc_notes,
         on_event=None,
         expectedrows=10000,
     ):
@@ -355,9 +356,10 @@ class WaveformStorage(BasePyTable):
         self.ncomps = ncomps
         self.phase = phase
 
-        self.filt_low = filt_low
-        self.filt_high = filt_high
-        self.proc_notes = proc_notes
+        self.wf_source_id = wf_source_id
+        # self.filt_low = filt_low
+        # self.filt_high = filt_high
+        # self.proc_notes = proc_notes
 
         self._base_dir = os.path.join(HDF_BASE_PATH, HDF_WAVEFORM_DIR)
 
@@ -370,13 +372,14 @@ class WaveformStorage(BasePyTable):
         return os.path.relpath(self._file_path, self._base_dir)
 
     def _make_filepath(self):
-        file_name = f"{self.filt_low!r}Hz_{self.filt_high!r}Hz_{self.expected_array_length}samps/{self.net}.{self.sta}.{self.loc}.{self.seed_code}.{self.phase}.{self.ncomps}C.h5"
+        #file_name = f"{self.filt_low!r}Hz_{self.filt_high!r}Hz_{self.expected_array_length}samps/{self.net}.{self.sta}.{self.loc}.{self.seed_code}.{self.phase}.{self.ncomps}C.h5"
+        file_name = f"{self.net}.{self.sta}.{self.loc}.{self.seed_code}.{self.phase}.{self.ncomps}C.{self.expected_array_length}samps.source{self.wf_source_id:02d}.h5"
         return os.path.join(self._base_dir, file_name)
 
     def _make_h5_file_title(self):
         return (
             f"Waveform segments ({self.expected_array_length} samples) for {self.net}.{self.sta}.{self.loc}.{self.seed_code} centered on "
-            f"{self.phase} picks from {self.ncomps}C processing. Filtered from {self.filt_low} - {self.filt_high} Hz"
+            f"{self.phase} picks from {self.ncomps}C processing. Gathered using WaveformSource.id = {self.wf_source_id}"
         )
 
 

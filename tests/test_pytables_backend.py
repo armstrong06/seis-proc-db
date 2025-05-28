@@ -66,20 +66,18 @@ class TestWaveformStorage:
             seed_code="HHZ",
             ncomps=3,
             phase="P",
-            filt_low=None,
-            filt_high=None,
-            proc_notes="raw waveforms",
+            wf_source_id=1
         )
 
         try:
             file_name = wf_storage.file_name
             # Check that the filename is as would be expected
-            assert file_name == "JK.TEST.01.HHZ.P.3C.h5", "file name is not as expected"
-            assert (
-                os.path.basename(os.path.dirname(wf_storage.file_path))
-                == "NoneHz_NoneHz_1200samps"
-            ), "incorrect directory name"
-            assert wf_storage.relative_path == "NoneHz_NoneHz_1200samps/JK.TEST.01.HHZ.P.3C.h5", "incorrect relative path"
+            assert file_name == "JK.TEST.01.HHZ.P.3C.1200samps.source01.h5", "file name is not as expected"
+            # assert (
+            #     os.path.basename(os.path.dirname(wf_storage.file_path))
+            #     == "NoneHz_NoneHz_1200samps"
+            # ), "incorrect directory name"
+            assert wf_storage.relative_path == "JK.TEST.01.HHZ.P.3C.1200samps.source01.h5", "incorrect relative path"
             # Check that the file was created
             assert os.path.exists(wf_storage.file_path), "the file was not created"
             # Check that the file is set to open
@@ -99,13 +97,14 @@ class TestWaveformStorage:
             ), "the table seed_code attr is incorrect"
             assert table.attrs.ncomps == 3, "the table ncomps attr is incorrect"
             assert table.attrs.phase == "P", "the table phase attr is incorrect"
-            assert table.attrs.filt_low is None, "the table filt_low attr is incorrect"
-            assert (
-                table.attrs.filt_high is None
-            ), "the table filt_hight attr is incorrect"
-            assert (
-                table.attrs.proc_notes == "raw waveforms"
-            ), "the table proc_notes attr is incorrect"
+            assert table.attrs.wf_source_id == 1, "incorrect wf_source_id"
+            #assert table.attrs.filt_low is None, "the table filt_low attr is incorrect"
+            # assert (
+            #     table.attrs.filt_high is None
+            # ), "the table filt_hight attr is incorrect"
+            # assert (
+            #     table.attrs.proc_notes == "raw waveforms"
+            # ), "the table proc_notes attr is incorrect"
             assert (
                 table.attrs.expected_array_length == 1200
             ), "the table expected_array_length attr is incorrect"
@@ -124,9 +123,10 @@ class TestWaveformStorage:
             seed_code="HHZ",
             ncomps=3,
             phase="P",
-            filt_low=None,
-            filt_high=None,
-            proc_notes="raw waveforms",
+            wf_source_id=1,
+            # filt_low=None,
+            # filt_high=None,
+            # proc_notes="raw waveforms",
         )
 
         try:
@@ -172,9 +172,10 @@ class TestWaveformStorage:
             seed_code="HHZ",
             ncomps=3,
             phase="P",
-            filt_low=None,
-            filt_high=None,
-            proc_notes="raw waveforms",
+            wf_source_id=1,
+            # filt_low=None,
+            # filt_high=None,
+            # proc_notes="raw waveforms",
         )
 
         try:
@@ -346,9 +347,7 @@ def test_waveform_storage_reader():
             seed_code="HHZ",
             ncomps=3,
             phase="P",
-            filt_low=None,
-            filt_high=None,
-            proc_notes="raw waveforms",
+            wf_source_id=1
         )
     
 

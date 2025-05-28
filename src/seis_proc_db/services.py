@@ -789,16 +789,52 @@ def bulk_insert_dldetections_with_gap_check(session, dldets_dict):
     #     conn.execute(insert_stmt)
 
 
-def insert_waveform_source(session, name, details=None, path=None):
-    new_wf_source = WaveformSource(name=name, details=details, path=path)
+def insert_waveform_source(
+    session,
+    name,
+    details=None,
+    path=None,
+    filt_low=None,
+    filt_high=None,
+    detrend=None,
+    normalize=None,
+    common_samp_rate=None,
+):
+    new_wf_source = WaveformSource(
+        name=name,
+        details=details,
+        path=path,
+        filt_low=filt_low,
+        filt_high=filt_high,
+        detrend=detrend,
+        normalize=normalize,
+        common_samp_rate=common_samp_rate,
+    )
     session.add(new_wf_source)
 
     return new_wf_source
 
 
-def upsert_waveform_source(session, name, details=None, path=None):
+def upsert_waveform_source(
+    session,
+    name,
+    details=None,
+    path=None,
+    filt_low=None,
+    filt_high=None,
+    detrend=None,
+    normalize=None,
+    common_samp_rate=None,
+):
     insert_stmt = mysql_insert(WaveformSource).values(
-        name=name, details=details, path=path
+        name=name,
+        details=details,
+        path=path,
+        filt_low=filt_low,
+        filt_high=filt_high,
+        detrend=detrend,
+        normalize=normalize,
+        common_samp_rate=common_samp_rate,
     )
     update_dict = {
         col.name: insert_stmt.inserted[col.name]
@@ -829,11 +865,11 @@ def insert_waveform_pytable(
     wf_source_id,
     start,
     end,
-    data,    
+    data,
     data_id=None,
-    filt_low=None,
-    filt_high=None,
-    proc_notes=None,
+    # filt_low=None,
+    # filt_high=None,
+    # proc_notes=None,
     signal_start_ind=None,
     signal_end_ind=None,
 ):
@@ -845,9 +881,9 @@ def insert_waveform_pytable(
         start=start,
         end=end,
         hdf_file=storage_session.relative_path,
-        filt_low=filt_low,
-        filt_high=filt_high,
-        proc_notes=proc_notes,
+        # filt_low=filt_low,
+        # filt_high=filt_high,
+        # proc_notes=proc_notes,
         min_val=np.min(data),
         max_val=np.max(data),
     )
@@ -958,28 +994,6 @@ def get_calibration_method(session, name):
 
     return result[0]
 
-
-def get_priority_waveform_info(session, sources: list[str]):
-
-    # Build CASE expression to assign source priority by name
-    source_priority = case(
-        {name: i for i, name in enumerate(sources)},
-        value=WaveformSource.name,
-        else_=len(sources),
-    )
-
-    stmt = (
-        select(WaveformInfo)
-        .join(WaveformSource, WaveformInfo.source_id == WaveformSource.id)
-        .where(WaveformSource.name.in_(sources))
-        .order_by(source_priority)
-        .limit(1)
-    )
-
-    result = session.execute(stmt).scalar_one_or_none()
-    return result
-
-
 def insert_pick_correction_pytable(
     session,
     storage,
@@ -1077,7 +1091,7 @@ class Waveforms:
             .join_from(Pick, WaveformInfo, Pick.id == WaveformInfo.pick_id)
             .join(Channel, Channel.id == WaveformInfo.chan_id)
             .join(Station, Pick.sta_id == Station.id)
-            .where(WaveformInfo.id == wf_info_subq)
+            .join(WaveformSource, WaveformSource.id == WaveformInfo.wf_source_id)
             .where(Pick.phase == phase)
             .where(Pick.ptime >= start)
             .where(Pick.ptime < end)
@@ -1101,10 +1115,10 @@ class Waveforms:
             )
 
         if wf_filt_low is not None:
-            stmt = stmt.where(WaveformInfo.wf_filt_low == wf_filt_low)
+            stmt = stmt.where(WaveformSource.filt_low == wf_filt_low)
 
         if wf_filt_high is not None:
-            stmt = stmt.where(WaveformInfo.wf_filt_high == wf_filt_high)
+            stmt = stmt.where(WaveformSource.filt_high == wf_filt_high)
 
         params = {}
         if hdf_file_contains is not None:
@@ -1352,12 +1366,13 @@ class Waveforms:
         prev_attrs = prev_storage.table.attrs
         curr_attrs = curr_storage.table.attrs
         assert prev_attrs.sta == curr_attrs.sta, "Station names do not match"
-        assert (
-            prev_attrs.filt_low == curr_attrs.filt_low
-        ), "filt_low values do not match"
-        assert (
-            prev_attrs.filt_high == curr_attrs.filt_high
-        ), "filt_high values do not match"
+        # assert (
+        #     prev_attrs.filt_low == curr_attrs.filt_low
+        # ), "filt_low values do not match"
+        # assert (
+        #     prev_attrs.filt_high == curr_attrs.filt_high
+        # ), "filt_high values do not match"
+        assert curr_attrs["wf_source_id"] == prev_attrs["wf_source_id"], "Waveform source ids do not match"
         assert curr_attrs["phase"] == phase, "phase is not as expected"
         assert (
             prev_attrs.expected_array_length == curr_attrs.expected_array_length

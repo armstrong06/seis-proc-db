@@ -458,7 +458,6 @@ def db_session_with_pick(db_session_with_stat):
 
     return db_session, ipick
 
-
 def test_pick_correction(db_session_with_pick):
     db_session, ipick = db_session_with_pick
     assert len(ipick.corrs) == 0, "Pick.corrs should have 0 values before making"
@@ -814,27 +813,47 @@ def test_waveform(db_session_with_contdata_and_channel_and_pick):
     assert iwf.end.microsecond == 140000, "Invalid end microsecond"
     assert np.array_equal(iwf.data, np.zeros(2000)), "invalid data"
 
-
-def test_waveform_info(db_session_with_contdata_and_channel_and_pick):
+@pytest.fixture
+def db_session_with_contdata_and_channel_and_pick_and_wfsource(db_session_with_contdata_and_channel_and_pick):
     db_session, icd, ichan, ipick = db_session_with_contdata_and_channel_and_pick
-
     # Add waveform source #
     d = {
         "name": "TEST-ExtractContData",
         "details": "Extract waveform snippets from the contdata processed with DataLoader",
+        "filt_low": 1.5,
+        "filt_high": 17.0,
+        "detrend": "linear",
+        "normalize": "absolute max per channel",
+        "common_samp_rate": 100.0
     }
 
     isource = tables.WaveformSource(**d)
     db_session.add(isource)
     db_session.commit()
-    #
+    return db_session, icd, ichan, ipick, isource
+
+def test_waveform_source(db_session_with_contdata_and_channel_and_pick_and_wfsource):
+    db_session, _, _, _, isource = db_session_with_contdata_and_channel_and_pick_and_wfsource
+
+    assert isource.id is not None, "id is not set"
+    assert isource.name == "TEST-ExtractContData", "name is incorrect"
+    assert isource.details == "Extract waveform snippets from the contdata processed with DataLoader", "details are incorrect"
+    assert isource.filt_low == 1.5, "filt_low is incorrect"
+    assert isource.filt_high == 17.0, "filt_high is incorrect"
+    assert isource.detrend == "linear", "detrend is incorrect"
+    assert isource.normalize == "absolute max per channel", "normalize is incorrect"
+    assert isource.common_samp_rate == 100.0, "common_samp_rate is incorrect"
+
+
+def test_waveform_info(db_session_with_contdata_and_channel_and_pick_and_wfsource):
+    db_session, icd, ichan, ipick, isource = db_session_with_contdata_and_channel_and_pick_and_wfsource
 
     d = {
-        "filt_low": 1.5,
-        "filt_high": 17.5,
+        # "filt_low": 1.5,
+        # "filt_high": 17.5,
         "start": datetime.strptime("2024-01-02T10:11:02.13", dateformat),
         "end": datetime.strptime("2024-01-02T10:11:22.14", dateformat),
-        "proc_notes": "Processed for repicker",
+        #"proc_notes": "Processed for repicker",
         "hdf_file": "raw_testStation_HH_3C.hdf",
         # "hdf_index": 0,
     }
@@ -847,8 +866,8 @@ def test_waveform_info(db_session_with_contdata_and_channel_and_pick):
     assert iwf.contdatainfo is not None, "WaveformInfo should have contdatainfo"
     assert iwf.pick is not None, "WaveformInfo should have a pick"
     assert iwf.channel is not None, "WaveformInfo should have a channel"
-    assert iwf.filt_low == 1.5, "Invalid filt_low"
-    assert iwf.filt_high == 17.5, "Invalid filt_high"
+    # assert iwf.filt_low == 1.5, "Invalid filt_low"
+    # assert iwf.filt_high == 17.5, "Invalid filt_high"
     assert iwf.start.second == 2, "Invalid start second"
     assert iwf.start.microsecond == 130000, "Invalid start microsecond"
     assert iwf.end.second == 22, "Invalud end second"

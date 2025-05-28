@@ -442,18 +442,48 @@ class DetectionMethod(ISAMethod):
 
 
 class WaveformSource(ISAMethod):
-    """Stores some info about the type/version of the source/method for extracting waveform snippets."""
+    """Stores some info about the type/version of the source/method for gathering waveform snippets 
+    and any processing that was used. 
+    
+    Attributes:
+        filt_low: Optional. Lower end of the filter applied.
+        filt_high: Optional. Upper end of the filter applied.
+        detrend: Optional. Type of detrend that was applied (e.g., demean, linear, simple)
+        normalize: Optional. How the trace was normalized.
+        common_samp_rate: Optional. Sampling rate that all traces are resampled to, if necessary. 
+    """
 
     __tablename__ = "waveform_source"
+
+    filt_low: Mapped[Optional[float]] = mapped_column(Double)
+    filt_high: Mapped[Optional[float]] = mapped_column(Double)
+    detrend: Mapped[Optional[str]] = mapped_column(String(15))
+    normalize: Mapped[Optional[str]] = mapped_column(String(50))
+    common_samp_rate: Mapped[Optional[float]] = mapped_column(Double)
 
     # One-to-Many relationship with CredibleIntervals
     wf_info: WriteOnlyMapped[List["WaveformInfo"]] = relationship(
         back_populates="source"
     )
+    # One-to-Many relationship with CredibleIntervals
+    corrs: WriteOnlyMapped[List["PickCorrection"]] = relationship(
+        back_populates="source"
+    )
 
+    __table_args__ = (
+        UniqueConstraint("name", name="simplify_pk"),
+        CheckConstraint("filt_low > 0", name="pos_filt_low"),
+        CheckConstraint("filt_high > 0", name="pos_filt_high"),
+        CheckConstraint("filt_low < filt_high", name="filt_order"),
+        CheckConstraint("common_samp_rate > 0", name="pos_common_samp_rate"),
+        {"mysql_engine": MYSQL_ENGINE},
+    )
+     
     def __repr__(self) -> str:
         return (
             f"WaveformSource(id={self.id!r}, name={self.name!r}, details={self.details!r}, "
+            f"filt_low={self.filt_low!r}, filt_high={self.filt_high!r}, detrend={self.detrend!r}, "
+            f"normalize={self.normalize!r}, common_samp_rate={self.common_samp_rate!r}, "
             f"path={self.path!r}, last_modified={self.last_modified!r})"
         )
 
@@ -740,6 +770,8 @@ class PickCorrection(Base):
     pick: Mapped["Pick"] = relationship(back_populates="corrs")
     # Many-to-one relationship with RepickerMethod
     method: Mapped["RepickerMethod"] = relationship(back_populates="corrs")
+    # Many-to-one relationship with WaveformSource
+    source: Mapped["WaveformSource"] = relationship(back_populates="corrs")
     # One-to-Many relationship with CredibleIntervals
     cis: Mapped[List["CredibleInterval"]] = relationship(back_populates="corr")
 
@@ -1005,8 +1037,8 @@ class WaveformInfo(Base):
         hdf_file: The name of the hdf file in config.HDF_BASE_PATH/config.HDF_WAVEFORM_DIR
             where the waveform is stored
         data_id: Optional. ID of DailyContDataInfo describing where the waveform was grabbed from.
-        filt_low: Optional. Lower end of the filter applied.
-        filt_high: Optional. Upper end of the filter applied.
+        #filt_low: Optional. Lower end of the filter applied.
+        #filt_high: Optional. Upper end of the filter applied.
         start: Start time of the waveform in UTC. Should include fractional seconds.
         end: End time of the waveform in UTC. Should include fractional seconds.
         min_val: Optional. The minimum value of the waveform snippet stored in the hdf_file.
@@ -1014,7 +1046,7 @@ class WaveformInfo(Base):
         max_val: Optional. The maximum value of the waveform snippet stored in the hdf_file.
             Stored for debugging purposes.
         samp_rate: OPTIONAL. Sampling rate of the data, in case data_id is Null
-        proc_notes: Optional. Brief notes about waveform processing.
+        #proc_notes: Optional. Brief notes about waveform processing.
         last_modified: Automatic field that keeps track of when a row was added to
             or modified in the database in local time. Does not include microseconds.
     """
@@ -1040,16 +1072,15 @@ class WaveformInfo(Base):
         ForeignKey("contdatainfo.id", onupdate="cascade", ondelete="restrict"),
         nullable=True,
     )
-    # TODO: Decide if adding filters to PK
-    filt_low: Mapped[Optional[float]] = mapped_column(Double)
-    filt_high: Mapped[Optional[float]] = mapped_column(Double)
+    #filt_low: Mapped[Optional[float]] = mapped_column(Double)
+    #filt_high: Mapped[Optional[float]] = mapped_column(Double)
     start: Mapped[datetime] = mapped_column(
         DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False
     )
     end: Mapped[datetime] = mapped_column(
         DATETIME(fsp=MYSQL_DATETIME_FSP), nullable=False
     )
-    proc_notes: Mapped[Optional[str]] = mapped_column(String(255))
+    #proc_notes: Mapped[Optional[str]] = mapped_column(String(255))
     samp_rate: Mapped[Optional[float]] = mapped_column(Double)
     max_val: Mapped[Optional[float]] = mapped_column(Double)
     min_val: Mapped[Optional[float]] = mapped_column(Double)
@@ -1187,9 +1218,9 @@ class WaveformInfo(Base):
 
     __table_args__ = (
         UniqueConstraint(chan_id, pick_id, wf_source_id, name="simplify_pk"),
-        CheckConstraint("filt_low > 0", name="pos_filt_low"),
-        CheckConstraint("filt_high > 0", name="pos_filt_high"),
-        CheckConstraint("filt_low < filt_high", name="filt_order"),
+        # CheckConstraint("filt_low > 0", name="pos_filt_low"),
+        # CheckConstraint("filt_high > 0", name="pos_filt_high"),
+        # CheckConstraint("filt_low < filt_high", name="filt_order"),
         CheckConstraint("start < end", name="times_order"),
         {"mysql_engine": MYSQL_ENGINE},
     )
@@ -1197,8 +1228,8 @@ class WaveformInfo(Base):
     def __repr__(self) -> str:
         return (
             f"Waveform(id={self.id!r}, data_id={self.data_id!r}, chan_id={self.chan_id!r}, "
-            f"pick_id={self.pick_id!r}, filt_low={self.filt_low!r}, filt_high={self.filt_high!r}, "
-            f"start={self.start!r}, end={self.end!r}, proc_notes={self.proc_notes!r}, "
+            f"pick_id={self.pick_id!r}, start={self.start!r}, end={self.end!r},"
+            # f"filt_low={self.filt_low!r}, filt_high={self.filt_high!r}, proc_notes={self.proc_notes!r}, "
             f"samp_rate={self.samp_rate!r}, min_val={self.min_val!r}, max_val={self.max_val!r}, "
             f"hdf_file={self.hdf_file!r}, last_modified={self.last_modified!r})"
         )

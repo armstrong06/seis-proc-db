@@ -106,6 +106,21 @@ def calibration_method_ex():
 
 
 @pytest.fixture
+def waveform_source_ex():
+    return deepcopy(
+        {
+            "name": "TEST-ExtractContData",
+            "details": "Extract waveform snippets from the contdata processed with DataLoader",
+            "filt_low": 1.5,
+            "filt_high": 17.0,
+            "detrend": "linear",
+            "normalize": "absolute max per channel",
+            "common_samp_rate": 100.0,
+        }
+    )
+
+
+@pytest.fixture
 def pick_ex():
     return deepcopy(
         {
@@ -133,11 +148,11 @@ def gap_ex():
 def waveform_ex():
     return deepcopy(
         {
-            "filt_low": 1.5,
-            "filt_high": 17.5,
+            # "filt_low": 1.5,
+            # "filt_high": 17.5,
             "start": datetime.strptime("2024-01-02T10:11:02.13", dateformat),
             "end": datetime.strptime("2024-01-02T10:11:22.14", dateformat),
-            "proc_notes": "Processed for repicker",
+            # "proc_notes": "Processed for repicker",
             "data": np.zeros((2000)).tolist(),
         }
     )
@@ -808,7 +823,7 @@ def test_insert_waveform(db_session_with_pick_waveform):
 
     assert new_wf.id is not None, "ID is not set"
     assert len(new_wf.data) == 2000, "data length is invalid"
-    assert new_wf.filt_low == 1.5, "filt_low is invalid"
+    #assert new_wf.filt_low == 1.5, "filt_low is invalid"
 
 
 def test_get_waveforms(db_session_with_pick_waveform):
@@ -863,10 +878,16 @@ def test_get_picks(db_session_with_dldet_pick):
 
 @pytest.fixture
 def db_session_with_waveform_info(
-    db_session_with_dldet_pick, waveform_ex, mock_pytables_config
+    db_session_with_dldet_pick, waveform_ex, mock_pytables_config, waveform_source_ex
 ):
     db_session, ids = db_session_with_dldet_pick
 
+    # Add waveform source #
+    isource = services.insert_waveform_source(db_session, **waveform_source_ex)
+    db_session.commit()
+    ids["wf_source"] = isource.id
+
+    # Add pytable 
     wf_storage = pytables_backend.WaveformStorage(
         expected_array_length=2000,
         net="JK",
@@ -875,21 +896,8 @@ def db_session_with_waveform_info(
         seed_code="HHZ",
         ncomps=3,
         phase="P",
-        filt_low=None,
-        filt_high=None,
-        proc_notes="raw waveforms",
+        wf_source_id=ids["wf_source"]
     )
-
-    # Add waveform source #
-    d = {
-        "name": "TEST-ExtractContData",
-        "details": "Extract waveform snippets from the contdata processed with DataLoader",
-    }
-
-    isource = tables.WaveformSource(**d)
-    db_session.add(isource)
-    db_session.commit()
-    ids["wf_source"] = isource.id
     #
 
     new_wf_info = services.insert_waveform_pytable(
@@ -937,8 +945,8 @@ def test_insert_waveform_pytable(db_session_with_waveform_info, waveform_ex):
         assert new_wf_info.chan_id == ids["chan"], "wf_info chan id incorrect"
         assert new_wf_info.pick_id == ids["pick"], "wf_info pick_id incorrect"
         assert new_wf_info.data_id == ids["data"], "wf_info data_id incorrect"
-        assert new_wf_info.filt_low == 1.5, "wf_info filt_low incorrect"
-        assert new_wf_info.filt_high == 17.5, "wf_info filt_high incorrect"
+        # assert new_wf_info.filt_low == 1.5, "wf_info filt_low incorrect"
+        # assert new_wf_info.filt_high == 17.5, "wf_info filt_high incorrect"
         assert new_wf_info.min_val == np.min(waveform_ex["data"]), "Incorrect min_val"
         assert new_wf_info.max_val == np.max(waveform_ex["data"]), "Incorrect min_val"
         assert new_wf_info.start == datetime.strptime(
@@ -947,9 +955,9 @@ def test_insert_waveform_pytable(db_session_with_waveform_info, waveform_ex):
         assert new_wf_info.end == datetime.strptime(
             "2024-01-02T10:11:22.14", dateformat
         ), "wf_info end incorrect"
-        assert (
-            new_wf_info.proc_notes == "Processed for repicker"
-        ), "wf_info proc_notes incorrect"
+        # assert (
+        #     new_wf_info.proc_notes == "Processed for repicker"
+        # ), "wf_info proc_notes incorrect"
         assert new_wf_info.duration_samples == 2001, "incorrect duration"
         print(new_wf_info.pick_id, new_wf_info.start, new_wf_info.samp_rate)
         print(new_wf_info.pick_index, new_wf_info.duration_samples)
@@ -1108,6 +1116,7 @@ def db_session_with_pick_corr(
     mock_pytables_config,
     repicker_method_ex,
     calibration_method_ex,
+    waveform_source_ex,
 ):
     db_session, ids = db_session_with_dldet_pick
     d = repicker_method_ex
@@ -1130,12 +1139,7 @@ def db_session_with_pick_corr(
     )
 
     # Add waveform source #
-    d = {
-        "name": "TEST-ExtractContData",
-        "details": "Extract waveform snippets from the contdata processed with DataLoader",
-    }
-
-    wf_source = services.insert_waveform_source(db_session, d["name"], d["details"])
+    wf_source = services.insert_waveform_source(db_session, **waveform_source_ex)
     #
 
     db_session.flush()
@@ -1364,7 +1368,11 @@ class TestWaveforms:
             db_session, "TEST-DownloadSegment", "Download waveform segment from IRIS"
         )
         wf_source3 = services.insert_waveform_source(
-            db_session, "TEST-ProcessExtracted", "Filter extracted waveforms"
+            db_session,
+            "TEST-ProcessExtracted",
+            "Filter extracted waveforms",
+            filt_low=1,
+            filt_high=17,
         )
         db_session.flush()
         for src in [wf_source1, wf_source2, wf_source3]:
@@ -1378,7 +1386,11 @@ class TestWaveforms:
             for id in [sta1.id, sta2.id]:
                 for code in ["HHZ", "HHE", "HHN"]:
                     for phase in ["P", "S"]:
-                        for filt_low, filt_high in [(None, None), (1, 17)]:
+                        for wf_source_id in [
+                            wf_source1.id,
+                            wf_source2.id,
+                            wf_source3.id,
+                        ]:
                             wf_storage = pytables_backend.WaveformStorage(
                                 expected_array_length=100,
                                 net="JK",
@@ -1387,39 +1399,31 @@ class TestWaveforms:
                                 seed_code=code,
                                 ncomps=3,
                                 phase=phase,
-                                filt_low=filt_low,
-                                filt_high=filt_high,
-                                proc_notes="test",
+                                wf_source_id=wf_source_id,
                             )
-                            wf_storages[
-                                f"{id}.{code}.{phase}.{filt_low}.{filt_high}"
-                            ] = wf_storage
+                            wf_storages[f"{id}.{code}.{phase}.{wf_source_id}"] = (
+                                wf_storage
+                            )
 
             ### Insert waveform infos ###
 
-            def insert_wf_info(
-                phase, pick, chan_code, wf_source, value, filt_low=None, filt_high=None
-            ):
+            def insert_wf_info(phase, pick, chan_code, wf_source, value):
                 _ = services.insert_waveform_pytable(
                     db_session,
-                    wf_storages[
-                        f"{pick.sta_id}.{chan_code}.{phase}.{filt_low}.{filt_high}"
-                    ],
+                    wf_storages[f"{pick.sta_id}.{chan_code}.{phase}.{wf_source.id}"],
                     all_channel_dict[f"{pick.sta_id}.{chan_code}"].id,
                     pick.id,
                     wf_source.id,
                     start=pick.ptime - timedelta(seconds=0.5),
                     end=pick.ptime + timedelta(seconds=0.5),
                     data=np.full(100, value),
-                    filt_low=filt_low,
-                    filt_high=filt_high,
                 )
 
             wfinfo_cnt0 = db_session.execute(func.count(tables.WaveformInfo.id)).one()[
                 0
             ]
             # Info for P Pick 1 - a 1C P pick that is on a different station, earlier than the others, and had a different filter band
-            insert_wf_info("P", p1, "HHZ", wf_source3, 1, 1, 17)
+            insert_wf_info("P", p1, "HHZ", wf_source3, 1)
 
             # Info for P Pick 2 - a 3C P pick
             for i, code in enumerate(["HHE", "HHN", "HHZ"]):
