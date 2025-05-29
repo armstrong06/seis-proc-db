@@ -851,7 +851,7 @@ def test_insert_pick_and_waveform_manual(
     inserted_pick = services.insert_pick(
         db_session, sta_id=ids["sta"], detid=ids["dldet"], **pick_ex
     )
-    
+
     # db_session.commit()
     new_wf = tables.Waveform(
         data_id=ids["data"],
@@ -1426,7 +1426,9 @@ class TestWaveforms:
 
             ### Insert waveform infos ###
 
-            def insert_wf_info(phase, pick, chan_code, wf_source, value):
+            def insert_wf_info(
+                phase, pick, chan_code, wf_source, value, start_ind=None, end_ind=None
+            ):
                 _ = services.insert_waveform_pytable(
                     db_session,
                     wf_storages[f"{pick.sta_id}.{chan_code}.{phase}.{wf_source.id}"],
@@ -1436,6 +1438,8 @@ class TestWaveforms:
                     start=pick.ptime - timedelta(seconds=0.5),
                     end=pick.ptime + timedelta(seconds=0.5),
                     data=np.full(100, value),
+                    signal_start_ind=start_ind,
+                    signal_end_ind=end_ind,
                 )
 
             wfinfo_cnt0 = db_session.execute(func.count(tables.WaveformInfo.id)).one()[
@@ -1467,7 +1471,9 @@ class TestWaveforms:
 
             # Info for S pick 3 - From a different station, later than others, and has a different filter band
             for i, code in enumerate(["HHE", "HHN", "HHZ"]):
-                insert_wf_info("S", s3, code, wf_source3, 17 + i)
+                insert_wf_info(
+                    "S", s3, code, wf_source3, 17 + i, start_ind=10, end_ind=85
+                )
 
             db_session.commit()
             wfinfo_cnt1 = db_session.execute(func.count(tables.WaveformInfo.id)).one()[
@@ -1478,8 +1484,11 @@ class TestWaveforms:
             ), "Expected to insert 16 waveform infos"
         finally:
             for _, wf_storage in wf_storages.items():
+                wf_storage.commit()
+                nrows = wf_storage.table.nrows
                 if wf_storage._is_open:
                     wf_storage.close()
+                if nrows == 0:
                     os.remove(wf_storage.file_path)
 
         return db_session, ids
@@ -2241,3 +2250,432 @@ class TestWaveforms:
                 assert not os.path.exists(
                     wf_storage.file_path
                 ), "the file was not removed"
+
+    def test_gather_3c_waveforms_source1(self, db_session_with_many_waveform_info):
+        db_session, ids = db_session_with_many_waveform_info
+
+        def index_fn(ncomps, seed_code):
+            if seed_code == "HHZ":
+                return 2
+            elif seed_code == "HHE":
+                return 0
+
+            return 1
+
+        pick_source_ids, X = services.Waveforms().gather_waveforms(
+            db_session,
+            60,
+            True,
+            index_fn,
+            lambda x: x,
+            datetime.strptime("2010-02-01T00:00:00.00", dateformat),
+            datetime.strptime("2010-02-03T00:00:00.00", dateformat),
+            "S",
+            ["TEST-ProcessExtracted", "TEST-ExtractContData", "TEST-DownloadSegment"],
+            False,
+        )
+        assert X.shape[0] == 1
+        assert X.shape[1] == 60
+        assert X.shape[2] == 3
+        assert len(pick_source_ids) == 1
+        assert pick_source_ids[0]["pick_id"] == ids["s_pick1"]
+        assert pick_source_ids[0]["wf_source_id"] == ids["wf_source1"]
+        assert np.all(X[0, :, 0] == 13)
+        assert np.all(X[0, :, 1] == 14)
+        assert np.all(X[0, :, 2] == 15)
+
+    def test_gather_3c_waveforms_source2(self, db_session_with_many_waveform_info):
+        db_session, ids = db_session_with_many_waveform_info
+
+        def index_fn(ncomps, seed_code):
+            if seed_code == "HHZ":
+                return 2
+            elif seed_code == "HHE":
+                return 0
+
+            return 1
+
+        pick_source_ids, X = services.Waveforms().gather_waveforms(
+            db_session,
+            60,
+            True,
+            index_fn,
+            lambda x: x,
+            datetime.strptime("2010-02-01T00:00:00.00", dateformat),
+            datetime.strptime("2010-02-03T00:00:00.00", dateformat),
+            "S",
+            ["TEST-DownloadSegment", "TEST-ProcessExtracted", "TEST-ExtractContData"],
+            False,
+        )
+        assert X.shape[0] == 1
+        assert X.shape[1] == 60
+        assert X.shape[2] == 3
+        assert len(pick_source_ids) == 1
+        assert pick_source_ids[0]["pick_id"] == ids["s_pick1"]
+        assert pick_source_ids[0]["wf_source_id"] == ids["wf_source2"]
+        assert np.all(X[0, :, 0] == 10)
+        assert np.all(X[0, :, 1] == 11)
+        assert np.all(X[0, :, 2] == 12)
+
+    def test_gather_3c_waveforms_limited_signal(
+        self, db_session_with_many_waveform_info
+    ):
+        db_session, ids = db_session_with_many_waveform_info
+
+        def index_fn(ncomps, seed_code):
+            if seed_code == "HHZ":
+                return 2
+            elif seed_code == "HHE":
+                return 0
+
+            return 1
+
+        pick_source_ids, X = services.Waveforms().gather_waveforms(
+            db_session,
+            60,
+            True,
+            index_fn,
+            lambda x: x,
+            datetime.strptime("2010-02-03T00:00:00.00", dateformat),
+            datetime.strptime("2010-02-04T00:00:00.00", dateformat),
+            "S",
+            ["TEST-DownloadSegment", "TEST-ProcessExtracted", "TEST-ExtractContData"],
+            False,
+        )
+        assert X.shape[0] == 1
+        assert X.shape[1] == 60
+        assert X.shape[2] == 3
+        assert len(pick_source_ids) == 1
+        assert pick_source_ids[0]["pick_id"] == ids["s_pick3"]
+        assert pick_source_ids[0]["wf_source_id"] == ids["wf_source3"]
+        assert np.all(X[0, :, 0] == 17)
+        assert np.all(X[0, :, 1] == 18)
+        assert np.all(X[0, :, 2] == 19)
+
+    def test_gather_3c_waveforms_multiple(self, db_session_with_many_waveform_info):
+        db_session, ids = db_session_with_many_waveform_info
+
+        def index_fn(ncomps, seed_code):
+            if seed_code == "HHZ":
+                return 2
+            elif seed_code == "HHE":
+                return 0
+
+            return 1
+
+        pick_source_ids, X = services.Waveforms().gather_waveforms(
+            db_session,
+            60,
+            True,
+            index_fn,
+            lambda x: x / 2,
+            datetime.strptime("2010-02-01T00:00:00.00", dateformat),
+            datetime.strptime("2010-02-04T00:00:00.00", dateformat),
+            "S",
+            ["TEST-ProcessExtracted", "TEST-ExtractContData", "TEST-DownloadSegment"],
+            False,
+        )
+        assert X.shape[0] == 2
+        assert X.shape[1] == 60
+        assert X.shape[2] == 3
+        assert len(pick_source_ids) == 2
+        assert pick_source_ids[0]["pick_id"] == ids["s_pick1"]
+        assert pick_source_ids[0]["wf_source_id"] == ids["wf_source1"]
+        assert np.all(X[0, :, 0] == 13 / 2)
+        assert np.all(X[0, :, 1] == 14 / 2)
+        assert np.all(X[0, :, 2] == 15 / 2)
+        assert pick_source_ids[1]["pick_id"] == ids["s_pick3"]
+        assert pick_source_ids[1]["wf_source_id"] == ids["wf_source3"]
+        assert np.all(X[1, :, 0] == 17 / 2)
+        assert np.all(X[1, :, 1] == 18 / 2)
+        assert np.all(X[1, :, 2] == 19 / 2)
+
+    def test_get_pick_waveforms_3c_limited_signal(
+        self, db_session_with_many_waveform_info
+    ):
+        db_session, ids = db_session_with_many_waveform_info
+
+        def index_fn(ncomps, seed_code):
+            if seed_code == "HHZ":
+                return 2
+            elif seed_code == "HHE":
+                return 0
+
+            return 1
+
+        wf_infos = services.Waveforms.get_sorted_waveform_info(
+            db_session,
+            "S",
+            datetime.strptime("2010-02-03T00:00:00.00", dateformat),
+            datetime.strptime("2010-02-04T00:00:00.00", dateformat),
+            ["TEST-ExtractContData", "TEST-ProcessExtracted", "TEST-DownloadSegment"],
+            threeC_only=True,
+        )
+
+        assert len(wf_infos) == 3, "expected 3 waveform infos returned"
+
+        X, pick_source_ids, storages = services.Waveforms().get_pick_waveforms(
+            wf_infos, index_fn
+        )
+
+        try:
+            assert X.shape[0] == 1
+            assert X.shape[1] == 70
+            assert X.shape[2] == 3
+            assert pick_source_ids["pick_id"] == ids["s_pick3"]
+            assert pick_source_ids["wf_source_id"] == ids["wf_source3"]
+            assert np.all(X[0, :, 0] == 17)
+            assert np.all(X[0, :, 1] == 18)
+            assert np.all(X[0, :, 2] == 19)
+        finally:
+            for _, storage in storages.items():
+                storage.close()
+
+    def test_get_pick_waveforms_3c_full_signal(
+        self, db_session_with_many_waveform_info
+    ):
+        db_session, ids = db_session_with_many_waveform_info
+
+        def index_fn(ncomps, seed_code):
+            if seed_code == "HHZ":
+                return 2
+            elif seed_code == "HHE":
+                return 0
+
+            return 1
+
+        wf_infos = services.Waveforms.get_sorted_waveform_info(
+            db_session,
+            "S",
+            datetime.strptime("2010-02-01T00:00:00.00", dateformat),
+            datetime.strptime("2010-02-02T00:00:00.00", dateformat),
+            ["TEST-ProcessExtracted", "TEST-ExtractContData", "TEST-DownloadSegment"],
+            threeC_only=True,
+        )
+
+        assert len(wf_infos) == 6, "expected 6 waveform infos returned"
+
+        try:
+            X, pick_source_ids, storages = services.Waveforms().get_pick_waveforms(
+                wf_infos[0:3], index_fn
+            )
+            assert X.shape[0] == 1
+            assert X.shape[1] == 100
+            assert X.shape[2] == 3
+            assert pick_source_ids["pick_id"] == ids["s_pick1"]
+            assert pick_source_ids["wf_source_id"] == ids["wf_source1"]
+            assert np.all(X[0, :, 0] == 13)
+            assert np.all(X[0, :, 1] == 14)
+            assert np.all(X[0, :, 2] == 15)
+            X, pick_source_ids, storages = services.Waveforms().get_pick_waveforms(
+                wf_infos[3:], index_fn, wf_storages=storages
+            )
+            assert X.shape[0] == 1
+            assert X.shape[1] == 100
+            assert X.shape[2] == 3
+            assert pick_source_ids["pick_id"] == ids["s_pick1"]
+            assert pick_source_ids["wf_source_id"] == ids["wf_source2"]
+            assert np.all(X[0, :, 0] == 10)
+            assert np.all(X[0, :, 1] == 11)
+            assert np.all(X[0, :, 2] == 12)
+        finally:
+            for _, storage in storages.items():
+                storage.close()
+
+    def test_get_pick_waveforms_1c_limited_signal(
+        self, db_session_with_many_waveform_info
+    ):
+        db_session, ids = db_session_with_many_waveform_info
+
+        def index_fn(ncomps, seed_code):
+            if seed_code == "HHZ":
+                return 0
+
+        wf_infos = services.Waveforms.get_sorted_waveform_info(
+            db_session,
+            "S",
+            datetime.strptime("2010-02-03T00:00:00.00", dateformat),
+            datetime.strptime("2010-02-04T00:00:00.00", dateformat),
+            ["TEST-ExtractContData", "TEST-ProcessExtracted", "TEST-DownloadSegment"],
+            threeC_only=True,
+        )
+
+        assert len(wf_infos) == 3, "expected 3 waveform infos returned"
+
+        X, pick_source_ids, storages = services.Waveforms().get_pick_waveforms(
+            [wf_infos[-1]], index_fn
+        )
+
+        try:
+            assert X.shape[0] == 1
+            assert X.shape[1] == 70
+            assert X.shape[2] == 1
+            assert pick_source_ids["pick_id"] == ids["s_pick3"]
+            assert pick_source_ids["wf_source_id"] == ids["wf_source3"]
+            assert np.all(X[0, :, 0] == 19)
+        finally:
+            for _, storage in storages.items():
+                storage.close()
+
+    def test_get_pick_waveforms_1c_full_signal(
+        self, db_session_with_many_waveform_info
+    ):
+        db_session, ids = db_session_with_many_waveform_info
+
+        def index_fn(ncomps, seed_code):
+            if seed_code == "HHZ":
+                return 0
+
+        wf_infos = services.Waveforms.get_sorted_waveform_info(
+            db_session,
+            "S",
+            datetime.strptime("2010-02-01T00:00:00.00", dateformat),
+            datetime.strptime("2010-02-02T00:00:00.00", dateformat),
+            ["TEST-ProcessExtracted", "TEST-ExtractContData", "TEST-DownloadSegment"],
+            threeC_only=True,
+        )
+
+        assert len(wf_infos) == 6, "expected 6 waveform infos returned"
+
+        storages = {}
+        try:
+            X, pick_source_ids, storages = services.Waveforms().get_pick_waveforms(
+                [wf_infos[2]], index_fn
+            )
+            assert X.shape[0] == 1
+            assert X.shape[1] == 100
+            assert X.shape[2] == 1
+            assert pick_source_ids["pick_id"] == ids["s_pick1"]
+            assert pick_source_ids["wf_source_id"] == ids["wf_source1"]
+            assert np.all(X[0, :, 0] == 15)
+            X, pick_source_ids, storages = services.Waveforms().get_pick_waveforms(
+                [wf_infos[-1]], index_fn, wf_storages=storages
+            )
+            assert X.shape[0] == 1
+            assert X.shape[1] == 100
+            assert X.shape[2] == 1
+            assert pick_source_ids["pick_id"] == ids["s_pick1"]
+            assert pick_source_ids["wf_source_id"] == ids["wf_source2"]
+            assert np.all(X[0, :, 0] == 12)
+        finally:
+            for _, storage in storages.items():
+                storage.close()
+
+    def test_gather_vertical_waveforms_source1(
+        self, db_session_with_many_waveform_info
+    ):
+        db_session, ids = db_session_with_many_waveform_info
+
+        def index_fn(ncomps, seed_code):
+            if ncomps == 1 and seed_code == "HHZ":
+                return 0
+
+        pick_source_ids, X = services.Waveforms().gather_waveforms(
+            db_session,
+            60,
+            False,
+            index_fn,
+            lambda x: x,
+            datetime.strptime("2010-02-01T00:00:00.00", dateformat),
+            datetime.strptime("2010-02-03T00:00:00.00", dateformat),
+            "S",
+            ["TEST-ProcessExtracted", "TEST-ExtractContData", "TEST-DownloadSegment"],
+            False,
+        )
+        assert X.shape[0] == 1
+        assert X.shape[1] == 60
+        assert X.shape[2] == 1
+        assert len(pick_source_ids) == 1
+        assert pick_source_ids[0]["pick_id"] == ids["s_pick1"]
+        assert pick_source_ids[0]["wf_source_id"] == ids["wf_source1"]
+        assert np.all(X[0, :, 0] == 15)
+
+    def test_gather_vertical_waveforms_source2(
+        self, db_session_with_many_waveform_info
+    ):
+        db_session, ids = db_session_with_many_waveform_info
+
+        def index_fn(ncomps, seed_code):
+            if ncomps == 1 and seed_code == "HHZ":
+                return 0
+
+        pick_source_ids, X = services.Waveforms().gather_waveforms(
+            db_session,
+            60,
+            False,
+            index_fn,
+            lambda x: x,
+            datetime.strptime("2010-02-01T00:00:00.00", dateformat),
+            datetime.strptime("2010-02-03T00:00:00.00", dateformat),
+            "S",
+            ["TEST-DownloadSegment", "TEST-ProcessExtracted", "TEST-ExtractContData"],
+            False,
+        )
+        assert X.shape[0] == 1
+        assert X.shape[1] == 60
+        assert X.shape[2] == 1
+        assert len(pick_source_ids) == 1
+        assert pick_source_ids[0]["pick_id"] == ids["s_pick1"]
+        assert pick_source_ids[0]["wf_source_id"] == ids["wf_source2"]
+        assert np.all(X[0, :, 0] == 12)
+
+    def test_gather_vertical_waveforms_limited_signal(
+        self, db_session_with_many_waveform_info
+    ):
+        db_session, ids = db_session_with_many_waveform_info
+
+        def index_fn(ncomps, seed_code):
+            if ncomps == 1 and seed_code == "HHZ":
+                return 0
+
+        pick_source_ids, X = services.Waveforms().gather_waveforms(
+            db_session,
+            60,
+            False,
+            index_fn,
+            lambda x: x,
+            datetime.strptime("2010-02-03T00:00:00.00", dateformat),
+            datetime.strptime("2010-02-04T00:00:00.00", dateformat),
+            "S",
+            ["TEST-DownloadSegment", "TEST-ProcessExtracted", "TEST-ExtractContData"],
+            False,
+        )
+        assert X.shape[0] == 1
+        assert X.shape[1] == 60
+        assert X.shape[2] == 1
+        assert len(pick_source_ids) == 1
+        assert pick_source_ids[0]["pick_id"] == ids["s_pick3"]
+        assert pick_source_ids[0]["wf_source_id"] == ids["wf_source3"]
+        assert np.all(X[0, :, 0] == 19)
+
+    def test_gather_vertical_waveforms_multiple(
+        self, db_session_with_many_waveform_info
+    ):
+        db_session, ids = db_session_with_many_waveform_info
+
+        def index_fn(ncomps, seed_code):
+            if ncomps == 1 and seed_code == "HHZ":
+                return 0
+
+        pick_source_ids, X = services.Waveforms().gather_waveforms(
+            db_session,
+            60,
+            False,
+            index_fn,
+            lambda x: x / 2,
+            datetime.strptime("2010-02-01T00:00:00.00", dateformat),
+            datetime.strptime("2010-02-04T00:00:00.00", dateformat),
+            "S",
+            ["TEST-ProcessExtracted", "TEST-ExtractContData", "TEST-DownloadSegment"],
+            False,
+        )
+        assert X.shape[0] == 2
+        assert X.shape[1] == 60
+        assert X.shape[2] == 1
+        assert len(pick_source_ids) == 2
+        assert pick_source_ids[0]["pick_id"] == ids["s_pick1"]
+        assert pick_source_ids[0]["wf_source_id"] == ids["wf_source1"]
+        assert np.all(X[0, :, 0] == 15 / 2)
+        assert pick_source_ids[1]["pick_id"] == ids["s_pick3"]
+        assert pick_source_ids[1]["wf_source_id"] == ids["wf_source3"]
+        assert np.all(X[1, :, 0] == 19 / 2)

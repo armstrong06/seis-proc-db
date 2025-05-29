@@ -2,7 +2,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 import pytest
 from unittest import mock
-
+import shutil
 from seis_proc_db.database import engine
 
 # global application scope.  create Session class, engine
@@ -11,6 +11,7 @@ Session = sessionmaker()
 
 @pytest.fixture
 def mock_pytables_config():
+    shutil.rmtree("./tests/pytables_outputs")
     with mock.patch(
         "seis_proc_db.pytables_backend.HDF_BASE_PATH",
         "./tests/pytables_outputs",

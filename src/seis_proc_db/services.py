@@ -566,7 +566,7 @@ def insert_waveform(
         start=start,
         end=end,
         data=data,
-        wf_source_id=wf_source_id
+        wf_source_id=wf_source_id,
     )
     session.add(new_wf)
 
@@ -990,6 +990,7 @@ def get_calibration_method(session, name):
 
     return result[0]
 
+
 def insert_pick_correction_pytable(
     session,
     storage,
@@ -1059,9 +1060,10 @@ class Waveforms:
         sources: list[str],
         vertical_only=False,
         threeC_only=False,
+        # TODO: Can likely remove these options because it is redundant now that
+        # the processing information is tied to waveform_source
         wf_filt_low=None,
         wf_filt_high=None,
-        # hdf_file_contains=None,
     ):
         if vertical_only and threeC_only:
             raise ValueError(
@@ -1122,21 +1124,26 @@ class Waveforms:
 
         return result
 
-    def gather_3c_waveforms(
+    def gather_waveforms(
         self,
         session,
         n_samples,
+        threeC_waveforms,
         channel_index_mapping_fn,
         wf_process_fn,
         start,
         end,
         phase,
         sources,
-        wf_filt_low=None,
-        wf_filt_high=None,
-        hdf_file_contains=None,
         include_multiple_wf_sources=False,
     ):
+        threeC_only = True
+        vertical_only = False
+        ncomps = 3
+        if not threeC_waveforms:
+            threeC_only = False
+            vertical_only = True
+            ncomps = 1
 
         # Get the relevant waveform information from the database and sort so waveforms
         # belonging to the same pick are next to each other
@@ -1146,191 +1153,172 @@ class Waveforms:
             start,
             end,
             sources,
-            threeC_only=True,
-            wf_filt_low=wf_filt_low,
-            wf_filt_high=wf_filt_high,
-            hdf_file_contains=hdf_file_contains,
+            threeC_only=threeC_only,
+            vertical_only=vertical_only,
         )
 
-        n_picks = len(all_infos // 3)
+        # Assume there are 3 wfs for each pick - should be true because of threeC_only=True in query
+        n_picks = len(all_infos) // ncomps
         # Waveform information to return
-        X = np.zeros((n_picks, n_samples, 3))
-        # Pick ids to return for inserting results back into the db
-        # Waveform source information to return for inserting results back into the db
+        X = np.zeros((n_picks, n_samples, ncomps))
+        # Store pick ids and waveform source ids for inserting results back into the db
         pick_source_ids = []
-
-        pick_ind = -1
-        wf_i0 = -1
-        wf_i1 = -1
+        # Dictionary to store the open pytables
         wf_storages = {}
-        # Iterate over the picks
+        # Keep track of the pervious pick_id and wf_source_id
         prev_pid = -1
         prev_wf_source_id = -1
-        for pick_cnt in np.range(0, len(n_picks)):
-            # Get the 3 rows corresponding to the different components for the pick
-            pick_wf_infos = all_infos[pick_cnt : pick_cnt + 3]
-            # Check the pytables that are loaded and load new ones if necessary
-            pytables_loaded = self._check_3c_wf_files(
-                wf_storages, pick_wf_infos, channel_index_mapping_fn
-            )
-            if not pytables_loaded:
-                wf_storages = self._set_3c_wf_storage(
-                    all_infos[pick_cnt : pick_cnt + 3], channel_index_mapping_fn
+        # The count of pick waveforms added into X
+        n_gathered = 0
+        try:
+            ## Iterate over the picks ##
+            for pick_cnt in np.arange(0, n_picks):
+                ## Get the 3C information for the pick - The waveforms should be next to each other from the query ##
+                ind1 = pick_cnt * ncomps
+                ind2 = ind1 + ncomps
+                pick_wf_infos = all_infos[ind1:ind2]
+
+                ## Check the pytables that are loaded and load new ones if necessary ##
+                # Do not load the new pytables if they are a duplicate pick id from a lower priorty source
+                # This assumes the lower priorty source waveforms will follow the higher priority ones
+                if (
+                    not include_multiple_wf_sources
+                    and pick_wf_infos[0][-1].pick_id == prev_pid
+                    and pick_wf_infos[0][-1].wf_source_id != prev_wf_source_id
+                ):
+                    continue
+
+                pick_wfs, ids, wf_storages = self.get_pick_waveforms(
+                    pick_wf_infos, channel_index_mapping_fn, wf_storages=wf_storages
                 )
 
-            # Get the start and end inds of the waveforms assuming the pick is at the
-            # center of the window
-            if pick_ind < 0:
-                pick_ind = wf_storages[0].table.attrs.expected_array_length // 2
-                wf_i0 = pick_ind - n_samples // 2
-                wf_i1 = pick_ind + n_samples // 2
+                # DO THE WAVEFORM PROCESSING TOGETHER
+                if pick_wfs.shape[1] >= n_samples:
+                    i0 = pick_wfs.shape[1] // 2 - n_samples // 2
+                    i1 = pick_wfs.shape[1] // 2 + n_samples // 2
+                    pick_wfs = pick_wfs[:, i0:i1, :]
+                    processed_wfs = wf_process_fn(pick_wfs)
+                    pick_source_ids.append(ids)
+                    X[n_gathered, :, :] = processed_wfs
+                    n_gathered += 1
 
-            # Iterate over the different components for the pick
+                prev_wf_source_id = ids["wf_source_id"]
+                prev_pid = ids["pick_id"]
+        finally:
+            for _, wf_storage in wf_storages.items():
+                wf_storage.close()
+
+        # Remove any empty rows due to insufficient data
+        X = X[0 : len(pick_source_ids), :, :]
+
+        return pick_source_ids, X
+
+    def get_pick_waveforms(
+        self,
+        pick_wf_infos,
+        channel_index_mapping_fn,
+        wf_storages={},
+    ):
+        ncomps = len(pick_wf_infos)
+        if ncomps != 1 and ncomps != 3:
+            raise ValueError("expected 1 or 3 components")
+
+        try:
+            pytables_loaded = self._check_wf_files(wf_storages, pick_wf_infos)
+            if not pytables_loaded:
+                if ncomps == 3:
+                    wf_storages = self._set_3c_wf_storage(
+                        pick_wf_infos, pick_wf_infos[0][0].phase
+                    )
+                else:
+                    wf_storages = self._set_1c_wf_storage(pick_wf_infos[0])
+
+            n_samples = wf_storages[
+                pick_wf_infos[0][1].seed_code
+            ].table.attrs.expected_array_length
+
+            ## Iterate over the different components for the pick ##
+            # Keep track of the current pick id an source id
+            ids = {}
             curr_pid = -1
             curr_wf_source_id = -1
-            pick_wfs = np.zeros((1, n_samples, 3))
-            ids = {}
-            keep_waveforms = True  # Set to False if there is insufficient signal or exlucuding multiple sources
+            # Keep track of the sensory type (channel prefix)
+            curr_chan_pref = None
+            # Keep track of signal starts and ends
+            curr_signal_start = -1
+            curr_signal_end = -1
+            wf_i0 = -1
+            wf_i1 = -1
             for i, info in enumerate(pick_wf_infos):
-                pid = info[0].id
+                pid = info[-1].pick_id
                 wf_source_id = info[-1].wf_source_id
                 # Get the appropriate channel index given the seed code
                 seed_code = info[1].seed_code
-                comp_ind = channel_index_mapping_fn(3, seed_code)
+                comp_ind = channel_index_mapping_fn(ncomps, seed_code)
+
+                # Get the waveform from the pytable
+                wf_info_id = info[-1].id
+                wf_row = wf_storages[seed_code].select_row(wf_info_id)
+                if wf_row is None:
+                    # TODO: Throw error or just say insufficient signal?
+                    raise ValueError(
+                        f"Waveform for waveform_info.id == {wf_info_id} not found"
+                    )
+
                 # Few checks to make sure waveforms belong together
                 if curr_pid < 0:
                     curr_pid = pid
                     curr_wf_source_id = wf_source_id
-                    if (
-                        not include_multiple_wf_sources
-                        and curr_pid == prev_pid
-                        and curr_wf_source_id != prev_wf_source_id
-                    ):
-                        keep_waveforms = False
-                        break
+                    curr_chan_pref = seed_code[0:2]
+                    curr_signal_start = wf_row["start_ind"]
+                    curr_signal_end = wf_row["end_ind"]
+                    # Set the start and end inds of the waveforms given how much signal is available
+                    if wf_row["start_ind"] > 0 or wf_row["end_ind"] < n_samples:
+                        center = n_samples // 2
+                        samples_before = center - wf_row["start_ind"]
+                        samples_after = wf_row["end_ind"] - center
+                        if samples_before > samples_after:
+                            wf_i0 = center - samples_after
+                            wf_i1 = wf_row["end_ind"]
+                        else:
+                            wf_i0 = wf_row["start_ind"]
+                            wf_i1 = center + samples_before
+                    else:
+                        wf_i0 = 0
+                        wf_i1 = n_samples
+                    # To store the 3C waveform for the pick
+                    pick_wfs = np.zeros((1, wf_i1 - wf_i0, ncomps))
                 else:
                     assert pid == curr_pid, "Pick IDS do not match"
                     assert (
                         wf_source_id == curr_wf_source_id
                     ), "Waveform source ids do not match"
+                    # I think this is uncessary because chan_pref is part of the pick
+                    # PK but I am scared of combining waveforms that do not belong together...
+                    assert (
+                        seed_code[0:2] == curr_chan_pref
+                    ), "Waveform channel prefixes do not match"
+                    assert (
+                        wf_row["start_ind"] == curr_signal_start
+                    ), "signal start inds do not match"
+                    assert (
+                        wf_row["end_ind"] == curr_signal_end
+                    ), "signal end inds do not match"
 
-                # Get the waveform from the pytable
-                wf_info_id = info[-1].id
-                wf_row = wf_storages[comp_ind].select_row(wf_info_id)
-                if wf_row["start_ind"] > wf_i0 or wf_row["end_ind"] < wf_i1:
-                    keep_waveforms = False
-                    break
+                # Store the waveforms for the pick
                 pick_wfs[0, :, comp_ind] = wf_row["data"][wf_i0:wf_i1]
+                ids["pick_id"] = pid
+                ids["wf_source_id"] = wf_source_id
 
-            # DO THE WAVEFORM PROCESSING TOGETHER
-            if keep_waveforms:
-                processed_wfs = wf_process_fn(pick_wfs)
-                # Save waveforms
-                ids["pick_id"] = curr_pid
-                ids["wf_source_id"] = curr_wf_source_id
-                pick_source_ids.append(ids)
-                X[pick_cnt, :, :] = processed_wfs
+        except Exception as e:
+            for _, wf_storage in wf_storages.items():
+                wf_storage.close()
 
-            prev_wf_source_id = curr_wf_source_id
-            prev_pid = curr_pid
+            raise e
 
-        # Remove any empty rows due to insufficient data
-        X = X[0:pick_cnt, :, :]
+        return pick_wfs, ids, wf_storages
 
-        assert (
-            len(pick_source_ids) == X.shape[0]
-        ), "incorrect number of pick ids compared to waveforms"
-        return pick_source_ids, X
-
-    def gather_1c_waveforms(
-        self,
-        session,
-        n_samples,
-        wf_process_fn,
-        start,
-        end,
-        phase,
-        sources,
-        wf_filt_low=None,
-        wf_filt_high=None,
-        hdf_file_contains=None,
-        include_multiple_wf_sources=False,
-    ):
-
-        # Get the relevant waveform information from the database and sort so waveforms
-        # belonging to the same pick are next to each other
-        all_infos = self.get_sorted_waveform_info(
-            session,
-            phase,
-            start,
-            end,
-            sources,
-            vertical_only=True,
-            wf_filt_low=wf_filt_low,
-            wf_filt_high=wf_filt_high,
-            hdf_file_contains=hdf_file_contains,
-        )
-
-        n_picks = len(all_infos)
-        # Waveform information to return
-        X = np.zeros((n_picks, n_samples, 1))
-        # Pick ids to return for inserting results back into the db
-        # Waveform source information to return for inserting results back into the db
-        pick_source_ids = []
-
-        pick_ind = -1
-        wf_i0 = -1
-        wf_i1 = -1
-        wf_storage = None
-        prev_pid = -1
-        prev_wf_source_id = -1
-        # Iterate over the picks
-        for i, info in enumerate(all_infos):
-            ids = {}
-            # Get the start and end inds of the waveforms assuming the pick is at the
-            # center of the window
-            if pick_ind < 0:
-                wf_storage = None  # TODO
-                pick_ind = wf_storage.table.attrs.expected_array_length // 2
-                wf_i0 = pick_ind - n_samples // 2
-                wf_i1 = pick_ind + n_samples // 2
-
-            pid = info[0].id
-            wf_source_id = info[-1].wf_source_id
-
-            if (
-                not include_multiple_wf_sources
-                and pid == prev_pid
-                and wf_source_id != prev_wf_source_id
-            ):
-                continue
-
-            # Get the waveform from the pytable
-            wf_info_id = info[-1].id
-            wf_row = wf_storage.select_row(wf_info_id)
-            if wf_row["start_ind"] > wf_i0 or wf_row["end_ind"] < wf_i1:
-                continue
-
-            # DO THE WAVEFORM PROCESSING
-            processed_wfs = wf_process_fn(wf_row["data"][wf_i0:wf_i1])
-            # Save waveforms
-            ids["pick_id"] = pid
-            ids["wf_source_id"] = wf_source_id
-            pick_source_ids.append(ids)
-            X[i, :, :] = processed_wfs
-            prev_wf_source_id = wf_source_id
-            prev_pid = pid
-
-        # Remove any empty rows due to insufficient data
-        X = X[0:i, :, :]
-
-        assert (
-            len(pick_source_ids) == X.shape[0]
-        ), "incorrect number of pick ids compared to waveforms"
-
-        return pick_source_ids, X
-
-    def _check_3c_wf_files(self, wf_storages, pick_info, channel_index_mapping_fn):
+    def _check_wf_files(self, wf_storages, chan_pick_info):
         """Check that the necessary pytables files storing waveforms are loaded
 
         Args:
@@ -1343,15 +1331,19 @@ class Waveforms:
         """
         if len(wf_storages.keys()) == 0:
             return False
-        seed_code = pick_info[1].seed_code
-        comp_ind = channel_index_mapping_fn(3, seed_code)
-        wf_hdf_file = pick_info[-1].hdf_file
-        if wf_storages[comp_ind].stored_hdf_info != wf_hdf_file:
-            return False
+
+        for pick_info in chan_pick_info:
+            seed_code = pick_info[1].seed_code
+            wf_hdf_file = pick_info[-1].hdf_file
+            if wf_storages[seed_code].stored_hdf_info != wf_hdf_file:
+                # Close the pytables before the new set are opened
+                for _, wf_storage in wf_storages.items():
+                    wf_storage.close()
+                return False
 
         return True
 
-    def _set_3c_wf_storage(self, pick_infos, channel_index_mapping_fn, phase):
+    def _set_3c_wf_storage(self, pick_infos, phase):
         """Load 3 pytables files for the different components
 
         Args:
@@ -1361,19 +1353,52 @@ class Waveforms:
         Returns:
             dict: dictionary of pytables files
         """
-        wf_storages = {}
-        for info in pick_infos:
-            wf_hdf_file = info[-1].hdf_file
-            seed_code = info[1].seed_code
-            comp_ind = channel_index_mapping_fn(3, seed_code)
-            # Reload the files after resetting them
-            if comp_ind not in wf_storages.keys():
-                storage = WaveformStorageReader(wf_hdf_file)
-                wf_storages[comp_ind] = storage
+        try:
+            wf_storages = {}
+            for info in pick_infos:
+                wf_hdf_file = info[-1].hdf_file
+                seed_code = info[1].seed_code
+                # Reload the files after resetting them
+                if seed_code not in wf_storages.keys():
+                    storage = WaveformStorageReader(wf_hdf_file)
+                    wf_storages[seed_code] = storage
 
-        # Check that the pytables metadata agree with eachother
-        for i in range(1, 3):
-            self._compare_pytables_attrs(wf_storages[i - 1], wf_storages[i], phase)
+            # Check that the pytables metadata agree with eachother
+            keys = list(wf_storages.keys())
+            for i in range(1, 3):
+                self._compare_pytables_attrs(
+                    wf_storages[keys[i - 1]], wf_storages[keys[i]], phase
+                )
+        except Exception as e:
+            for _, wf_storage in wf_storages.items():
+                wf_storage.close()
+
+            raise e
+
+        return wf_storages
+
+    def _set_1c_wf_storage(self, pick_info):
+        """Load 1 pytables files for the different components
+
+        Args:
+            pick_info (list): list of tuples containing relevant waveform information from
+            the database for 1 pick.
+
+        Returns:
+            dict: dictionary of pytables files
+        """
+        try:
+            wf_storages = {}
+            wf_hdf_file = pick_info[-1].hdf_file
+            seed_code = pick_info[1].seed_code
+            # Reload the files after resetting them
+            storage = WaveformStorageReader(wf_hdf_file)
+            wf_storages[seed_code] = storage
+        except Exception as e:
+            for _, wf_storage in wf_storages.items():
+                wf_storage.close()
+
+            raise e
 
         return wf_storages
 
@@ -1391,7 +1416,9 @@ class Waveforms:
         # assert (
         #     prev_attrs.filt_high == curr_attrs.filt_high
         # ), "filt_high values do not match"
-        assert curr_attrs["wf_source_id"] == prev_attrs["wf_source_id"], "Waveform source ids do not match"
+        assert (
+            curr_attrs["wf_source_id"] == prev_attrs["wf_source_id"]
+        ), "Waveform source ids do not match"
         assert curr_attrs["phase"] == phase, "phase is not as expected"
         assert (
             prev_attrs.expected_array_length == curr_attrs.expected_array_length
