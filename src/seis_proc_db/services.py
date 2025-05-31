@@ -1196,7 +1196,7 @@ class Waveforms:
                 if pick_wfs.shape[1] >= n_samples:
                     i0 = pick_wfs.shape[1] // 2 - n_samples // 2
                     i1 = pick_wfs.shape[1] // 2 + n_samples // 2
-                    pick_wfs = pick_wfs[:, i0:i1, :]
+                    pick_wfs = pick_wfs[0, i0:i1, :]
                     processed_wfs = wf_process_fn(pick_wfs)
                     pick_source_ids.append(ids)
                     X[n_gathered, :, :] = processed_wfs
