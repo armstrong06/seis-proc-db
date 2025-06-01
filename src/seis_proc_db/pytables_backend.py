@@ -372,7 +372,7 @@ class WaveformStorage(BasePyTable):
         return os.path.relpath(self._file_path, self._base_dir)
 
     def _make_filepath(self):
-        #file_name = f"{self.filt_low!r}Hz_{self.filt_high!r}Hz_{self.expected_array_length}samps/{self.net}.{self.sta}.{self.loc}.{self.seed_code}.{self.phase}.{self.ncomps}C.h5"
+        # file_name = f"{self.filt_low!r}Hz_{self.filt_high!r}Hz_{self.expected_array_length}samps/{self.net}.{self.sta}.{self.loc}.{self.seed_code}.{self.phase}.{self.ncomps}C.h5"
         file_name = f"{self.net}.{self.sta}.{self.loc}.{self.seed_code}.{self.phase}.{self.ncomps}C.{self.expected_array_length}samps.source{self.wf_source_id:02d}.h5"
         return os.path.join(self._base_dir, file_name)
 
@@ -455,7 +455,7 @@ class SwagPicksStorage(BasePyTable):
         super().__init__(expected_array_length, on_event, expectedrows)
 
     def _make_filepath(self):
-        file_name = f"repicker{self.repicker_method_id:02d}_{self.phase}_{self.start}_{self.end}.h5"
+        file_name = f"repicker{self.repicker_method_id:02d}_{self.phase}_{self.start}_{self.end}_N{self.expected_array_length}.h5"
         return os.path.join(self._base_dir, file_name)
 
     def _make_h5_file_title(self):
@@ -488,7 +488,7 @@ class BasePytableReader(ABC):
         self.file_path = os.path.join(output_base_dir, stored_hdf_info)
         self._h5_file = None
         self._table = None
-        self._is_open=False
+        self._is_open = False
 
         self._open_file_read()
 
@@ -525,7 +525,7 @@ class BasePytableReader(ABC):
 
         colnames = self._table.colnames
         return dict(zip(colnames, row[0][:]))
-    
+
     def close(self):
         if self._h5_file is not None and self._is_open:
             self._h5_file.close()

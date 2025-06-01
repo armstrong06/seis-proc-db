@@ -66,18 +66,22 @@ class TestWaveformStorage:
             seed_code="HHZ",
             ncomps=3,
             phase="P",
-            wf_source_id=1
+            wf_source_id=1,
         )
 
         try:
             file_name = wf_storage.file_name
             # Check that the filename is as would be expected
-            assert file_name == "JK.TEST.01.HHZ.P.3C.1200samps.source01.h5", "file name is not as expected"
+            assert (
+                file_name == "JK.TEST.01.HHZ.P.3C.1200samps.source01.h5"
+            ), "file name is not as expected"
             # assert (
             #     os.path.basename(os.path.dirname(wf_storage.file_path))
             #     == "NoneHz_NoneHz_1200samps"
             # ), "incorrect directory name"
-            assert wf_storage.relative_path == "JK.TEST.01.HHZ.P.3C.1200samps.source01.h5", "incorrect relative path"
+            assert (
+                wf_storage.relative_path == "JK.TEST.01.HHZ.P.3C.1200samps.source01.h5"
+            ), "incorrect relative path"
             # Check that the file was created
             assert os.path.exists(wf_storage.file_path), "the file was not created"
             # Check that the file is set to open
@@ -98,7 +102,7 @@ class TestWaveformStorage:
             assert table.attrs.ncomps == 3, "the table ncomps attr is incorrect"
             assert table.attrs.phase == "P", "the table phase attr is incorrect"
             assert table.attrs.wf_source_id == 1, "incorrect wf_source_id"
-            #assert table.attrs.filt_low is None, "the table filt_low attr is incorrect"
+            # assert table.attrs.filt_low is None, "the table filt_low attr is incorrect"
             # assert (
             #     table.attrs.filt_high is None
             # ), "the table filt_hight attr is incorrect"
@@ -298,6 +302,7 @@ class TestDLDetectorOutputStorage:
                 detout_storage.file_path
             ), "the file was not removed"
 
+
 class TestSwagPicksStorage:
     def test_init(self, mock_pytables_config):
 
@@ -306,15 +311,19 @@ class TestSwagPicksStorage:
             start="2023-01-01",
             end="2023-01-31",
             phase="P",
-            repicker_method_id=1
+            repicker_method_id=1,
         )
 
         try:
             file_name = repicker_storage.file_name
             # Check that the filename is as would be expected
-            assert file_name == "repicker01_P_2023-01-01_2023-01-31.h5", "file name is not as expected"
+            assert (
+                file_name == "repicker01_P_2023-01-01_2023-01-31_N450.h5"
+            ), "file name is not as expected"
             # Check that the file was created
-            assert os.path.exists(repicker_storage.file_path), "the file was not created"
+            assert os.path.exists(
+                repicker_storage.file_path
+            ), "the file was not created"
             # Check that the file is set to open
             assert repicker_storage._is_open, "the file is not registered as open"
             table = repicker_storage.table
@@ -324,32 +333,38 @@ class TestSwagPicksStorage:
                 "id == 1"
             ), "table will not use an index search for query by id"
             assert table.name == "swag_picks", "the table name is incorrect"
-            assert table.title == "SWAG Repicker Predictions", "the table title is incorrect"
+            assert (
+                table.title == "SWAG Repicker Predictions"
+            ), "the table title is incorrect"
             # Check table attributes
             assert table.attrs.phase == "P", "the table phase attr is incorrect"
             assert (
                 table.attrs.expected_array_length == 450
             ), "the table expected_array_length attr is incorrect"
-            assert table.attrs.start == "2023-01-01", "the table start attr is incorrect"
+            assert (
+                table.attrs.start == "2023-01-01"
+            ), "the table start attr is incorrect"
             assert table.attrs.end == "2023-01-31", "the table end attr is incorrect"
         finally:
             # Clean up
             repicker_storage.close()
             os.remove(repicker_storage.file_path)
-            assert not os.path.exists(repicker_storage.file_path), "the file was not removed"
+            assert not os.path.exists(
+                repicker_storage.file_path
+            ), "the file was not removed"
+
 
 def test_waveform_storage_reader():
     wf_storage = pytables_backend.WaveformStorage(
-            expected_array_length=1200,
-            net="JK",
-            sta="TEST",
-            loc="01",
-            seed_code="HHZ",
-            ncomps=3,
-            phase="P",
-            wf_source_id=1
-        )
-    
+        expected_array_length=1200,
+        net="JK",
+        sta="TEST",
+        loc="01",
+        seed_code="HHZ",
+        ncomps=3,
+        phase="P",
+        wf_source_id=1,
+    )
 
     try:
         wf_file = wf_storage.file_path
