@@ -1029,6 +1029,12 @@ def insert_pick_correction_pytable(
     return pick_corr
 
 
+def get_pick_corrs(session, pick_id):
+    stmt = select(PickCorrection).where(PickCorrection.pid == pick_id)
+
+    return session.scalars(stmt).all()
+
+
 def insert_ci(session, corr_id, method_id, percent, lb, ub):
     new_ci = CredibleInterval(
         corr_id=corr_id, method_id=method_id, percent=percent, lb=lb, ub=ub
