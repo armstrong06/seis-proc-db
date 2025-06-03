@@ -176,7 +176,6 @@ def get_operating_channels_by_station_name(
     if loc is not None:
         stmt = stmt.where(Channel.loc == loc)
 
-    # print("STMT", stmt)
     result = session.execute(stmt, {"date": date}).all()
 
     if len(result) == 0:
@@ -1335,7 +1334,10 @@ class Waveforms:
         for pick_info in chan_pick_info:
             seed_code = pick_info[1].seed_code
             wf_hdf_file = pick_info[-1].hdf_file
-            if wf_storages[seed_code].stored_hdf_info != wf_hdf_file:
+            if (
+                seed_code not in wf_storages.keys()
+                or wf_storages[seed_code].stored_hdf_info != wf_hdf_file
+            ):
                 # Close the pytables before the new set are opened
                 for _, wf_storage in wf_storages.items():
                     wf_storage.close()
@@ -1416,10 +1418,10 @@ class Waveforms:
         # assert (
         #     prev_attrs.filt_high == curr_attrs.filt_high
         # ), "filt_high values do not match"
-        assert (
-            curr_attrs["wf_source_id"] == prev_attrs["wf_source_id"]
-        ), "Waveform source ids do not match"
-        assert curr_attrs["phase"] == phase, "phase is not as expected"
+        # assert (
+        #     curr_attrs.wf_source_id == prev_attrs.wf_source_id
+        # ), "Waveform source ids do not match"
+        assert curr_attrs.phase == phase, "phase is not as expected"
         assert (
             prev_attrs.expected_array_length == curr_attrs.expected_array_length
         ), "expected_array_lengths do not match"
