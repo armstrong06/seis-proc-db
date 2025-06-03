@@ -692,6 +692,10 @@ class Pick(Base):
     wfs: WriteOnlyMapped[List["Waveform"]] = relationship(back_populates="pick")
     # One-to-many relationship with WaveformInfo
     wf_info: WriteOnlyMapped[List["WaveformInfo"]] = relationship(back_populates="pick")
+    # One-to-many relationship with AssocArrival
+    assoc_arrs: WriteOnlyMapped[List["AssocArrival"]] = relationship(
+        back_populates="pick"
+    )
 
     __table_args__ = (
         UniqueConstraint(sta_id, chan_pref, phase, ptime, auth, name="simplify_pk"),
@@ -745,6 +749,10 @@ class PickCorrection(Base):
         nullable=False,
     )
     ##
+    # Store the waveform_source to be able to identify which data is being read into the
+    # model because a pick can have multiple waveforms (e.g., one extracted from contdata
+    # and one downloaded separatley because the pick is near the end/start of a day)
+    # Don't store waveform_info_id because the S picker uses 3 waveforms
     wf_source_id = mapped_column(
         ForeignKey("waveform_source.id", onupdate="restrict", ondelete="restrict"),
         nullable=False,
@@ -860,7 +868,9 @@ class FirstMotion(Base):
 
 
 class CredibleInterval(Base):
-    """Credible Intervals associated with a pick correction.
+    """Credible Intervals associated with a pick correction. Since the CI are for the pick
+    corrections, they should be added to the pick time to get the lower bound and upper
+    bound of the arrival time.
 
     Attributes:
         id: Not meaningful first motion identifier that is used as the PK.
@@ -900,6 +910,10 @@ class CredibleInterval(Base):
     corr: Mapped["PickCorrection"] = relationship(back_populates="cis")
     # Many-to-one relationship with CalibrationMethod
     method: Mapped["CalibrationMethod"] = relationship(back_populates="cis")
+    # One-to-many relationship with AssocArrival
+    assoc_arrs: WriteOnlyMapped[List["AssocArrival"]] = relationship(
+        back_populates="ci"
+    )
 
     __table_args__ = (
         UniqueConstraint(corr_id, method_id, percent, name="simplify_pk"),
@@ -1103,6 +1117,10 @@ class WaveformInfo(Base):
     pick: Mapped["Pick"] = relationship(back_populates="wf_info")
     # Many-to-one relationship with WaveformSource
     source: Mapped["WaveformSource"] = relationship(back_populates="wf_info")
+    # One-to-many relationship with ArrWaveformFeat
+    arr_feats: WriteOnlyMapped["ArrWaveformFeat"] = relationship(
+        back_populates="wf_info"
+    )
 
     # column propertys
     # pick_index = column_property(
@@ -1390,3 +1408,515 @@ class Waveform(Base):
 #             f"start={self.start!r}, end={self.end!r}, proc_notes={self.proc_notes!r}, "
 #             f"data={self.data[0:3]!r}, last_modified={self.last_modified!r})"
 #         )
+
+## TABLES BELOW THIS POINT ARE A WORK IN PROGRESS ##
+
+
+class AssocMethod(ISAMethod):
+    __tablename__ = "assoc_method"
+
+    # One-to-Many relationship with PickCorrection
+    origins: WriteOnlyMapped[List["Origin"]] = relationship(
+        back_populates="assoc_method"
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"AssocMethod(id={self.id!r}, name={self.name!r}, details={self.details!r}, "
+            f"path={self.path!r}, last_modified={self.last_modified!r})"
+        )
+
+
+class LocMethod(ISAMethod):
+    __tablename__ = "loc_method"
+
+    # One-to-Many relationship with PickCorrection
+    origins: WriteOnlyMapped[List["Origin"]] = relationship(back_populates="loc_method")
+
+    def __repr__(self) -> str:
+        return (
+            f"LocMethod(id={self.id!r}, name={self.name!r}, details={self.details!r}, "
+            f"path={self.path!r}, last_modified={self.last_modified!r})"
+        )
+
+
+class VelModel(ISAMethod):
+    __tablename__ = "vel_model"
+
+    phase: Mapped[Optional[str]] = mapped_column(String(4))
+
+    # One-to-Many relationship with PickCorrection
+    origins: WriteOnlyMapped[List["Origin"]] = relationship(back_populates="vel_model")
+
+    def __repr__(self) -> str:
+        return (
+            f"VelModel(id={self.id!r}, name={self.name!r}, details={self.details!r}, "
+            f"path={self.path!r}, phase={self.phase}, last_modified={self.last_modified!r})"
+        )
+
+
+class MagMethod(ISAMethod):
+    __tablename__ = "mag_method"
+
+    phase: Mapped[Optional[str]] = mapped_column(String(4))
+
+    # One-to-Many relationship with ArrMag
+    arr_mags: WriteOnlyMapped[List["ArrMag"]] = relationship(back_populates="method")
+
+    def __repr__(self) -> str:
+        return (
+            f"MagMethod(id={self.id!r}, name={self.name!r}, details={self.details!r}, "
+            f"path={self.path!r}, phase={self.phase}, last_modified={self.last_modified!r})"
+        )
+
+
+class Event(Base):
+    """Defines an event... This table is still a work in progress.
+
+    Attributes:
+        id: Unique identifier.
+        last_modified: Automatic field that keeps track of when a row was added to
+             or modified in the database in local time. Does not include microseconds.
+    """
+
+    __tablename__ = "event"
+    id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
+    # TODO: Figure out if this needs any more parameters and if I am going to store
+    # preferred information
+    # Keep track of when the row was inserted/updated
+    last_modified = mapped_column(
+        TIMESTAMP,
+        default=datetime.now,
+        onupdate=datetime.now,
+        server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
+    )
+
+    ## Relationships
+    # One-to-Many relationship with Origin
+    origins: Mapped[List["Origin"]] = relationship(back_populates="event")
+
+    __table_args__ = ({"mysql_engine": MYSQL_ENGINE},)
+
+    def __repr__(self) -> str:
+        return f"Event(id={self.id!r}, last_modified={self.last_modified!r})"
+
+
+class Origin(Base):
+    """An event origin. This table is still a work in progress.
+
+    Args:
+        Base (_type_): _description_
+        id: Unique identifier
+        evid: ID of the event the origin belongs to
+        assocm_id: ID of the association method used
+        locm_id: ID of the location method used
+        velm_id: ID of the velocity model used
+        lat: Latitude
+        lon: Longitude
+        depth: Depth in km (relative to ?)
+        ot: Origin Time
+        rms: Root mean square error
+        errh: Horizontal location error
+        errz: Vertical location error
+        gap: The maximum gap between stations used in the location
+        narrs: The number of arrivals used
+        quality: The orign quality
+        min_dist: Distance (km) from the epicenter to the closest station with a phase arrival
+        last_modified: Automatic field that keeps track of when a row was added to
+             or modified in the database in local time. Does not include microseconds.
+    """
+
+    __tablename__ = "origin"
+    id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
+    ## Primary Key without simplification
+    evid: Mapped[int] = mapped_column(
+        ForeignKey("event.id", onupdate="restrict", ondelete="restrict"),
+        nullable=False,
+    )
+    assocm_id: Mapped[int] = mapped_column(
+        ForeignKey("assoc_method.id", onupdate="restrict", ondelete="restrict"),
+        nullable=False,
+    )
+    locm_id: Mapped[int] = mapped_column(
+        ForeignKey("loc_method.id", onupdate="restrict", ondelete="restrict"),
+        nullable=False,
+    )
+    velm_id: Mapped[int] = mapped_column(
+        ForeignKey("vel_model.id", onupdate="restrict", ondelete="restrict"),
+        nullable=False,
+    )
+    ##
+    # Define location
+    lat: Mapped[float] = mapped_column(Double)
+    lon: Mapped[float] = mapped_column(Double)
+    depth: Mapped[float] = mapped_column(Double)
+    ot: Mapped[datetime] = mapped_column(DATETIME(fsp=MYSQL_DATETIME_FSP))
+    # Location quality info
+    rms: Mapped[float] = mapped_column(Double)
+    errh: Mapped[float] = mapped_column(Double)
+    errz: Mapped[float] = mapped_column(Double)
+    gap: Mapped[float] = mapped_column(Double)
+    narrs: Mapped[int] = mapped_column(Integer)
+    quality: Mapped[float] = mapped_column(Double)
+    min_dist: Mapped[float] = mapped_column(Double)
+
+    # TODO: Figure out what other information needs to be stored
+
+    # Keep track of when the row was inserted/updated
+    last_modified = mapped_column(
+        TIMESTAMP,
+        default=datetime.now,
+        onupdate=datetime.now,
+        server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
+    )
+
+    ## Relationships
+    # Many-to-one relationship with Event
+    event: Mapped["Event"] = relationship(back_populates="origins")
+    # Many-to-one relationship with AssocMethod
+    assoc_method: Mapped["AssocMethod"] = relationship(back_populates="origins")
+    # Many-to-one relationship with LocMethod
+    loc_method: Mapped["LocMethod"] = relationship(back_populates="origins")
+    # Many-to-one relationship with WaveformSource
+    vel_model: Mapped["VelModel"] = relationship(back_populates="origins")
+    # One-to-Many relationship with AssocArrival
+    assoc_arrs: Mapped[List["AssocArrival"]] = relationship(back_populates="origin")
+    # One-to-Many relationship with NetMag
+    netmags: Mapped[List["NetMag"]] = relationship(back_populates="origin")
+
+    __table_args__ = (
+        UniqueConstraint(evid, assocm_id, locm_id, velm_id, name="simplify_pk"),
+        CheckConstraint("depth >= -10.0 and depth <= 1000.0", name="valid_depth"),
+        CheckConstraint("rms >= 0.0", name="nonneg_rms"),
+        CheckConstraint("errh >= 0.0", name="nonneg_errh"),
+        CheckConstraint("errz >= 0.0", name="nonneg_errz"),
+        CheckConstraint("gap >= 0.0 and gap <= 360.0", name="valid_gap"),
+        CheckConstraint("narrs >= 0", name="nonneg_narrs"),
+        CheckConstraint("quality >= 0.0 and quality <= 1.0", name="valid_quality"),
+        CheckConstraint("min_dist >= 0.0", name="nonneg_min_dist"),
+        {"mysql_engine": MYSQL_ENGINE},
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"Origin(id={self.id!r}, evid={self.evid}, assocm_id={self.assocm_id}, "
+            f"locm_id={self.locm_id}, velm_id={self.velm_id}, lat={self.lat}, "
+            f"lon={self.lon}, depth={self.depth}, ot={self.ot!r}, rms={self.rms}, "
+            f"errh={self.errh}, errz={self.errz}, gap={self.gap}, narrs={self.narrs}, "
+            f"min_dist={self.min_dist}, quality={self.quality}, last_modified={self.last_modified!r})"
+        )
+
+
+class AssocArrival(Base):
+    """Stores picks that have been associated into an event. I'll call picks that have been
+    associated an arrival. This table is still a work in progress.
+
+    Attributes:
+        id: Unique identifier
+        orid: ID of the origin the arrival is associated with
+        pick_id: ID of the pick that has been associated
+        ci_id: Optional. ID of the credible interval used. Table currently assumes that
+            if a pick_corr is used, it will always be used along with a ci
+        arrtime: Arrival time used in the association
+        at_uncert_lb: Uncertainty (in seconds) of the arrival time to be earlier
+        at_uncert_ub: Uncertainty (in seconds) of the arrival time to be later
+        aphase: Optional. Phase assigned to the arrival after association, if association
+            can change the phase hint
+        weight: Weight of the arrival in association
+        importance: Importance of the arrival in association. Between 0 and 1.
+        delta:  Residual (in seconds) of the actual and theoretical arrival time
+        slowness: Slowness (in s/km) of the arrival between the origin epicenter and
+            station recoring the arrival. Absolute value of the slowness vector.
+        azimuth: Azimuth (in deg) between the epicenter and the station recording the
+             arrival. Measured clock-wise between north and the direction towards the station
+        sr_distance: Distance (in km) between the station recording the arrival and the
+            epicenter
+        last_modified: Automatic field that keeps track of when a row was added to
+             or modified in the database in local time. Does not include microseconds.
+    """
+
+    __tablename__ = "assoc_arr"
+    id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
+    ## Primary Key without simplification
+    # The origin has the association method info
+    orid: Mapped[int] = mapped_column(
+        ForeignKey("origin.id", onupdate="restrict", ondelete="restrict"),
+        nullable=False,
+    )
+    pick_id: Mapped[int] = mapped_column(
+        ForeignKey("pick.id", onupdate="restrict", ondelete="restrict"),
+        nullable=False,
+    )
+    ##
+
+    # Since this is tied to the pick_corr and the cal_method specifies the loc_type,
+    # I can get the pick correction info from this.
+    # TODO: What if just the pick corr is used and no ci?
+    ci_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("ci.id", onupdate="restrict", ondelete="restrict"),
+        nullable=True,
+    )
+
+    # TODO: Decide if a good idea to store these. Thinking YES in case the pick_corr
+    # or CI are updated. This wouldn't be great so maybe I should manually enforce that...
+    # Could be also be useful if setting a min/max uncert value, but that could also be
+    # stored in the assoc method
+    arrtime: Mapped[datetime] = mapped_column(DATETIME(fsp=MYSQL_DATETIME_FSP))
+    at_uncert_lb: Mapped[float] = mapped_column(Double)
+    at_uncert_ub: Mapped[float] = mapped_column(Double)
+
+    # TODO: Adjust/add params after figure out what comes out of massociate
+    aphase: Mapped[Optional[str]] = mapped_column(String(4))
+    weight: Mapped[float] = mapped_column(Double)
+    importance: Mapped[float] = mapped_column(Double)
+    delta: Mapped[float] = mapped_column(Double)
+
+    # TODO: Should these be in this table?
+    slowness: Mapped[float] = mapped_column(Double)
+    azimuth: Mapped[float] = mapped_column(Double)
+    sr_dist: Mapped[float] = mapped_column(Double)
+
+    # Keep track of when the row was inserted/updated
+    last_modified = mapped_column(
+        TIMESTAMP,
+        default=datetime.now,
+        onupdate=datetime.now,
+        server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
+    )
+
+    ## Relationships
+    # Many-to-one relationship with Origin
+    origin: Mapped["Origin"] = relationship(back_populates="assoc_arrs")
+    # Many-to-one relationship with Pick
+    pick: Mapped["Pick"] = relationship(back_populates="assoc_arrs")
+    # Many-to-one relationship with Origin
+    ci: Mapped["CredibleInterval"] = relationship(back_populates="assoc_arrs")
+    # One-to-many relationship with AssocArrival
+    mags: Mapped[List["ArrMag"]] = relationship(back_populates="arr")
+    # One-to-Many relationship with ArrWaveformFeat
+    feats: WriteOnlyMapped[List["ArrWaveformFeat"]] = relationship(back_populates="arr")
+
+    __table_args__ = (
+        UniqueConstraint(orid, pick_id, name="simplify_pk"),
+        CheckConstraint("at_uncert_lb < 0.0", name="neg_at_uncert_lb"),
+        CheckConstraint("at_uncert_ub > 0.0", name="pos_at_uncert_ub"),
+        CheckConstraint("weight >= 0.0", name="nonneg_weight"),
+        CheckConstraint(
+            "importance >= 0.0 and importance <= 1.0", name="valid_importance"
+        ),
+        CheckConstraint("delta >= 0.0", name="nonneg_delta"),
+        CheckConstraint("slowness >= 0.0", name="nonneg_slowness"),
+        CheckConstraint("azimuth >= 0.0 and azimuth <= 360.0", name="valid_azimuth"),
+        CheckConstraint("sr_dist >= 0", name="nonneg_sr_dist"),
+        {"mysql_engine": MYSQL_ENGINE},
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"AssocArrival(id={self.id!r}, orid={self.orid}, pick_id={self.pick_id}, "
+            f"ci_id={self.ci_id}, arrtime={self.arrtime!r}, at_uncert_lb={self.at_uncert_lb}, "
+            f"at_uncert_ub={self.at_uncert_ub}, aphase={self.aphase}, weight={self.weight}, "
+            f"importance={self.importance}, delta={self.delta}, slowness={self.slowness}, "
+            f"azimuth={self.azimuth}, sr_dist={self.sr_dist}, last_modified={self.last_modified!r})"
+        )
+
+
+class ArrMag(Base):
+    """Stores magnitude estimates based off an arrival time.
+    This table is still a work in progress.
+
+    Attributes:
+        Base (_type_): _description_
+        id: Unique identifier
+        arid: ID of the arrival used
+        method_id: ID of the magnitude method used
+        mag: Magnitude value
+        uncertainty: Optional. Magnitude uncertainty
+        last_modified: Automatic field that keeps track of when a row was added to
+             or modified in the database in local time. Does not include microseconds.
+    """
+
+    __tablename__ = "arrmag"
+    id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
+    ## Primary Key without simplification
+    arid: Mapped[int] = mapped_column(
+        ForeignKey("assoc_arr.id", onupdate="restrict", ondelete="restrict"),
+        nullable=False,
+    )
+    method_id: Mapped[int] = mapped_column(
+        ForeignKey("mag_method.id", onupdate="restrict", ondelete="restrict"),
+        nullable=False,
+    )
+    ##
+    mag: Mapped[float] = mapped_column(Double, nullable=False)
+    uncertainty: Mapped[Optional[float]] = mapped_column(Double)
+
+    # Keep track of when the row was inserted/updated
+    last_modified = mapped_column(
+        TIMESTAMP,
+        default=datetime.now,
+        onupdate=datetime.now,
+        server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
+    )
+
+    ## Relationships
+    # Many-to-one relationship with AssocArrival
+    arr: Mapped["AssocArrival"] = relationship(back_populates="mags")
+    # Many-to-one relationship with MagMethod
+    method: Mapped["MagMethod"] = relationship(back_populates="mags")
+
+    __table_args__ = (
+        UniqueConstraint(arid, method_id, name="simplify_pk"),
+        {"mysql_engine": MYSQL_ENGINE},
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"ArrMag(id={self.id!r}, arid={self.arid}, method_id={self.method_id}, "
+            f"mag={self.mag}, uncertainty={self.uncertainty}, last_modified={self.last_modified!r})"
+        )
+
+
+class ArrWaveformFeat(Base):
+    """Stores features extracted from the waveform near an arrival. For now, assume the
+    features are computed using pyuussFeatures (except SNR).
+    This table is still a work in progress.
+
+    Attributes:
+        Base (_type_): _description_
+        id: Unique identifier
+        arid: ID of the arrival used
+        name: Feature name
+        comp: Waveform component the feature was extracted from. Must be Z (vertical),
+            R (radial) or T (transverse)
+        val: Feature values
+        wf_info_id: Optional. ID of the waveform_info for the waveform the features
+            were extracted from
+        last_modified: Automatic field that keeps track of when a row was added to
+             or modified in the database in local time. Does not include microseconds.
+    """
+
+    __tablename__ = "arr_wf_feat"
+    id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
+    ## Primary Key without simplification
+    arid: Mapped[int] = mapped_column(
+        ForeignKey("assoc_arr.id", onupdate="restrict", ondelete="restrict"),
+        nullable=False,
+    )
+    # TODO: Could add a feature description table
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    comp: Mapped[Enum] = mapped_column(
+        Enum("Z", "R", "T", create_constraint=True, name="comp_enum", nullable=False)
+    )
+    ##
+    val: Mapped[float] = mapped_column(Double, nullable=False)
+    # Store the waveform that was used to extract the features
+    wf_info_id: Mapped[Optional[int]] = mapped_column(
+        Integer,
+        ForeignKey("waveform_info.id", onupdate="restrict", ondelete="restrict"),
+        nullable=True,
+    )
+    # Keep track of when the row was inserted/updated
+    last_modified = mapped_column(
+        TIMESTAMP,
+        default=datetime.now,
+        onupdate=datetime.now,
+        server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
+    )
+
+    ## Relationships
+    # Many-to-one relationship with AssocArrival
+    arr: Mapped["AssocArrival"] = relationship(back_populates="wf_feats")
+    # Many-to-one relationship with WaveformInfo
+    wf_info: Mapped["WaveformInfo"] = relationship(back_populates="arr_feats")
+
+    __table_args__ = (
+        UniqueConstraint(arid, name, comp, name="simplify_pk"),
+        {"mysql_engine": MYSQL_ENGINE},
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"ArrWaveformFeat(id={self.id!r}, arid={self.arid}, name={self.name}"
+            f"comp={self.comp}, val={self.val}, wf_info_id={self.wf_info_id}, "
+            f"last_modified={self.last_modified!r})"
+        )
+
+
+class NetMag(Base):
+    """Stores network magnitudes, which are generally comptutes by combining arrival
+    magnitude estimates.
+
+    Args:
+        Base (_type_): _description_
+        id: Unique identifier
+        orid: ID of the origin the netowrk magnitude belongs to
+        type: Type of magnitude
+        auth: Author of the magnitude (e.g., SPDL, UUSS)
+        mag: Magnitude value
+        nsta: Number of stations used to compute the network mag
+        nobs: Number of observations used to compute the network mag
+        rms: Root-mean-square error of the magnitude
+        uncertainty: Uncertainty in the magnitude
+        quality: Quality assigned to the magnitude
+        min_dist: Distance (km) from the epicenter to the closest station with a
+            magnitude estimate
+        gap: Maximum gap between stations used in the network magnitude
+        last_modified: Automatic field that keeps track of when a row was added to
+             or modified in the database in local time. Does not include microseconds.
+
+    """
+
+    __tablename__ = "netmag"
+    id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
+    ## Primary Key without simplification
+    orid: Mapped[int] = mapped_column(
+        ForeignKey("origin.id", onupdate="restrict", ondelete="restrict"),
+        nullable=False,
+    )
+    # TODO: Change this to a method or make a type table?
+    type: Mapped[str] = mapped_column(String(100), nullable=False)
+    # TODO: Make an author table or include this in the type/method?
+    auth: Mapped[str] = mapped_column(String(10), nullable=False)
+    ##
+    mag: Mapped[float] = mapped_column(Double, nullable=False)
+    # Quality info #TODO: Figure out which values I will actually have/need
+    nsta: Mapped[int] = mapped_column(Integer)
+    nobs: Mapped[int] = mapped_column(Integer)
+    rms: Mapped[float] = mapped_column(Double)
+    uncertainty: Mapped[float] = mapped_column(Double)
+    quality: Mapped[float] = mapped_column(Double)
+    min_dist: Mapped[float] = mapped_column(Double)
+    gap: Mapped[float] = mapped_column(Double)
+    # Keep track of when the row was inserted/updated
+    last_modified = mapped_column(
+        TIMESTAMP,
+        default=datetime.now,
+        onupdate=datetime.now,
+        server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
+    )
+
+    ## Relationships
+    # Many-to-one relationship with Origin
+    origin: Mapped["Origin"] = relationship(back_populates="netmags")
+
+    ___table_args__ = (
+        UniqueConstraint(orid, type, auth, name="simplify_pk"),
+        CheckConstraint("mag >= -10.0 and mag <= 10.0", name="valid_mag"),
+        CheckConstraint("nsta > 0", name="pos_nsta"),
+        CheckConstraint("nobs > 0", name="post_nobs"),
+        CheckConstraint("rms >= 0.0", name="nonneg_rms"),
+        CheckConstraint("uncertainty >= 0.0", name="nonneg_uncertainty"),
+        CheckConstraint("quality >= 0.0 and quality <= 1.0", name="valid_quality"),
+        CheckConstraint("min_dist >= 0.0", name="nonneg_min_dist"),
+        CheckConstraint("gap >= 0.0 and gap <= 360.0", name="valid_gap"),
+        {"mysql_engine": MYSQL_ENGINE},
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"NetMag(id={self.id!r}, orid={self.orid}, type={self.type}, auth={self.auth}, "
+            f"mag={self.mag}, nsta={self.nsta}, nobs={self.nobs}, rms={self.rms}, "
+            f"uncertainty={self.uncertainty}, quality={self.quality}, min_dist={self.min_dist}, "
+            f"gap={self.gap}, last_modified={self.last_modified!r})"
+        )
