@@ -446,8 +446,8 @@ class SwagPicksStorage(BasePyTable):
         on_event=None,
         expectedrows=10000,
     ):
-        self.start = start
-        self.end = end
+        self.start = start if type(start) == str else start.date().strftime("%Y-%m-%d")
+        self.end = end if type(end) == str else end.date().strftime("%Y-%m-%d")
         self.phase = phase
         self.repicker_method_id = repicker_method_id
         self._base_dir = os.path.join(HDF_BASE_PATH, HDF_PICKCORR_DIR)
