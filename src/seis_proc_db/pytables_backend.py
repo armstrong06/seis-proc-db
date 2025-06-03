@@ -495,6 +495,7 @@ class BasePytableReader(ABC):
     def _open_file_read(
         self,
     ):
+        h5file = None
         try:
             h5file = open_file(
                 self.file_path,
@@ -537,4 +538,12 @@ class WaveformStorageReader(BasePytableReader):
 
     def __init__(self, stored_hdf_path):
         base_dir = os.path.join(HDF_BASE_PATH, HDF_WAVEFORM_DIR)
+        super().__init__(stored_hdf_path, base_dir)
+
+
+class SwagPicksStorageReader(BasePytableReader):
+    TABLE_NAME = "swag_picks"
+
+    def __init__(self, stored_hdf_path):
+        base_dir = os.path.join(HDF_BASE_PATH, HDF_PICKCORR_DIR)
         super().__init__(stored_hdf_path, base_dir)
