@@ -1054,6 +1054,72 @@ def get_correction_cis(session, corr_id):
     return session.scalars(stmt).all()
 
 
+def get_dldet_probs_and_cis(
+    session,
+    percent,
+    phase=None,
+    start=None,
+    end=None,
+    sta=None,
+    repicker_method=None,
+    calibration_method=None,
+    dldetection_method=None,
+):
+    stmt = (
+        select(
+            Pick.ptime,
+            CredibleInterval.percent,
+            CredibleInterval.lb,
+            CredibleInterval.ub,
+            DLDetection.height,
+            DLDetection.width,
+        )
+        .join(
+            PickCorrection,
+            PickCorrection.id == CredibleInterval.corr_id,
+        )
+        .join(Pick, Pick.id == PickCorrection.pid)
+        .join(DLDetection, Pick.detid == DLDetection.id)
+        .join(Station, Station.id == Pick.sta_id)
+        .where(CredibleInterval.percent == percent)
+    )
+
+    if phase is not None:
+        stmt = stmt.where(Pick.phase == phase)
+
+    if start is not None:
+        stmt = stmt.where(Pick.ptime >= start)
+
+    if end is not None:
+        stmt = stmt.where(Pick.ptime < end)
+
+    if sta is not None:
+        stmt = stmt.where(Station.sta == sta)
+
+    if repicker_method is not None:
+        stmt = stmt.join(
+            RepickerMethod,
+            RepickerMethod.id == PickCorrection.method_id,
+            RepickerMethod.name == repicker_method,
+        )
+
+    if calibration_method is not None:
+        stmt = stmt.join(
+            CalibrationMethod,
+            CalibrationMethod.id == CredibleInterval.method_id,
+            CalibrationMethod.name == calibration_method,
+        )
+
+    if dldetection_method is not None:
+        stmt = stmt.join(
+            DetectionMethod,
+            DetectionMethod.id == DLDetection.method_id,
+            DetectionMethod.name == dldetection_method,
+        )
+
+    return session.execute(stmt).all()
+
+
 class Waveforms:
 
     @staticmethod
@@ -1069,6 +1135,9 @@ class Waveforms:
         # the processing information is tied to waveform_source
         wf_filt_low=None,
         wf_filt_high=None,
+        sta=None,
+        chan_pref=None,
+        pick_id=None,
     ):
         if vertical_only and threeC_only:
             raise ValueError(
@@ -1097,6 +1166,9 @@ class Waveforms:
             )
         )
 
+        if pick_id is not None:
+            stmt = stmt.where(Pick.id == pick_id)
+
         # Only need vertical component for P pick regressor
         if vertical_only:
             stmt = stmt.where(text('channel.seed_code LIKE "__Z"'))
@@ -1118,6 +1190,12 @@ class Waveforms:
 
         if wf_filt_high is not None:
             stmt = stmt.where(WaveformSource.filt_high == wf_filt_high)
+
+        if sta is not None:
+            stmt = stmt.where(Station.sta == sta)
+
+        if chan_pref is not None:
+            stmt = stmt.where(Pick.chan_pref == chan_pref)
 
         # params = {}
         # if hdf_file_contains is not None:
@@ -1141,6 +1219,9 @@ class Waveforms:
         phase,
         sources,
         include_multiple_wf_sources=False,
+        sta=None,
+        chan_pref=None,
+        pick_id=None,
     ):
         threeC_only = True
         vertical_only = False
@@ -1160,6 +1241,9 @@ class Waveforms:
             sources,
             threeC_only=threeC_only,
             vertical_only=vertical_only,
+            sta=sta,
+            chan_pref=chan_pref,
+            pick_id=pick_id,
         )
 
         # Assume there are 3 wfs for each pick - should be true because of threeC_only=True in query
