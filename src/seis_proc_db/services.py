@@ -1137,7 +1137,7 @@ class Waveforms:
         wf_filt_high=None,
         sta=None,
         chan_pref=None,
-        pick_id=None,
+        pick_id_list=None,
     ):
         if vertical_only and threeC_only:
             raise ValueError(
@@ -1166,8 +1166,8 @@ class Waveforms:
             )
         )
 
-        if pick_id is not None:
-            stmt = stmt.where(Pick.id == pick_id)
+        if pick_id_list is not None:
+            stmt = stmt.where(Pick.id.in_(pick_id_list))
 
         # Only need vertical component for P pick regressor
         if vertical_only:
@@ -1221,7 +1221,7 @@ class Waveforms:
         include_multiple_wf_sources=False,
         sta=None,
         chan_pref=None,
-        pick_id=None,
+        pick_id_list=None,
     ):
         threeC_only = True
         vertical_only = False
@@ -1243,7 +1243,7 @@ class Waveforms:
             vertical_only=vertical_only,
             sta=sta,
             chan_pref=chan_pref,
-            pick_id=pick_id,
+            pick_id_list=pick_id_list,
         )
 
         # Assume there are 3 wfs for each pick - should be true because of threeC_only=True in query
