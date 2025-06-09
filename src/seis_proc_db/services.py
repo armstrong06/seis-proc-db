@@ -1222,6 +1222,8 @@ class Waveforms:
         sta=None,
         chan_pref=None,
         pick_id_list=None,
+        pad_samples=0,
+        on_event=None,
     ):
         threeC_only = True
         vertical_only = False
@@ -1245,6 +1247,9 @@ class Waveforms:
             chan_pref=chan_pref,
             pick_id_list=pick_id_list,
         )
+
+        if on_event is not None:
+            on_event(f"Gathered {len(all_infos)} waveform_info rows")
 
         # Assume there are 3 wfs for each pick - should be true because of threeC_only=True in query
         n_picks = len(all_infos) // ncomps
@@ -1285,11 +1290,26 @@ class Waveforms:
                 if pick_wfs.shape[1] >= n_samples:
                     i0 = pick_wfs.shape[1] // 2 - n_samples // 2
                     i1 = pick_wfs.shape[1] // 2 + n_samples // 2
-                    pick_wfs = pick_wfs[0, i0:i1, :]
-                    processed_wfs = wf_process_fn(pick_wfs)
+                    act_pad = 0
+                    if (
+                        pad_samples > 0
+                        and pick_wfs.shape[1] >= n_samples + pad_samples * 2
+                    ):
+                        act_pad = pad_samples
+                    elif pad_samples > 0 and on_event is not None:
+                        on_event(
+                            f"Did not pad pick id={ids['pick_id']}, wf_source_id={ids['wf_source_id']}. Not enough signal."
+                        )
+
+                    pick_wfs = pick_wfs[0, i0 - act_pad : i1 + act_pad, :]
+                    processed_wfs = wf_process_fn(pick_wfs, act_pad)
                     pick_source_ids.append(ids)
                     X[n_gathered, :, :] = processed_wfs
                     n_gathered += 1
+                elif on_event is not None:
+                    on_event(
+                        f"Skipping pick id={ids['pick_id']}, wf_source_id={ids['wf_source_id']}. Not enough signal."
+                    )
 
                 prev_wf_source_id = ids["wf_source_id"]
                 prev_pid = ids["pick_id"]
