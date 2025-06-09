@@ -1118,7 +1118,7 @@ class WaveformInfo(Base):
     # Many-to-one relationship with WaveformSource
     source: Mapped["WaveformSource"] = relationship(back_populates="wf_info")
     # One-to-many relationship with ArrWaveformFeat
-    arr_feats: WriteOnlyMapped["ArrWaveformFeat"] = relationship(
+    arr_wf_feats: WriteOnlyMapped["ArrWaveformFeat"] = relationship(
         back_populates="wf_info"
     )
 
@@ -1692,9 +1692,11 @@ class AssocArrival(Base):
     # Many-to-one relationship with Origin
     ci: Mapped["CredibleInterval"] = relationship(back_populates="assoc_arrs")
     # One-to-many relationship with AssocArrival
-    mags: Mapped[List["ArrMag"]] = relationship(back_populates="arr")
+    arr_mags: Mapped[List["ArrMag"]] = relationship(back_populates="arr")
     # One-to-Many relationship with ArrWaveformFeat
-    feats: WriteOnlyMapped[List["ArrWaveformFeat"]] = relationship(back_populates="arr")
+    wf_feats: WriteOnlyMapped[List["ArrWaveformFeat"]] = relationship(
+        back_populates="arr"
+    )
 
     __table_args__ = (
         UniqueConstraint(orid, pick_id, name="simplify_pk"),
@@ -1761,9 +1763,9 @@ class ArrMag(Base):
 
     ## Relationships
     # Many-to-one relationship with AssocArrival
-    arr: Mapped["AssocArrival"] = relationship(back_populates="mags")
+    arr: Mapped["AssocArrival"] = relationship(back_populates="arr_mags")
     # Many-to-one relationship with MagMethod
-    method: Mapped["MagMethod"] = relationship(back_populates="mags")
+    method: Mapped["MagMethod"] = relationship(back_populates="arr_mags")
 
     __table_args__ = (
         UniqueConstraint(arid, method_id, name="simplify_pk"),
@@ -1828,7 +1830,7 @@ class ArrWaveformFeat(Base):
     # Many-to-one relationship with AssocArrival
     arr: Mapped["AssocArrival"] = relationship(back_populates="wf_feats")
     # Many-to-one relationship with WaveformInfo
-    wf_info: Mapped["WaveformInfo"] = relationship(back_populates="arr_feats")
+    wf_info: Mapped["WaveformInfo"] = relationship(back_populates="arr_wf_feats")
 
     __table_args__ = (
         UniqueConstraint(arid, name, comp, name="simplify_pk"),
