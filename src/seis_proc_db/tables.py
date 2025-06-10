@@ -784,6 +784,10 @@ class PickCorrection(Base):
     source: Mapped["WaveformSource"] = relationship(back_populates="corrs")
     # One-to-Many relationship with CredibleIntervals
     cis: Mapped[List["CredibleInterval"]] = relationship(back_populates="corr")
+    # One-to-many relationship with ManualPickQuality
+    quals: Mapped[List["ManualPickQuality"]] = relationship(
+            back_populates="corr"
+        )
 
     __table_args__ = (
         UniqueConstraint(pid, method_id, name="simplify_pk"),
@@ -1328,6 +1332,57 @@ class Waveform(Base):
             f"Waveform(id={self.id!r}, data_id={self.data_id!r}, chan_id={self.chan_id!r}, "
             f"wf_source_id={self.wf_source_id!r}, pick_id={self.pick_id!r}, start={self.start!r}, "
             f"end={self.end!r}, data={self.data[0:3]!r}, last_modified={self.last_modified!r})"
+        )
+
+
+class ManualPickQuality(Base):
+    __tablename__ = "man_pick_qual"
+    id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
+    ## PK (not simplified)
+    # pick_id = mapped_column(
+    #     ForeignKey("pick.id", onupdate="restrict", ondelete="cascade"),
+    #     nullable=False,
+    # )
+    corr_id = mapped_column(
+        ForeignKey("pick_corr.id", onupdate="restrict", ondelete="cascade"),
+        nullable=False,
+    )    
+    auth: Mapped[str] = mapped_column(String(255), nullable=False)
+    ##
+    quality: Mapped[int] = mapped_column(Integer, nullable=False)
+    pick_cat: Mapped[Optional[str]] = mapped_column(String(50))
+    # det_cat: Mapped[Optional[str]] = mapped_column(String(50))
+    # corr_cat: Mapped[Optional[str]] = mapped_column(String(50))
+    ci_cat: Mapped[Optional[str]] = mapped_column(String(50))
+    note: Mapped[Optional[str]] = mapped_column(String(1000))
+
+    # Keep track of when the row was inserted/updated
+    last_modified = mapped_column(
+        TIMESTAMP,
+        default=datetime.now,
+        onupdate=datetime.now,
+        server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
+    )
+
+    # # Many-to-one relationship with Pick
+    # pick: Mapped["Pick"] = relationship(
+    #     back_populates="quality"
+    # )
+    # Many-to-one relationship with PickCorrection
+    corr: Mapped["PickCorrection"] = relationship(back_populates="quals")
+
+
+    __table_args__ = (
+        UniqueConstraint(corr_id, auth, name="simplify_pk"),
+        # CheckConstraint("hdf_index >= 0", name="nonneg_index"),
+        {"mysql_engine": MYSQL_ENGINE},
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"ManualPickQuality(id={self.id!r}, corr_id={self.corr_id!r}, auth={self.auth!r}, "
+            f"quality={self.quality}, note={self.note!r}, pick_cat={self.pick_cat}, "
+            f"ci_cat={self.ci_cat}, last_modified={self.last_modified!r})"
         )
 
 

@@ -1119,6 +1119,13 @@ def get_dldet_probs_and_cis(
 
     return session.execute(stmt).all()
 
+def insert_manual_pick_quality(session, corr_id, author, quality, pick_cat=None, ci_cat=None, note=None):
+    qual = ManualPickQuality(
+        corr_id=corr_id, auth=author, quality=quality, note=note, pick_cat=pick_cat, ci_cat=ci_cat,
+    )
+    session.add(qual)
+
+    return qual
 
 class Waveforms:
 
