@@ -1119,13 +1119,22 @@ def get_dldet_probs_and_cis(
 
     return session.execute(stmt).all()
 
-def insert_manual_pick_quality(session, corr_id, author, quality, pick_cat=None, ci_cat=None, note=None):
+
+def insert_manual_pick_quality(
+    session, corr_id, author, quality, pick_cat=None, ci_cat=None, note=None
+):
     qual = ManualPickQuality(
-        corr_id=corr_id, auth=author, quality=quality, note=note, pick_cat=pick_cat, ci_cat=ci_cat,
+        corr_id=corr_id,
+        auth=author,
+        quality=quality,
+        note=note,
+        pick_cat=pick_cat,
+        ci_cat=ci_cat,
     )
     session.add(qual)
 
     return qual
+
 
 class Waveforms:
 
@@ -1309,9 +1318,10 @@ class Waveforms:
                         )
 
                     pick_wfs = pick_wfs[0, i0 - act_pad : i1 + act_pad, :]
-                    processed_wfs = wf_process_fn(pick_wfs, act_pad)
+                    if wf_process_fn is not None:
+                        pick_wfs = wf_process_fn(pick_wfs, act_pad)
                     pick_source_ids.append(ids)
-                    X[n_gathered, :, :] = processed_wfs
+                    X[n_gathered, :, :] = pick_wfs
                     n_gathered += 1
                 elif on_event is not None:
                     on_event(
