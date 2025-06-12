@@ -1136,6 +1136,27 @@ def insert_manual_pick_quality(
     return qual
 
 
+def get_stations_comps_with_picks(session, phase=None, sta=None, chan_pref=None):
+    stmt = select(Station.net, Station.sta, Pick.chan_pref, Pick.phase).join_from(
+        Station, Pick, Station.id == Pick.sta_id
+    )
+
+    if phase is not None:
+        stmt = stmt.where(Pick.phase == phase)
+
+    if sta is not None:
+        stmt = stmt.where(Station.sta == sta)
+
+    if chan_pref is not None:
+        stmt = stmt.where(Pick.chan_pref == chan_pref)
+
+    stmt = stmt.distinct()
+
+    result = session.execute(stmt).all()
+
+    return result
+
+
 class Waveforms:
 
     @staticmethod
