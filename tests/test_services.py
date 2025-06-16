@@ -1295,6 +1295,54 @@ def test_insert_cis(db_session_with_pick_corr):
     assert ci.ub == 1.34
 
 
+def test_get_waveform_storage_number_existing(db_session_with_waveform_info):
+    try:
+        db_session, wf_storage, ids = db_session_with_waveform_info
+
+        storage_number, hdf_file, count = services.get_waveform_storage_number(
+            db_session, ids["chan"], "P", 100
+        )
+
+        assert storage_number == 0, "expected the storage_number to be 0"
+        assert count == 1, "expected 1 entry in the hdf_file"
+        assert (
+            hdf_file
+            == f"JK.TEST..HHZ.P.3C.2000samps.source{ids['wf_source']:02d}.000.h5"
+        ), "incorrect hdf_file name"
+    finally:
+        wf_storage.close()
+
+
+def test_get_waveform_storage_number_next(db_session_with_waveform_info):
+    try:
+        db_session, wf_storage, ids = db_session_with_waveform_info
+
+        storage_number, hdf_file, count = services.get_waveform_storage_number(
+            db_session, ids["chan"], "P", 1
+        )
+
+        assert storage_number == 1, "expected the storage_number to be 1"
+        assert count == 0, "expected 0 entry in the hdf_file"
+        assert hdf_file is None, "expected hdf_file to be None"
+    finally:
+        wf_storage.close()
+
+
+def test_get_waveform_storage_number_new(db_session_with_waveform_info):
+    try:
+        db_session, wf_storage, ids = db_session_with_waveform_info
+
+        storage_number, hdf_file, count = services.get_waveform_storage_number(
+            db_session, 10, "P", 1
+        )
+
+        assert storage_number == 0, "expected the storage_number to be 0"
+        assert count == 0, "expected 0 entry in the hdf_file"
+        assert hdf_file is None, "expected hdf_file to be None"
+    finally:
+        wf_storage.close()
+
+
 class TestWaveforms:
     @pytest.fixture
     def db_session_with_many_waveform_info(self, db_session, mock_pytables_config):

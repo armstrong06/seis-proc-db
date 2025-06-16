@@ -1157,6 +1157,27 @@ def get_stations_comps_with_picks(session, phase=None, sta=None, chan_pref=None)
     return result
 
 
+def get_waveform_storage_number(session, chan_id, phase, max_entries):
+    count_label = func.count(WaveformInfo.id).label("count")
+    stmt = (
+        select(WaveformInfo.hdf_file, count_label)
+        .join(Pick, WaveformInfo.pick_id == Pick.id)
+        .where(WaveformInfo.chan_id == chan_id)
+        .where(Pick.phase == phase)
+        .group_by(WaveformInfo.hdf_file)
+        .order_by(WaveformInfo.hdf_file)  # count_label.asc())
+    )
+
+    result = session.execute(stmt).all()
+
+    if len(result) == 0:
+        return 0, None, 0
+    elif result[0].count < max_entries:
+        return len(result) - 1, result[0].hdf_file, result[0].count
+    else:
+        return len(result), None, 0
+
+
 class Waveforms:
 
     @staticmethod

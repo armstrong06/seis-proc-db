@@ -343,6 +343,7 @@ class WaveformStorage(BasePyTable):
         ncomps,
         phase,
         wf_source_id,
+        storage_number=0,
         # filt_low,
         # filt_high,
         # proc_notes,
@@ -355,6 +356,7 @@ class WaveformStorage(BasePyTable):
         self.seed_code = seed_code
         self.ncomps = ncomps
         self.phase = phase
+        self.storage_number = storage_number
 
         self.wf_source_id = wf_source_id
         # self.filt_low = filt_low
@@ -373,7 +375,7 @@ class WaveformStorage(BasePyTable):
 
     def _make_filepath(self):
         # file_name = f"{self.filt_low!r}Hz_{self.filt_high!r}Hz_{self.expected_array_length}samps/{self.net}.{self.sta}.{self.loc}.{self.seed_code}.{self.phase}.{self.ncomps}C.h5"
-        file_name = f"{self.net}.{self.sta}.{self.loc}.{self.seed_code}.{self.phase}.{self.ncomps}C.{self.expected_array_length}samps.source{self.wf_source_id:02d}.h5"
+        file_name = f"{self.net}.{self.sta}.{self.loc}.{self.seed_code}.{self.phase}.{self.ncomps}C.{self.expected_array_length}samps.source{self.wf_source_id:02d}.{self.storage_number:03d}.h5"
         return os.path.join(self._base_dir, file_name)
 
     def _make_h5_file_title(self):
