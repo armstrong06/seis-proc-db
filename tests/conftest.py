@@ -3,6 +3,7 @@ from sqlalchemy import create_engine
 import pytest
 from unittest import mock
 import shutil
+import os
 from seis_proc_db.database import engine
 
 # global application scope.  create Session class, engine
@@ -11,7 +12,12 @@ Session = sessionmaker()
 
 @pytest.fixture
 def mock_pytables_config():
-    shutil.rmtree("./tests/pytables_outputs")
+    d = "./tests/pytables_outputs"
+    if os.path.exists(d):
+        try:
+            shutil.rmtree(d)
+        except Exception as e:
+            print(f"Ran into error {e} when trying to remove test pytables outdir")
     with mock.patch(
         "seis_proc_db.pytables_backend.HDF_BASE_PATH",
         "./tests/pytables_outputs",
