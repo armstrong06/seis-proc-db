@@ -200,6 +200,7 @@ def test_get_operating_channels(db_session):
         if v.get("cnt") >= 3 and v.get("cnt") % 3 == 0
     }
 
+    print(onec, threec)
     assert len(onec) == 20, "Expected 20 1C stations in 2023"
     assert len(threec) == 32, "Expected 32 3C stations in 2023"
     assert len(onec) + len(threec) == len(summary_dict)
@@ -952,7 +953,7 @@ def test_insert_waveform_pytable(db_session_with_waveform_info, waveform_ex):
             "WaveformInfo.last_modified and Pytables.Row.last_modified are not close"
         )
         assert (
-            new_wf_info.hdf_file == wf_storage.relative_path
+            new_wf_info.hdf_file.name == wf_storage.relative_path
         ), "wf_info hdf_file incorrect"
         assert new_wf_info.chan_id == ids["chan"], "wf_info chan id incorrect"
         assert new_wf_info.pick_id == ids["pick"], "wf_info pick_id incorrect"

@@ -594,7 +594,9 @@ def get_waveform_infos(
     stmt = select(WaveformInfo).where(WaveformInfo.pick_id == pick_id)
 
     if hdf_file is not None:
-        stmt = stmt.where(WaveformInfo.hdf_file == hdf_file)
+        stmt = stmt.join(
+            WaveformStorageFile, WaveformStorageFile.id == WaveformInfo.hdf_file_id
+        ).where(WaveformStorageFile.name == hdf_file)
 
     if chan_id is not None:
         stmt = stmt.where(WaveformInfo.chan_id == chan_id)
@@ -852,6 +854,18 @@ def get_waveform_source(session, name):
     return result[0]
 
 
+def get_or_insert_waveform_storage_file(session, name):
+    info = session.scalars(
+        select(WaveformStorageFile).where(WaveformStorageFile.name == name)
+    ).first()
+
+    if info is None:
+        info = WaveformStorageFile(name=name)
+        session.add(info)
+
+    return info
+
+
 def insert_waveform_pytable(
     session,
     storage_session,
@@ -868,6 +882,9 @@ def insert_waveform_pytable(
     signal_start_ind=None,
     signal_end_ind=None,
 ):
+    file = get_or_insert_waveform_storage_file(session, storage_session.relative_path)
+    session.flush()
+
     new_wf_info = WaveformInfo(
         data_id=data_id,
         chan_id=chan_id,
@@ -875,7 +892,7 @@ def insert_waveform_pytable(
         wf_source_id=wf_source_id,
         start=start,
         end=end,
-        hdf_file=storage_session.relative_path,
+        hdf_file_id=file.id,
         # filt_low=filt_low,
         # filt_high=filt_high,
         # proc_notes=proc_notes,
@@ -990,6 +1007,18 @@ def get_calibration_method(session, name):
     return result[0]
 
 
+def get_or_insert_corr_storage_file(session, name):
+    info = session.scalars(
+        select(CorrStorageFile).where(CorrStorageFile.name == name)
+    ).first()
+
+    if info is None:
+        info = CorrStorageFile(name=name)
+        session.add(info)
+
+    return info
+
+
 def insert_pick_correction_pytable(
     session,
     storage,
@@ -1006,6 +1035,9 @@ def insert_pick_correction_pytable(
     trim_std,
     predictions,
 ):
+    file = get_or_insert_corr_storage_file(session, storage.file_name)
+    session.flush()
+
     pick_corr = PickCorrection(
         pid=pick_id,
         method_id=method_id,
@@ -1018,7 +1050,7 @@ def insert_pick_correction_pytable(
         trim_median=trim_median,
         trim_mean=trim_mean,
         trim_std=trim_std,
-        preds_hdf_file=storage.file_name,
+        preds_file_id=file.id,
     )
     session.add(pick_corr)
     session.flush()
@@ -1160,20 +1192,24 @@ def get_stations_comps_with_picks(session, phase=None, sta=None, chan_pref=None)
 def get_waveform_storage_number(session, chan_id, phase, max_entries):
     count_label = func.count(WaveformInfo.id).label("count")
     stmt = (
-        select(WaveformInfo.hdf_file, count_label)
+        select(WaveformStorageFile.name, count_label)
+        .join_from(
+            WaveformInfo,
+            WaveformStorageFile,
+            WaveformInfo.hdf_file_id == WaveformStorageFile.id,
+        )
         .join(Pick, WaveformInfo.pick_id == Pick.id)
         .where(WaveformInfo.chan_id == chan_id)
         .where(Pick.phase == phase)
-        .group_by(WaveformInfo.hdf_file)
-        .order_by(WaveformInfo.hdf_file)  # count_label.asc())
+        .group_by(WaveformInfo.hdf_file_id)
+        .order_by(WaveformInfo.hdf_file_id)  # count_label.asc())
     )
 
     result = session.execute(stmt).all()
-
     if len(result) == 0:
         return 0, None, 0
     elif result[0].count < max_entries:
-        return len(result) - 1, result[0].hdf_file, result[0].count
+        return len(result) - 1, result[0].name, result[0].count
     else:
         return len(result), None, 0
 
@@ -1502,7 +1538,7 @@ class Waveforms:
 
         for pick_info in chan_pick_info:
             seed_code = pick_info[1].seed_code
-            wf_hdf_file = pick_info[-1].hdf_file
+            wf_hdf_file = pick_info[-1].hdf_file.name
             if (
                 seed_code not in wf_storages.keys()
                 or wf_storages[seed_code].stored_hdf_info != wf_hdf_file
@@ -1527,7 +1563,7 @@ class Waveforms:
         try:
             wf_storages = {}
             for info in pick_infos:
-                wf_hdf_file = info[-1].hdf_file
+                wf_hdf_file = info[-1].hdf_file.name
                 seed_code = info[1].seed_code
                 # Reload the files after resetting them
                 if seed_code not in wf_storages.keys():
@@ -1560,7 +1596,7 @@ class Waveforms:
         """
         try:
             wf_storages = {}
-            wf_hdf_file = pick_info[-1].hdf_file
+            wf_hdf_file = pick_info[-1].hdf_file.name
             seed_code = pick_info[1].seed_code
             # Reload the files after resetting them
             storage = WaveformStorageReader(wf_hdf_file)

@@ -564,7 +564,7 @@ class DLDetection(Base):
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
     data_id = mapped_column(
-        ForeignKey("contdatainfo.id", onupdate="restrict", ondelete="restrict"),
+        ForeignKey("contdatainfo.id", onupdate="restrict", ondelete="cascade"),
         nullable=False,
     )
     method_id = mapped_column(
@@ -711,7 +711,36 @@ class Pick(Base):
             f"amp={self.amp!r}, det_id={self.detid}, last_modified={self.last_modified!r})"
         )
 
+class CorrStorageFile(Base):
+    __tablename__ = "corr_stor_file"
+    id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
+    ## PK (not simplified)
+    name: Mapped[str] = mapped_column(String(255))
+    ##
+    # Keep track of when the row was inserted/updated
+    last_modified = mapped_column(
+        TIMESTAMP,
+        default=datetime.now,
+        onupdate=datetime.now,
+        server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
+    )
 
+    # Man-to-one relationship with WaveformInfo
+    corrs: WriteOnlyMapped[List["PickCorrection"]] = relationship(
+        back_populates="preds_hdf_file"
+    )
+
+    __table_args__ = (
+        UniqueConstraint(name, name="simplify_pk"),
+        {"mysql_engine": MYSQL_ENGINE},
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"CorrStorageFile(id={self.id!r}, "
+            f"name={self.name!r}, last_modified={self.last_modified!r})"
+        )
+    
 class PickCorrection(Base):
     """Correction to a Pick to improve the arrival time estimate. Basically assumes some
     sampling method.
@@ -730,8 +759,10 @@ class PickCorrection(Base):
         trim_mean: Mean value of samples within the inner fence
         trim_std: Standard deviation within the inner fence
         # preds: JSON object storing the sampled pick correction values
-        preds_hdf_file: The name of the hdf file in config.HDF_BASE_PATH/config.HDF_PICKCORR_DIR
-            where the predictions are stored
+        # preds_hdf_file: The name of the hdf file in config.HDF_BASE_PATH/config.HDF_PICKCORR_DIR
+        #     where the predictions are stored
+        preds_file_id: ID of the CorrStorageFile with the name of the hdf file in 
+            config.HDF_BASE_PATH/config.HDF_PICKCORR_DIR where the predictions are stored
         # preds_hdf_index: The index in the hdf_file where the predictions are stored
         last_modified: Automatic field that keeps track of when a row was added to
                 or modified in the database in local time. Does not include microseconds.
@@ -760,13 +791,17 @@ class PickCorrection(Base):
     median: Mapped[float] = mapped_column(Double)
     mean: Mapped[float] = mapped_column(Double)
     std: Mapped[float] = mapped_column(Double)
-    if_low: Mapped[float] = mapped_column(Double)
+    if_low: Mapped[float] = mapped_column(Double)   
     if_high: Mapped[float] = mapped_column(Double)
     trim_median: Mapped[float] = mapped_column(Double)
     trim_mean: Mapped[float] = mapped_column(Double)
     trim_std: Mapped[float] = mapped_column(Double)
     # preds: Mapped[JSON] = mapped_column(JSON)
-    preds_hdf_file: Mapped[str] = mapped_column(String(255))
+    # preds_hdf_file: Mapped[str] = mapped_column(String(255))
+    preds_file_id: Mapped[int] = mapped_column(
+        ForeignKey("corr_stor_file.id", onupdate="restrict", ondelete="cascade"),
+        nullable=False,
+    )
     # preds_hdf_index: Mapped[int] = mapped_column(Integer)
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(
@@ -782,12 +817,15 @@ class PickCorrection(Base):
     method: Mapped["RepickerMethod"] = relationship(back_populates="corrs")
     # Many-to-one relationship with WaveformSource
     source: Mapped["WaveformSource"] = relationship(back_populates="corrs")
+    # Many-to-one relationship with CorrStorageFile
+    preds_hdf_file: Mapped["CorrStorageFile"] = relationship(back_populates="corrs")
     # One-to-Many relationship with CredibleIntervals
     cis: Mapped[List["CredibleInterval"]] = relationship(back_populates="corr")
     # One-to-many relationship with ManualPickQuality
     quals: Mapped[List["ManualPickQuality"]] = relationship(
             back_populates="corr"
         )
+
 
     __table_args__ = (
         UniqueConstraint(pid, method_id, name="simplify_pk"),
@@ -806,6 +844,35 @@ class PickCorrection(Base):
         )
 
 
+class FMStorageFile(Base):
+    __tablename__ = "fm_stor_file"
+    id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
+    ## PK (not simplified)
+    name: Mapped[str] = mapped_column(String(255))
+    ##
+    # Keep track of when the row was inserted/updated
+    last_modified = mapped_column(
+        TIMESTAMP,
+        default=datetime.now,
+        onupdate=datetime.now,
+        server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
+    )
+
+    # Man-to-one relationship with WaveformInfo
+    fms: WriteOnlyMapped[List["FirstMotion"]] = relationship(
+        back_populates="preds_hdf_file"
+    )
+
+    __table_args__ = (
+        UniqueConstraint(name, name="simplify_pk"),
+        {"mysql_engine": MYSQL_ENGINE},
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"FMStorageFile(id={self.id!r}, "
+            f"name={self.name!r}, last_modified={self.last_modified!r})")
+
 class FirstMotion(Base):
     """First motion information associated with a P pick
 
@@ -817,8 +884,10 @@ class FirstMotion(Base):
         prob_up: Optional. Probability of the fm being up.
         prob_dn: Optional. Probability of the fm being down.
         # preds: Optional. JSON object storing the sampled first motion values.
-        preds_hdf_file: Optional. The name of the hdf file in config.HDF_BASE_PATH/config.HDF_PICKCORR_DIR
-            where the predictions are stored
+        # preds_hdf_file: Optional. The name of the hdf file in config.HDF_BASE_PATH/config.HDF_FM_DIR
+        #     where the predictions are stored
+        preds_file_id: ID of the FMStorageFile with the name of the hdf file in 
+            config.HDF_BASE_PATH/config.HDF_FM_DIR where the predictions are stored
         # preds_hdf_index: Optional. The index in the hdf_file where the predictions are stored
         last_modified: Automatic field that keeps track of when a row was added to
                 or modified in the database in local time. Does not include microseconds.
@@ -841,7 +910,11 @@ class FirstMotion(Base):
     prob_up: Mapped[Optional[float]] = mapped_column(Double)
     prob_dn: Mapped[Optional[float]] = mapped_column(Double)
     # preds: Mapped[Optional[JSON]] = mapped_column(JSON)
-    preds_hdf_file: Mapped[Optional[str]] = mapped_column(String(255))
+    #preds_hdf_file: Mapped[Optional[str]] = mapped_column(String(255))
+    preds_file_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("fm_stor_file.id", onupdate="restrict", ondelete="cascade"),
+        nullable=True,
+    )
     # preds_hdf_index: Mapped[Optional[int]] = mapped_column(Integer)
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(
@@ -855,6 +928,8 @@ class FirstMotion(Base):
     pick: Mapped["Pick"] = relationship(back_populates="fms")
     # Many-to-one relationship with RepickerMethod
     method: Mapped["FMMethod"] = relationship(back_populates="fms")
+    # Many-to-one relationship with FMStorageFile
+    preds_hdf_file: Mapped["FMStorageFile"] = relationship(back_populates="fms")
 
     __table_args__ = (
         UniqueConstraint(pid, method_id, name="simplify_pk"),
@@ -1042,6 +1117,35 @@ class Gap(Base):
             f"last_modified={self.last_modified!r})"
         )
 
+class WaveformStorageFile(Base):
+    __tablename__ = "wf_stor_file"
+    id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
+    ## PK (not simplified)
+    name: Mapped[str] = mapped_column(String(255))
+    ##
+    # Keep track of when the row was inserted/updated
+    last_modified = mapped_column(
+        TIMESTAMP,
+        default=datetime.now,
+        onupdate=datetime.now,
+        server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
+    )
+
+    # One-to-many relationship with WaveformInfo
+    wf_info: WriteOnlyMapped[List["WaveformInfo"]]= relationship(
+        back_populates="hdf_file"
+    )
+
+    __table_args__ = (
+        UniqueConstraint(name, name="simplify_pk"),
+        {"mysql_engine": MYSQL_ENGINE},
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"WaveformStorageFile(id={self.id!r}, "
+            f"name={self.name!r}, last_modified={self.last_modified!r})"
+        )
 
 class WaveformInfo(Base):
     """Waveform snippet recorded on a Channel, around a Pick, and stored in an hdf5 file.
@@ -1054,8 +1158,10 @@ class WaveformInfo(Base):
         pick_id: ID of the Pick the waveform is centered on.
         wf_source_id: ID of the WaveformSource describing where the snippet came from
             or how it was gathered.
-        hdf_file: The name of the hdf file in config.HDF_BASE_PATH/config.HDF_WAVEFORM_DIR
-            where the waveform is stored
+        # hdf_file: The name of the hdf file in config.HDF_BASE_PATH/config.HDF_WAVEFORM_DIR
+        #     where the waveform is stored
+        hdf_file_id: ID of the WaveformStorageFile with the name of the hdf file in 
+            config.HDF_BASE_PATH/config.HDF_WAVEFORM_DIR where the waveform is stored
         data_id: Optional. ID of DailyContDataInfo describing where the waveform was grabbed from.
         #filt_low: Optional. Lower end of the filter applied.
         #filt_high: Optional. Upper end of the filter applied.
@@ -1087,7 +1193,11 @@ class WaveformInfo(Base):
         nullable=False,
     )
     ##
-    hdf_file: Mapped[str] = mapped_column(String(255))
+    # hdf_file: Mapped[str] = mapped_column(String(255))
+    hdf_file_id: Mapped[int] = mapped_column(
+        ForeignKey("wf_stor_file.id", onupdate="restrict", ondelete="cascade"), nullable=False
+    )
+    
     data_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("contdatainfo.id", onupdate="restrict", ondelete="restrict"),
         nullable=True,
@@ -1121,8 +1231,10 @@ class WaveformInfo(Base):
     pick: Mapped["Pick"] = relationship(back_populates="wf_info")
     # Many-to-one relationship with WaveformSource
     source: Mapped["WaveformSource"] = relationship(back_populates="wf_info")
+    # Many-to-one relationship with WaveformStorageFile
+    hdf_file: Mapped["WaveformStorageFile"] = relationship(back_populates="wf_info")
     # One-to-many relationship with ArrWaveformFeat
-    arr_wf_feats: WriteOnlyMapped["ArrWaveformFeat"] = relationship(
+    arr_wf_feats: WriteOnlyMapped[List["ArrWaveformFeat"]] = relationship(
         back_populates="wf_info"
     )
 
@@ -1255,7 +1367,7 @@ class WaveformInfo(Base):
             f"pick_id={self.pick_id!r}, start={self.start!r}, end={self.end!r},"
             # f"filt_low={self.filt_low!r}, filt_high={self.filt_high!r}, proc_notes={self.proc_notes!r}, "
             f"samp_rate={self.samp_rate!r}, min_val={self.min_val!r}, max_val={self.max_val!r}, "
-            f"hdf_file={self.hdf_file!r}, last_modified={self.last_modified!r})"
+            f"hdf_file_id={self.hdf_file_id!r}, last_modified={self.last_modified!r})"
         )
 
 

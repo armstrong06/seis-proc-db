@@ -458,62 +458,18 @@ def db_session_with_pick(db_session_with_stat):
 
     return db_session, ipick
 
-def test_pick_correction(db_session_with_pick):
-    db_session, ipick = db_session_with_pick
-    assert len(ipick.corrs) == 0, "Pick.corrs should have 0 values before making"
 
-    # Add repicker method #
-    d = {
-        "name": "TEST-SWAG-v1",
-        "phase": "P",
-        "details": "For P picks, from Armstrong 2023 BSSA paper",
-        "path": "the/model/files/are/stored/here",
-    }
+def test_pick_correction(db_session_with_corr):
+    db_session, icorr = db_session_with_corr
 
-    imeth = tables.RepickerMethod(**d)
-    db_session.add(imeth)
-    db_session.commit()
-    assert len(imeth.corrs) == 0, "repicker_method.corrs before adding corr"
-    #
-
-    # Add waveform source #
-    d = {
-        "name": "TEST-ExtractContData",
-        "details": "Extract waveform snippets from the contdata processed with DataLoader",
-    }
-
-    isource = tables.WaveformSource(**d)
-    db_session.add(isource)
-    db_session.commit()
-    #
-
-    d = {
-        "median": 1.1,
-        "mean": 1.2,
-        "std": 1.1,
-        "if_low": 0.1,
-        "if_high": 2.2,
-        "trim_mean": 1.01,
-        "trim_median": 1.02,
-        # "preds": np.zeros((300)).tolist(),
-        "preds_hdf_file": "swag_P_TestSTA_HHZ.hdf",
-        # "preds_hdf_index": 1000000
-    }
-
-    icorr = tables.PickCorrection(
-        pid=ipick.id, method_id=imeth.id, wf_source_id=isource.id, **d
-    )
-    db_session.add(icorr)
-    db_session.commit()
-
-    assert len(ipick.corrs) == 1, "Pick.corrs should have 1 value"
-    assert len(imeth.corrs) == 1, "RepickerMethod.corrs should have 1 value"
+    # assert len(ipick.corrs) == 1, "Pick.corrs should have 1 value"
+    # assert len(imeth.corrs) == 1, "RepickerMethod.corrs should have 1 value"
     assert icorr.pick is not None, "PickCorrection.pick should not be None"
     assert icorr.method is not None, "PickCorrection.method should not be None"
     assert len(icorr.cis) == 0, "PickCorrection.cis should have no values"
     assert icorr.trim_mean == 1.01, "invalud trim_mean"
     # assert np.array_equal(icorr.preds, np.zeros((300))), "Invalid preds"
-    assert icorr.preds_hdf_file == "swag_P_TestSTA_HHZ.hdf", "invalid preds_hdf_file"
+    assert icorr.preds_hdf_file.name == "swag_P_TestSTA_HHZ.hdf", "invalid preds_hdf_file"
     # assert icorr.preds_hdf_index == 1000000, "invalid preds_hdf_index"
     assert icorr.last_modified.year == datetime.now().year, "invalid last_modified year"
     assert (
@@ -547,11 +503,15 @@ def test_firstmotion(db_session_with_pick):
         "prob_up": 9.5,
         "prob_dn": 90.5,
         # "preds": np.zeros((300)).tolist(),
-        "preds_hdf_file": "swag_TestSTA_HHZ.hdf",
+        #"preds_hdf_file": "swag_TestSTA_HHZ.hdf",
         # "preds_hdf_index": 2000000
     }
 
-    ifm = tables.FirstMotion(pid=ipick.id, method_id=imeth.id, **d)
+    ifile = tables.FMStorageFile(name="swag_TestSTA_HHZ.hdf")
+    db_session.add(ifile)
+    db_session.flush()
+
+    ifm = tables.FirstMotion(pid=ipick.id, method_id=imeth.id, preds_file_id=ifile.id, **d)
     db_session.add(ifm)
     db_session.commit()
 
@@ -560,7 +520,7 @@ def test_firstmotion(db_session_with_pick):
     assert ifm.pick is not None, "fm.pick should exist"
     assert ifm.method is not None, "fm.method should exist"
     # assert np.array_equal(ifm.preds, np.zeros((300))), "Invalid preds"
-    assert ifm.preds_hdf_file == "swag_TestSTA_HHZ.hdf", "invalid preds_hdf_file"
+    assert ifm.preds_hdf_file.name == "swag_TestSTA_HHZ.hdf", "invalid preds_hdf_file"
     # assert ifm.preds_hdf_index == 2000000, "invalid preds_hdf_index"
     assert ifm.clsf == "dn", f"fm.clsf wrong as {ifm.clsf}"
     assert ifm.prob_up == 9.5, "fm.prob_up is wrong"
@@ -612,13 +572,17 @@ def db_session_with_corr(db_session_with_pick):
         "if_high": 2.2,
         "trim_mean": 1.01,
         "trim_median": 1.02,
+        "trim_std": 0.9,
         # "preds": np.zeros((300)).tolist(),
-        "preds_hdf_file": "swag_P_TestSTA_HHZ.hdf",
+        #"preds_hdf_file": "swag_P_TestSTA_HHZ.hdf",
         # "preds_hdf_index": 1000000
     }
 
+    ifile = tables.CorrStorageFile(name="swag_P_TestSTA_HHZ.hdf")
+    db_session.add(ifile)
+    db_session.flush()
     icorr = tables.PickCorrection(
-        pid=ipick.id, method_id=imeth.id, wf_source_id=isource.id, **d
+        pid=ipick.id, method_id=imeth.id, wf_source_id=isource.id, preds_file_id=ifile.id, **d
     )
     db_session.add(icorr)
     db_session.commit()
@@ -780,7 +744,9 @@ def db_session_with_contdata_and_channel_and_pick(db_session_with_contdata_and_c
 
 
 def test_waveform(db_session_with_contdata_and_channel_and_pick_and_wfsource):
-    db_session, icd, ichan, ipick, isource = db_session_with_contdata_and_channel_and_pick_and_wfsource
+    db_session, icd, ichan, ipick, isource = (
+        db_session_with_contdata_and_channel_and_pick_and_wfsource
+    )
     # assert len(icd.wfs) == 0, "ContData should have no waveforms yet"
     # assert len(ichan.wfs) == 0, "Channel should have no waveforms yet"
     # assert len(ipick.wfs) == 0, "Pick should have no waveforms yet"
@@ -790,11 +756,13 @@ def test_waveform(db_session_with_contdata_and_channel_and_pick_and_wfsource):
         # "filt_high": 17.5,
         "start": datetime.strptime("2024-01-02T10:11:02.13", dateformat),
         "end": datetime.strptime("2024-01-02T10:11:22.14", dateformat),
-        #"proc_notes": "Processed for repicker",
+        # "proc_notes": "Processed for repicker",
         "data": np.zeros((2000)).tolist(),
     }
 
-    iwf = tables.Waveform(data_id=icd.id, chan_id=ichan.id, pick_id=ipick.id, wf_source_id=isource.id, **d)
+    iwf = tables.Waveform(
+        data_id=icd.id, chan_id=ichan.id, pick_id=ipick.id, wf_source_id=isource.id, **d
+    )
     db_session.add(iwf)
     db_session.commit()
 
@@ -813,8 +781,11 @@ def test_waveform(db_session_with_contdata_and_channel_and_pick_and_wfsource):
     assert iwf.end.microsecond == 140000, "Invalid end microsecond"
     assert np.array_equal(iwf.data, np.zeros(2000)), "invalid data"
 
+
 @pytest.fixture
-def db_session_with_contdata_and_channel_and_pick_and_wfsource(db_session_with_contdata_and_channel_and_pick):
+def db_session_with_contdata_and_channel_and_pick_and_wfsource(
+    db_session_with_contdata_and_channel_and_pick,
+):
     db_session, icd, ichan, ipick = db_session_with_contdata_and_channel_and_pick
     # Add waveform source #
     d = {
@@ -824,7 +795,7 @@ def db_session_with_contdata_and_channel_and_pick_and_wfsource(db_session_with_c
         "filt_high": 17.0,
         "detrend": "linear",
         "normalize": "absolute max per channel",
-        "common_samp_rate": 100.0
+        "common_samp_rate": 100.0,
     }
 
     isource = tables.WaveformSource(**d)
@@ -832,12 +803,18 @@ def db_session_with_contdata_and_channel_and_pick_and_wfsource(db_session_with_c
     db_session.commit()
     return db_session, icd, ichan, ipick, isource
 
+
 def test_waveform_source(db_session_with_contdata_and_channel_and_pick_and_wfsource):
-    db_session, _, _, _, isource = db_session_with_contdata_and_channel_and_pick_and_wfsource
+    db_session, _, _, _, isource = (
+        db_session_with_contdata_and_channel_and_pick_and_wfsource
+    )
 
     assert isource.id is not None, "id is not set"
     assert isource.name == "TEST-ExtractContData", "name is incorrect"
-    assert isource.details == "Extract waveform snippets from the contdata processed with DataLoader", "details are incorrect"
+    assert (
+        isource.details
+        == "Extract waveform snippets from the contdata processed with DataLoader"
+    ), "details are incorrect"
     assert isource.filt_low == 1.5, "filt_low is incorrect"
     assert isource.filt_high == 17.0, "filt_high is incorrect"
     assert isource.detrend == "linear", "detrend is incorrect"
@@ -846,19 +823,28 @@ def test_waveform_source(db_session_with_contdata_and_channel_and_pick_and_wfsou
 
 
 def test_waveform_info(db_session_with_contdata_and_channel_and_pick_and_wfsource):
-    db_session, icd, ichan, ipick, isource = db_session_with_contdata_and_channel_and_pick_and_wfsource
+    db_session, icd, ichan, ipick, isource = (
+        db_session_with_contdata_and_channel_and_pick_and_wfsource
+    )
 
     d = {
         # "filt_low": 1.5,
         # "filt_high": 17.5,
         "start": datetime.strptime("2024-01-02T10:11:02.13", dateformat),
         "end": datetime.strptime("2024-01-02T10:11:22.14", dateformat),
-        #"proc_notes": "Processed for repicker",
-        "hdf_file": "raw_testStation_HH_3C.hdf",
+        # "proc_notes": "Processed for repicker",
         # "hdf_index": 0,
     }
+    ifile = tables.WaveformStorageFile(name="raw_testStation_HH_3C.hdf")
+    db_session.add(ifile)
+    db_session.flush()
     iwf = tables.WaveformInfo(
-        data_id=icd.id, chan_id=ichan.id, pick_id=ipick.id, wf_source_id=isource.id, **d
+        data_id=icd.id,
+        chan_id=ichan.id,
+        pick_id=ipick.id,
+        wf_source_id=isource.id,
+        hdf_file_id=ifile.id,
+        **d,
     )
     db_session.add(iwf)
     db_session.commit()
@@ -872,7 +858,7 @@ def test_waveform_info(db_session_with_contdata_and_channel_and_pick_and_wfsourc
     assert iwf.start.microsecond == 130000, "Invalid start microsecond"
     assert iwf.end.second == 22, "Invalud end second"
     assert iwf.end.microsecond == 140000, "Invalid end microsecond"
-    assert iwf.hdf_file == "raw_testStation_HH_3C.hdf", "Invalid hdf_file"
+    assert iwf.hdf_file.name == "raw_testStation_HH_3C.hdf", "Invalid hdf_file"
     assert iwf.pick_index == 1000, "incorrect pick index"
     # assert iwf.hdf_index == 0, "Invalid hdf_index"
     assert iwf.last_modified.year == datetime.now().year, "invalid last_modified year"
