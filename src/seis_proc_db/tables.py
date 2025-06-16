@@ -156,7 +156,7 @@ class Channel(Base):
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
     sta_id: Mapped[int] = mapped_column(
-        ForeignKey("station.id", onupdate="restrict", ondelete="restrict"),
+        ForeignKey("station.id", onupdate="restrict", ondelete="cascade"),
         nullable=False,
     )
     seed_code: Mapped[str] = mapped_column(String(3), nullable=False)
@@ -266,7 +266,7 @@ class DailyContDataInfo(Base):
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
     sta_id = mapped_column(
-        ForeignKey("station.id", onupdate="restrict", ondelete="restrict"),
+        ForeignKey("station.id", onupdate="restrict", ondelete="cascade"),
         nullable=False,
     )
     chan_pref: Mapped[str] = mapped_column(String(3), nullable=False)
@@ -506,11 +506,11 @@ class DLDetectorOutput(Base):
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
     data_id = mapped_column(
-        ForeignKey("contdatainfo.id", onupdate="restrict", ondelete="restrict"),
+        ForeignKey("contdatainfo.id", onupdate="restrict", ondelete="cascade"),
         nullable=False,
     )
     method_id = mapped_column(
-        ForeignKey("detection_method.id", onupdate="restrict", ondelete="restrict"),
+        ForeignKey("detection_method.id", onupdate="restrict", ondelete="cascade"),
         nullable=False,
     )
     ##
@@ -578,7 +578,7 @@ class DLDetection(Base):
         nullable=False,
     )
     method_id = mapped_column(
-        ForeignKey("detection_method.id", onupdate="restrict", ondelete="restrict"),
+        ForeignKey("detection_method.id", onupdate="restrict", ondelete="cascade"),
         nullable=False,
     )
     sample: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -664,7 +664,7 @@ class Pick(Base):
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
     sta_id = mapped_column(
-        ForeignKey("station.id", onupdate="restrict", ondelete="restrict"),
+        ForeignKey("station.id", onupdate="restrict", ondelete="cascade"),
         nullable=False,
     )
     chan_pref: Mapped[str] = mapped_column(String(3), nullable=False)
@@ -786,7 +786,7 @@ class PickCorrection(Base):
         ForeignKey("pick.id", onupdate="restrict", ondelete="cascade"), nullable=False
     )
     method_id = mapped_column(
-        ForeignKey("repicker_method.id", onupdate="restrict", ondelete="restrict"),
+        ForeignKey("repicker_method.id", onupdate="restrict", ondelete="cascade"),
         nullable=False,
     )
     ##
@@ -795,7 +795,7 @@ class PickCorrection(Base):
     # and one downloaded separatley because the pick is near the end/start of a day)
     # Don't store waveform_info_id because the S picker uses 3 waveforms
     wf_source_id = mapped_column(
-        ForeignKey("waveform_source.id", onupdate="restrict", ondelete="restrict"),
+        ForeignKey("waveform_source.id", onupdate="restrict", ondelete="cascade"),
         nullable=False,
     )
     median: Mapped[float] = mapped_column(Double)
@@ -910,7 +910,7 @@ class FirstMotion(Base):
         ForeignKey("pick.id", onupdate="restrict", ondelete="cascade"), nullable=False
     )
     method_id = mapped_column(
-        ForeignKey("fm_method.id", onupdate="restrict", ondelete="restrict"),
+        ForeignKey("fm_method.id", onupdate="restrict", ondelete="cascade"),
         nullable=False,
     )
     # TODO: Get this constraint to work..
@@ -980,7 +980,7 @@ class CredibleInterval(Base):
         nullable=False,
     )
     method_id = mapped_column(
-        ForeignKey("calibration_method.id", onupdate="restrict", ondelete="restrict"),
+        ForeignKey("calibration_method.id", onupdate="restrict", ondelete="cascade"),
         nullable=False,
     )
     percent: Mapped[int] = mapped_column(SmallInteger, nullable=False)
@@ -1041,11 +1041,11 @@ class Gap(Base):
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
     data_id = mapped_column(
-        ForeignKey("contdatainfo.id", onupdate="restrict", ondelete="restrict"),
+        ForeignKey("contdatainfo.id", onupdate="restrict", ondelete="cascade"),
         nullable=False,
     )
     chan_id = mapped_column(
-        ForeignKey("channel.id", onupdate="restrict", ondelete="restrict"),
+        ForeignKey("channel.id", onupdate="restrict", ondelete="cascade"),
         nullable=False,
     )
     start: Mapped[datetime] = mapped_column(
@@ -1192,7 +1192,7 @@ class WaveformInfo(Base):
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
     chan_id = mapped_column(
-        ForeignKey("channel.id", onupdate="restrict", ondelete="restrict"),
+        ForeignKey("channel.id", onupdate="restrict", ondelete="cascade"),
         nullable=False,
     )
     pick_id = mapped_column(
@@ -1209,7 +1209,7 @@ class WaveformInfo(Base):
     )
     
     data_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("contdatainfo.id", onupdate="restrict", ondelete="restrict"),
+        ForeignKey("contdatainfo.id", onupdate="restrict", ondelete="cascade"),
         nullable=True,
     )
     # filt_low: Mapped[Optional[float]] = mapped_column(Double)
@@ -1404,7 +1404,7 @@ class Waveform(Base):
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## PK (not simplified)
     chan_id = mapped_column(
-        ForeignKey("channel.id", onupdate="restrict", ondelete="restrict"),
+        ForeignKey("channel.id", onupdate="restrict", ondelete="cascade"),
         nullable=False,
     )
     pick_id = mapped_column(
@@ -1416,7 +1416,7 @@ class Waveform(Base):
     )
     ##
     data_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("contdatainfo.id", onupdate="restrict", ondelete="restrict"),
+        ForeignKey("contdatainfo.id", onupdate="restrict", ondelete="cascade"),
         nullable=True,
     )
     start: Mapped[datetime] = mapped_column(
@@ -1707,19 +1707,19 @@ class Origin(Base):
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## Primary Key without simplification
     evid: Mapped[int] = mapped_column(
-        ForeignKey("event.id", onupdate="restrict", ondelete="restrict"),
+        ForeignKey("event.id", onupdate="restrict", ondelete="cascade"),
         nullable=False,
     )
     assocm_id: Mapped[int] = mapped_column(
-        ForeignKey("assoc_method.id", onupdate="restrict", ondelete="restrict"),
+        ForeignKey("assoc_method.id", onupdate="restrict", ondelete="cascade"),
         nullable=False,
     )
     locm_id: Mapped[int] = mapped_column(
-        ForeignKey("loc_method.id", onupdate="restrict", ondelete="restrict"),
+        ForeignKey("loc_method.id", onupdate="restrict", ondelete="cascade"),
         nullable=False,
     )
     velm_id: Mapped[int] = mapped_column(
-        ForeignKey("vel_model.id", onupdate="restrict", ondelete="restrict"),
+        ForeignKey("vel_model.id", onupdate="restrict", ondelete="cascade"),
         nullable=False,
     )
     ##
@@ -1817,11 +1817,11 @@ class AssocArrival(Base):
     ## Primary Key without simplification
     # The origin has the association method info
     orid: Mapped[int] = mapped_column(
-        ForeignKey("origin.id", onupdate="restrict", ondelete="restrict"),
+        ForeignKey("origin.id", onupdate="restrict", ondelete="cascade"),
         nullable=False,
     )
     pick_id: Mapped[int] = mapped_column(
-        ForeignKey("pick.id", onupdate="restrict", ondelete="restrict"),
+        ForeignKey("pick.id", onupdate="restrict", ondelete="cascade"),
         nullable=False,
     )
     ##
@@ -1830,7 +1830,7 @@ class AssocArrival(Base):
     # I can get the pick correction info from this.
     # TODO: What if just the pick corr is used and no ci?
     ci_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("ci.id", onupdate="restrict", ondelete="restrict"),
+        ForeignKey("ci.id", onupdate="restrict", ondelete="cascade"),
         nullable=True,
     )
 
@@ -1919,11 +1919,11 @@ class ArrMag(Base):
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## Primary Key without simplification
     arid: Mapped[int] = mapped_column(
-        ForeignKey("assoc_arr.id", onupdate="restrict", ondelete="restrict"),
+        ForeignKey("assoc_arr.id", onupdate="restrict", ondelete="cascade"),
         nullable=False,
     )
     method_id: Mapped[int] = mapped_column(
-        ForeignKey("mag_method.id", onupdate="restrict", ondelete="restrict"),
+        ForeignKey("mag_method.id", onupdate="restrict", ondelete="cascade"),
         nullable=False,
     )
     ##
@@ -1979,7 +1979,7 @@ class ArrWaveformFeat(Base):
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## Primary Key without simplification
     arid: Mapped[int] = mapped_column(
-        ForeignKey("assoc_arr.id", onupdate="restrict", ondelete="restrict"),
+        ForeignKey("assoc_arr.id", onupdate="restrict", ondelete="cascade"),
         nullable=False,
     )
     # TODO: Could add a feature description table
@@ -1992,7 +1992,7 @@ class ArrWaveformFeat(Base):
     # Store the waveform that was used to extract the features
     wf_info_id: Mapped[Optional[int]] = mapped_column(
         Integer,
-        ForeignKey("waveform_info.id", onupdate="restrict", ondelete="restrict"),
+        ForeignKey("waveform_info.id", onupdate="restrict", ondelete="cascade"),
         nullable=True,
     )
     # Keep track of when the row was inserted/updated
@@ -2050,7 +2050,7 @@ class NetMag(Base):
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     ## Primary Key without simplification
     orid: Mapped[int] = mapped_column(
-        ForeignKey("origin.id", onupdate="restrict", ondelete="restrict"),
+        ForeignKey("origin.id", onupdate="restrict", ondelete="cascade"),
         nullable=False,
     )
     # TODO: Change this to a method or make a type table?
