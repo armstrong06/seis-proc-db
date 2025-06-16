@@ -357,6 +357,13 @@ class RepickerMethod(ISAMethod):
     __tablename__ = "repicker_method"
 
     phase: Mapped[Optional[str]] = mapped_column(String(4))
+    n_comps: Mapped[Optional[int]] = mapped_column(SmallInteger)
+    n_models: Mapped[Optional[int]] = mapped_column(SmallInteger)
+    n_evals_per_model: Mapped[Optional[int]] = mapped_column(SmallInteger)
+    wf_sample_dur: Mapped[Optional[int]] = mapped_column(SmallInteger)
+    wf_proc_pad: Mapped[Optional[int]] = mapped_column(SmallInteger)  
+    wf_proc_fn_name: Mapped[Optional[str]] = mapped_column(String(100))
+    model_settings: Mapped[Optional[JSON]] = mapped_column(JSON)
 
     # One-to-Many relationship with PickCorrection
     corrs: Mapped[List["PickCorrection"]] = relationship(back_populates="method")
@@ -364,6 +371,9 @@ class RepickerMethod(ISAMethod):
     def __repr__(self) -> str:
         return (
             f"RepickerMethod(id={self.id!r}, name={self.name!r}, details={self.details!r}, "
+            f"phase={self.phase}, n_comps={self.n_comps}, n_models={self.n_models}, "
+            f"n_evals_per_model={self.n_evals_per_model}, wf_sample_dur={self.wf_sample_dur}, "
+            f"wf_proc_pad={self.wf_proc_pad}, wf_proc_fn_name={self.wf_proc_fn_name}, "
             f"path={self.path!r}, last_modified={self.last_modified!r})"
         )
 
@@ -436,7 +446,7 @@ class DetectionMethod(ISAMethod):
 
     def __repr__(self) -> str:
         return (
-            f"DetectioNMethod(id={self.id!r}, name={self.name!r}, details={self.details!r}, "
+            f"DetectionMethod(id={self.id!r}, name={self.name!r}, details={self.details!r}, "
             f"path={self.path!r}, phase={self.phase!r} last_modified={self.last_modified!r})"
         )
 

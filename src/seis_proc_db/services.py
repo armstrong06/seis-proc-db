@@ -924,18 +924,64 @@ def insert_dldetector_output_pytable(
     return new_detout
 
 
-def insert_repicker_method(session, name, phase=None, details=None, path=None):
+def insert_repicker_method(
+    session,
+    name,
+    phase=None,
+    details=None,
+    path=None,
+    n_comps=None,
+    n_models=None,
+    n_evals_per_model=None,
+    wf_sample_dur=None,
+    wf_proc_pad=None,
+    wf_proc_fn_name=None,
+    model_settings=None,
+):
     new_repicker_method = RepickerMethod(
-        name=name, phase=phase, details=details, path=path
+        name=name,
+        phase=phase,
+        details=details,
+        path=path,
+        n_comps=n_comps,
+        n_models=n_models,
+        n_evals_per_model=n_evals_per_model,
+        wf_sample_dur=wf_sample_dur,
+        wf_proc_pad=wf_proc_pad,
+        wf_proc_fn_name=wf_proc_fn_name,
+        model_settings=model_settings,
     )
     session.add(new_repicker_method)
 
     return new_repicker_method
 
 
-def upsert_repicker_method(session, name, phase=None, details=None, path=None):
+def upsert_repicker_method(
+    session,
+    name,
+    phase=None,
+    details=None,
+    path=None,
+    n_comps=None,
+    n_models=None,
+    n_evals_per_model=None,
+    wf_sample_dur=None,
+    wf_proc_pad=None,
+    wf_proc_fn_name=None,
+    model_settings=None,
+):
     insert_stmt = mysql_insert(RepickerMethod).values(
-        name=name, phase=phase, details=details, path=path
+        name=name,
+        phase=phase,
+        details=details,
+        path=path,
+        n_comps=n_comps,
+        n_models=n_models,
+        n_evals_per_model=n_evals_per_model,
+        wf_sample_dur=wf_sample_dur,
+        wf_proc_pad=wf_proc_pad,
+        wf_proc_fn_name=wf_proc_fn_name,
+        model_settings=model_settings,
     )
     update_dict = {
         col.name: insert_stmt.inserted[col.name]
