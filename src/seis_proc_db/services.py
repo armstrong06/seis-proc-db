@@ -1237,6 +1237,14 @@ def get_stations_comps_with_picks(session, phase=None, sta=None, chan_pref=None)
 
 def get_waveform_storage_number(session, chan_id, phase, max_entries):
     count_label = func.count(WaveformInfo.id).label("count")
+
+    channel_subq = (
+        select(Channel.seed_code, Channel.sta_id, Channel.loc)
+        .where(Channel.id == chan_id)  # you need to define chan_id earlier
+        .limit(1)
+        .subquery()
+    )
+
     stmt = (
         select(WaveformStorageFile.name, count_label)
         .join_from(
@@ -1244,14 +1252,33 @@ def get_waveform_storage_number(session, chan_id, phase, max_entries):
             WaveformStorageFile,
             WaveformInfo.hdf_file_id == WaveformStorageFile.id,
         )
+        .join(Channel, WaveformInfo.chan_id == Channel.id)
         .join(Pick, WaveformInfo.pick_id == Pick.id)
-        .where(WaveformInfo.chan_id == chan_id)
-        .where(Pick.phase == phase)
+        .where(Channel.seed_code == channel_subq.c.seed_code)
+        .where(Channel.sta_id == channel_subq.c.sta_id)
+        .where(Channel.loc == channel_subq.c.loc)
+        .where(Pick.phase == phase) 
         .group_by(WaveformInfo.hdf_file_id)
         .order_by(WaveformInfo.hdf_file_id)  # count_label.asc())
     )
 
+    # stmt = (
+    #     select(WaveformStorageFile.name, count_label)
+    #     .join_from(
+    #         WaveformInfo,
+    #         WaveformStorageFile,
+    #         WaveformInfo.hdf_file_id == WaveformStorageFile.id,
+    #     )
+    #     .join(Pick, WaveformInfo.pick_id == Pick.id)
+    #     .where(WaveformInfo.chan_id == chan_id)
+    #     .where(Pick.phase == phase)
+    #     .group_by(WaveformInfo.hdf_file_id)
+    #     .order_by(WaveformInfo.hdf_file_id)  # count_label.asc())
+    # )
+
     result = session.execute(stmt).all()
+    print(result)
+
     if len(result) == 0:
         return 0, None, 0
     elif result[0].count < max_entries:
