@@ -1301,7 +1301,7 @@ def test_get_waveform_storage_number_existing(db_session_with_waveform_info):
         db_session, wf_storage, ids = db_session_with_waveform_info
 
         storage_number, hdf_file, count = services.get_waveform_storage_number(
-            db_session, ids["chan"], "P", 100
+            db_session, ids["chan"], ids["wf_source"], "P", 100
         )
 
         assert storage_number == 0, "expected the storage_number to be 0"
@@ -1319,7 +1319,7 @@ def test_get_waveform_storage_number_next(db_session_with_waveform_info):
         db_session, wf_storage, ids = db_session_with_waveform_info
 
         storage_number, hdf_file, count = services.get_waveform_storage_number(
-            db_session, ids["chan"], "P", 1
+            db_session, ids["chan"], ids["wf_source"], "P", 1
         )
 
         assert storage_number == 1, "expected the storage_number to be 1"
@@ -1334,7 +1334,7 @@ def test_get_waveform_storage_number_new(db_session_with_waveform_info):
         db_session, wf_storage, ids = db_session_with_waveform_info
 
         storage_number, hdf_file, count = services.get_waveform_storage_number(
-            db_session, 10, "P", 1
+            db_session, 10, ids["wf_source"], "P", 1
         )
 
         assert storage_number == 0, "expected the storage_number to be 0"

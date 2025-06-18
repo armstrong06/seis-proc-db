@@ -1235,7 +1235,7 @@ def get_stations_comps_with_picks(session, phase=None, sta=None, chan_pref=None)
     return result
 
 
-def get_waveform_storage_number(session, chan_id, phase, max_entries):
+def get_waveform_storage_number(session, chan_id, wf_source_id, phase, max_entries):
     count_label = func.count(WaveformInfo.id).label("count")
 
     channel_subq = (
@@ -1254,6 +1254,7 @@ def get_waveform_storage_number(session, chan_id, phase, max_entries):
         )
         .join(Channel, WaveformInfo.chan_id == Channel.id)
         .join(Pick, WaveformInfo.pick_id == Pick.id)
+        .where(WaveformInfo.wf_source_id == wf_source_id)
         .where(Channel.seed_code == channel_subq.c.seed_code)
         .where(Channel.sta_id == channel_subq.c.sta_id)
         .where(Channel.loc == channel_subq.c.loc)
@@ -1277,7 +1278,6 @@ def get_waveform_storage_number(session, chan_id, phase, max_entries):
     # )
 
     result = session.execute(stmt).all()
-    print(result)
 
     if len(result) == 0:
         return 0, None, 0
