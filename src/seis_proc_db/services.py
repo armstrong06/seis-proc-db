@@ -149,8 +149,8 @@ def get_operating_channels_by_station_name(
             # "SELECT * FROM station JOIN channel ON station.id = channel.sta_id"
             # "AND station.sta = :sta AND   "
             # "channel.seed_code LIKE :chan_pref AND "
-            "channel.ondate <= :date AND "
-            "(channel.offdate >= :date OR channel.offdate IS NULL)"
+            "DATE(channel.ondate) <= :date AND "
+            "(DATE(channel.offdate) >= :date OR channel.offdate IS NULL)"
         )
     )
 
