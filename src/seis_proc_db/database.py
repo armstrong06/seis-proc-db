@@ -2,8 +2,9 @@ from sqlalchemy import MetaData
 from sqlalchemy import create_engine
 from sqlalchemy.orm import MappedAsDataclass, DeclarativeBase, sessionmaker
 from contextlib import contextmanager
+from sqlalchemy.pool import NullPool
 from seis_proc_db.config import DB_URL
-
+from sqlalchemy import event
 
 metadata_obj = MetaData(
     naming_convention={
@@ -21,7 +22,9 @@ class Base(DeclarativeBase):
 
 
 # create the database engine
-engine = create_engine(DB_URL, echo=False)
+engine = create_engine(
+    DB_URL, echo=False, pool_pre_ping=True, echo_pool=True
+)  # poolclass=NullPool,
 
 # create a factory for Session objects with a fixed configuration
 Session = sessionmaker(engine)
