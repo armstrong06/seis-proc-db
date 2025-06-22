@@ -1258,7 +1258,7 @@ def get_waveform_storage_number(session, chan_id, wf_source_id, phase, max_entri
         .where(Channel.seed_code == channel_subq.c.seed_code)
         .where(Channel.sta_id == channel_subq.c.sta_id)
         .where(Channel.loc == channel_subq.c.loc)
-        .where(Pick.phase == phase) 
+        .where(Pick.phase == phase)
         .group_by(WaveformInfo.hdf_file_id)
         .order_by(WaveformInfo.hdf_file_id)  # count_label.asc())
     )
@@ -1285,6 +1285,82 @@ def get_waveform_storage_number(session, chan_id, wf_source_id, phase, max_entri
         return len(result) - 1, result[0].name, result[0].count
     else:
         return len(result), None, 0
+
+
+def make_pick_catalog_df(
+    session,
+    phase,
+    repicker_method_name,
+    calibration_method_name,
+    ci_percent,
+    start=None,
+    end=None,
+    max_width=None,
+    min_width=None,
+):
+    repicker_meth = get_repicker_method(session, repicker_method_name)
+    cal_meth = get_calibration_method(session, calibration_method_name)
+
+    corr_type = cal_meth.loc_type
+    corr_col = getattr(PickCorrection, corr_type, None)
+    if corr_col is None:
+        raise ValueError(f"Invalid column: {corr_type}")
+
+    stmt = (
+        select(
+            Pick.id,
+            Station.net,
+            Station.sta,
+            Pick.chan_pref,
+            literal_column("''").label("loc"),
+            Pick.phase,
+            # Pick.ptime,
+            # corr_col,
+            func.timestampadd(text("MICROSECOND"), (corr_col * 1e6), Pick.ptime),
+            CredibleInterval.ub - CredibleInterval.lb,
+        )
+        .join_from(Pick, Station, Pick.sta_id == Station.id)
+        .join(PickCorrection, PickCorrection.pid == Pick.id)
+        .join(CredibleInterval, CredibleInterval.corr_id == PickCorrection.id)
+        .where(Pick.phase == phase)
+        .where(PickCorrection.method_id == repicker_meth.id)
+        .where(CredibleInterval.method_id == cal_meth.id)
+        .where(CredibleInterval.percent == ci_percent)
+    )
+
+    if start is not None:
+        stmt = stmt.where(Pick.ptime >= start)
+
+    if end is not None:
+        stmt = stmt.where(Pick.ptime < end)
+
+    if max_width is not None:
+        stmt = stmt.where(CredibleInterval.ub - CredibleInterval.lb <= max_width)
+
+    result = session.execute(stmt).all()
+
+    col_names = [
+        "pick_identifier",
+        "network",
+        "station",
+        "channel",
+        "location_code",
+        "phase_hint",
+        # "pick_time",
+        # "pick_corr",
+        "arrival_time",
+        "uncertainty",
+    ]
+
+    import pandas as pd
+
+    df = pd.DataFrame(result, columns=col_names)
+    df["arrival_time"] = df.apply(lambda x: x["arrival_time"].timestamp(), axis=1)
+
+    if min_width is not None:
+        df.loc[:, "uncertainty"] = df["uncertainty"].clip(lower=min_width)
+
+    return df
 
 
 class Waveforms:

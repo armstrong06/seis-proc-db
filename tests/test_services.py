@@ -99,8 +99,8 @@ def calibration_method_ex():
             "phase": "P",
             "details": "Uses Kuleshov et al 2018 approach to calibrate ensemble result from TEST-MSWAG-P-3M-120, from Armstrong 2023 BSSA paper",
             "path": "the/model/files/are/stored/here",
-            "loc_type": "trim_median",
-            "scale_type": "trim_std",
+            "loc_type": "median",
+            "scale_type": "std",
         }
     )
 
@@ -1186,6 +1186,10 @@ def db_session_with_pick_corr(
     ids["repicker_method"] = repicker_method.id
     ids["cal_method"] = cal_method.id
 
+    ci = services.insert_ci(db_session, ids["corr"], ids["cal_method"], 90, -1.22, 1.34)
+    db_session.commit()
+    ids["ci"] = ci.id
+
     return db_session, corr_storage, ids, preds
 
 
@@ -1225,8 +1229,7 @@ def test_insert_ci(db_session_with_pick_corr):
         os.remove(corr_storage.file_path)
         assert not os.path.exists(corr_storage.file_path), "the file was not removed"
 
-    ci = services.insert_ci(db_session, ids["corr"], ids["cal_method"], 90, -1.22, 1.34)
-    db_session.commit()
+    ci = db_session.get(tables.CredibleInterval, ids["ci"])
 
     assert ci is not None
     assert ci.id is not None
@@ -1244,10 +1247,6 @@ def test_get_cis(db_session_with_pick_corr):
         corr_storage.close()
         os.remove(corr_storage.file_path)
         assert not os.path.exists(corr_storage.file_path), "the file was not removed"
-
-    ci = services.insert_ci(db_session, ids["corr"], ids["cal_method"], 90, -1.22, 1.34)
-    db_session.commit()
-    db_session.expunge_all()
 
     cis = services.get_correction_cis(db_session, ids["corr"])
     assert len(cis) == 1
@@ -1274,9 +1273,9 @@ def test_insert_cis(db_session_with_pick_corr):
         {
             "corr_id": ids["corr"],
             "method_id": ids["cal_method"],
-            "percent": 90,
-            "lb": -1.22,
-            "ub": 1.34,
+            "percent": 60,
+            "lb": -1.11,
+            "ub": 1.22,
         }
     ]
     services.insert_cis(db_session, cis_list)
@@ -1291,9 +1290,121 @@ def test_insert_cis(db_session_with_pick_corr):
     assert ci is not None
     assert ci.id is not None
     assert ci.method_id == ids["cal_method"]
-    assert ci.percent == 90
-    assert ci.lb == -1.22
-    assert ci.ub == 1.34
+    assert ci.percent == 60
+    assert ci.lb == -1.11
+    assert ci.ub == 1.22
+
+
+def test_make_pick_catalog(
+    db_session_with_pick_corr,
+    repicker_method_ex,
+    calibration_method_ex,
+):
+    try:
+        db_session, corr_storage, ids, _ = db_session_with_pick_corr
+        repick_dict = repicker_method_ex
+        cal_dict = calibration_method_ex
+    finally:
+        # Clean up
+        corr_storage.close()
+        os.remove(corr_storage.file_path)
+        assert not os.path.exists(corr_storage.file_path), "the file was not removed"
+
+    df = services.make_pick_catalog_df(
+        db_session, "P", repick_dict["name"], cal_dict["name"], 90
+    )
+
+    pick = db_session.get(tables.Pick, ids["pick"])
+    sta = db_session.get(tables.Station, ids["sta"])
+    corr = db_session.get(tables.PickCorrection, ids["corr"])
+    ci = db_session.get(tables.CredibleInterval, ids["ci"])
+
+    assert len(df) == 1, "expected one row to be returned"
+    row = df.iloc[0]
+    assert row["pick_identifier"] == pick.id
+    assert row["network"] == sta.net
+    assert row["station"] == sta.sta
+    assert row["channel"] == pick.chan_pref
+    assert row["location_code"] == ""
+    assert row["phase_hint"] == "P"
+    # assert result[0][6] == pick.ptime
+    # assert result[0][7] == corr.median
+    from datetime import timezone
+
+    assert (
+        row["arrival_time"]
+        == (pick.ptime + timedelta(microseconds=corr.median * 1e6))
+        .replace(tzinfo=timezone.utc)
+        .timestamp()
+    )
+    assert row["uncertainty"] == ci.ub - ci.lb
+
+
+def test_make_pick_catalog_max_width(
+    db_session_with_pick_corr,
+    repicker_method_ex,
+    calibration_method_ex,
+):
+    try:
+        db_session, corr_storage, ids, _ = db_session_with_pick_corr
+        repick_dict = repicker_method_ex
+        cal_dict = calibration_method_ex
+    finally:
+        # Clean up
+        corr_storage.close()
+        os.remove(corr_storage.file_path)
+        assert not os.path.exists(corr_storage.file_path), "the file was not removed"
+
+    result, _ = services.make_pick_catalog_df(
+        db_session, "P", repick_dict["name"], cal_dict["name"], 90, max_width=2.0
+    )
+
+    assert len(result) == 0, "expected 0 rows to be returned"
+
+
+def test_make_pick_catalog_min_width(
+    db_session_with_pick_corr,
+    repicker_method_ex,
+    calibration_method_ex,
+):
+    try:
+        db_session, corr_storage, ids, _ = db_session_with_pick_corr
+        repick_dict = repicker_method_ex
+        cal_dict = calibration_method_ex
+    finally:
+        # Clean up
+        corr_storage.close()
+        os.remove(corr_storage.file_path)
+        assert not os.path.exists(corr_storage.file_path), "the file was not removed"
+
+    df = services.make_pick_catalog_df(
+        db_session, "P", repick_dict["name"], cal_dict["name"], 90, min_width=3.0
+    )
+
+    pick = db_session.get(tables.Pick, ids["pick"])
+    sta = db_session.get(tables.Station, ids["sta"])
+    corr = db_session.get(tables.PickCorrection, ids["corr"])
+    ci = db_session.get(tables.CredibleInterval, ids["ci"])
+
+    assert len(df) == 1, "expected one row to be returned"
+    row = df.iloc[0]
+    assert row["pick_identifier"] == pick.id
+    assert row["network"] == sta.net
+    assert row["station"] == sta.sta
+    assert row["channel"] == pick.chan_pref
+    assert row["location_code"] == ""
+    assert row["phase_hint"] == "P"
+    # assert result[0][6] == pick.ptime
+    # assert result[0][7] == corr.median
+    from datetime import timezone
+
+    assert (
+        row["arrival_time"]
+        == (pick.ptime + timedelta(microseconds=corr.median * 1e6))
+        .replace(tzinfo=timezone.utc)
+        .timestamp()
+    )
+    assert row["uncertainty"] == 3.0
 
 
 def test_get_waveform_storage_number_existing(db_session_with_waveform_info):

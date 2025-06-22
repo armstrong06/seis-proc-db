@@ -648,6 +648,7 @@ class Pick(Base):
         sta_id: Identifier for the Station the pick was made at
         chan_pref: First two letters of the SEED code for the channels used for 3C or all
         three letters for 1C
+        chan_loc: The channel location code
         phase: Presumed phase type of the pick
         ptime: DateTime of the pick in UTC. DOES include fractional seconds. If a pick
             has a PickCorrection, it is NOT included in the ptime value.
@@ -668,6 +669,8 @@ class Pick(Base):
         nullable=False,
     )
     chan_pref: Mapped[str] = mapped_column(String(3), nullable=False)
+    # TODO: I should add this in
+    #chan_loc: Mapped[str] = mapped_column(String(2), nullable=False)
     # TODO: Should phase be removed from the PK, in the case it was unknown?
     phase: Mapped[str] = mapped_column(String(4), nullable=False)
     ptime: Mapped[datetime] = mapped_column(
