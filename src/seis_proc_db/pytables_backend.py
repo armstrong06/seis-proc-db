@@ -41,6 +41,10 @@ class BasePyTable(ABC):
         expectedrows=10000,
     ):
 
+        self._in_transaction = False
+        self._transaction_start_ind = None
+        self._transaction_modified_backup = {}
+
         self._is_open = False
         self._on_event = on_event
         self.expected_array_length = expected_array_length
@@ -56,10 +60,6 @@ class BasePyTable(ABC):
             self.TABLE_DTYPE,
             expectedrows,
         )
-
-        self._in_transaction = False
-        self._transaction_start_ind = None
-        self._transaction_modified_backup = {}
 
     @abstractmethod
     def _make_filepath(self):
