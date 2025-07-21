@@ -1,5 +1,6 @@
 from tables import *
 import os
+from copy import deepcopy
 import warnings
 from abc import ABC, abstractmethod
 from datetime import datetime
@@ -38,7 +39,7 @@ class BasePyTable(ABC):
         self,
         expected_array_length,
         on_event=None,
-        expectedrows=10000,
+        expectedrows=150_000,
     ):
 
         self._in_transaction = False
@@ -79,7 +80,7 @@ class BasePyTable(ABC):
         table_title,
         table_description,
         table_data_col_type,
-        expectedrows=10000,
+        expectedrows=150_000,
     ):
         self._notify(f"Opening {self._file_path} to store {self.TABLE_TITLE}")
         dir_exists = os.path.exists(os.path.dirname(self._file_path))
@@ -332,6 +333,7 @@ class WaveformStorage(BasePyTable):
     # TABLE_DESCRIPTION = "Waveform"
     TABLE_DTYPE = Float32Col
     TABLE_START_END_INDS = True
+    FLUSH_THRESHOLD = 500
 
     def __init__(
         self,
@@ -348,7 +350,7 @@ class WaveformStorage(BasePyTable):
         # filt_high,
         # proc_notes,
         on_event=None,
-        expectedrows=10000,
+        expectedrows=150_000,
     ):
         self.net = net
         self.sta = sta
@@ -405,7 +407,7 @@ class DLDetectorOutputStorage(BasePyTable):
         ncomps,
         det_method_id,
         on_event=None,
-        expectedrows=10000,
+        expectedrows=150_000,
     ):
 
         self.net = net
@@ -437,6 +439,7 @@ class SwagPicksStorage(BasePyTable):
     TABLE_NAME = "swag_picks"
     TABLE_TITLE = "SWAG Repicker Predictions"
     TABLE_DTYPE = Float32Col
+    FLUSH_THRESHOLD = 5000
 
     def __init__(
         self,
@@ -446,7 +449,7 @@ class SwagPicksStorage(BasePyTable):
         phase,
         repicker_method_id,
         on_event=None,
-        expectedrows=10000,
+        expectedrows=150_000,
     ):
         self.start = start if type(start) == str else start.date().strftime("%Y-%m-%d")
         self.end = end if type(end) == str else end.date().strftime("%Y-%m-%d")
