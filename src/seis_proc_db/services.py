@@ -2,7 +2,8 @@
 
 import numpy as np
 import os
-from sqlalchemy import select, text, insert
+from datetime import date
+from sqlalchemy import select, text, insert, extract
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 from seis_proc_db.tables import *
 from seis_proc_db.config import DETECTION_GAP_BUFFER_SECONDS
@@ -389,7 +390,7 @@ def insert_contdatainfo(session, contdatainfo_dict):
     return new_contdatainfo
 
 
-def get_contdatainfo(session, sta_id, chan_pref, ncomps, date):
+def get_contdatainfo(session, sta_id, chan_pref, ncomps, date, chan_loc=None):
     stmt = (
         select(DailyContDataInfo)
         .where(DailyContDataInfo.sta_id == sta_id)
@@ -397,6 +398,9 @@ def get_contdatainfo(session, sta_id, chan_pref, ncomps, date):
         .where(DailyContDataInfo.ncomps == ncomps)
         .where(DailyContDataInfo.date == date)
     )
+
+    if chan_loc is not None:
+        stmt = stmt.where(DailyContDataInfo.chan_loc == chan_loc)
 
     result = session.scalars(stmt).all()
 
@@ -516,11 +520,21 @@ def get_dldetections(session, data_id, method_id, min_height, phase=None):
 
 
 def insert_pick(
-    session, sta_id, chan_pref, phase, ptime, auth, snr=None, amp=None, detid=None
+    session,
+    sta_id,
+    chan_pref,
+    chan_loc,
+    phase,
+    ptime,
+    auth,
+    snr=None,
+    amp=None,
+    detid=None,
 ):
     new_pick = Pick(
         sta_id=sta_id,
         chan_pref=chan_pref,
+        chan_loc=chan_loc,
         phase=phase,
         ptime=ptime,
         auth=auth,
@@ -533,9 +547,13 @@ def insert_pick(
     return new_pick
 
 
-def get_picks(session, sta_id, chan_pref, phase=None, min_time=None, max_time=None):
+def get_picks(
+    session, sta_id, chan_pref, loc=None, phase=None, min_time=None, max_time=None
+):
     stmt = select(Pick).where(Pick.sta_id == sta_id, Pick.chan_pref == chan_pref)
 
+    if loc is not None:
+        stmt = stmt.where(Pick.chan_loc == loc)
     if phase is not None:
         stmt = stmt.where(Pick.phase == phase)
     if min_time is not None:
@@ -1235,7 +1253,9 @@ def get_stations_comps_with_picks(session, phase=None, sta=None, chan_pref=None)
     return result
 
 
-def get_waveform_storage_number(session, chan_id, wf_source_id, phase, max_entries):
+def get_waveform_storage_number_simpler(
+    session, chan_id, wf_source_id, phase, max_entries, year=None
+):
     count_label = func.count(WaveformInfo.id).label("count")
 
     channel_subq = (
@@ -1263,6 +1283,10 @@ def get_waveform_storage_number(session, chan_id, wf_source_id, phase, max_entri
         .order_by(WaveformInfo.hdf_file_id)  # count_label.asc())
     )
 
+    if year is not None:
+        # stmt = stmt.where(extract("year", Pick.ptime) == year)
+        stmt = stmt.where(Pick.ptime.between(date(year, 1, 1), date(year, 12, 31)))
+
     # stmt = (
     #     select(WaveformStorageFile.name, count_label)
     #     .join_from(
@@ -1287,6 +1311,64 @@ def get_waveform_storage_number(session, chan_id, wf_source_id, phase, max_entri
         return len(result), None, 0
 
 
+def get_waveform_storage_number(
+    session, chan_id, wf_source_id, phase, max_entries, year=None
+):
+    count_label = func.count(WaveformInfo.id).label("count")
+
+    channel_subq = (
+        select(Channel.seed_code, Channel.sta_id, Channel.loc)
+        .where(Channel.id == chan_id)  # you need to define chan_id earlier
+        .limit(1)
+        .subquery()
+    )
+
+    stmt = (
+        select(WaveformStorageFile.name, count_label)
+        .join_from(
+            WaveformInfo,
+            WaveformStorageFile,
+            WaveformInfo.hdf_file_id == WaveformStorageFile.id,
+        )
+        .join(Channel, WaveformInfo.chan_id == Channel.id)
+        .join(Pick, WaveformInfo.pick_id == Pick.id)
+        .where(WaveformInfo.wf_source_id == wf_source_id)
+        .where(Channel.seed_code == channel_subq.c.seed_code)
+        .where(Channel.sta_id == channel_subq.c.sta_id)
+        .where(Channel.loc == channel_subq.c.loc)
+        .where(Pick.phase == phase)
+        .group_by(WaveformInfo.hdf_file_id)
+        .order_by(WaveformInfo.hdf_file_id)  # count_label.asc())
+    )
+
+    if year is not None:
+        stmt = stmt.where(extract("year", Pick.ptime) == year)
+        # stmt = stmt.where(Pick.ptime.between(date(year, 1, 1), date(year, 12, 31)))
+
+    # stmt = (
+    #     select(WaveformStorageFile.name, count_label)
+    #     .join_from(
+    #         WaveformInfo,
+    #         WaveformStorageFile,
+    #         WaveformInfo.hdf_file_id == WaveformStorageFile.id,
+    #     )
+    #     .join(Pick, WaveformInfo.pick_id == Pick.id)
+    #     .where(WaveformInfo.chan_id == chan_id)
+    #     .where(Pick.phase == phase)
+    #     .group_by(WaveformInfo.hdf_file_id)
+    #     .order_by(WaveformInfo.hdf_file_id)  # count_label.asc())
+    # )
+
+    result = session.execute(stmt).all()
+    # print(result)
+    if len(result) == 0:
+        return 0, None, 0
+    elif result[0].count < max_entries:
+        return len(result) - 1, result[0].name, result[0].count
+    else:
+        return len(result), None, 0
+
+
 def make_pick_catalog_df(
     session,
     phase,
@@ -1301,6 +1383,12 @@ def make_pick_catalog_df(
     repicker_meth = get_repicker_method(session, repicker_method_name)
     cal_meth = get_calibration_method(session, calibration_method_name)
 
+    if repicker_meth is None:
+        raise ValueError("No matching RepickerMethod found")
+
+    if cal_meth is None:
+        raise ValueError("No matching CalibrationMethod found")
+
     corr_type = cal_meth.loc_type
     corr_col = getattr(PickCorrection, corr_type, None)
     if corr_col is None:
@@ -1311,8 +1399,11 @@ def make_pick_catalog_df(
             Pick.id,
             Station.net,
             Station.sta,
+            Station.lat,
+            Station.lon,
+            Station.elev,
             Pick.chan_pref,
-            literal_column("''").label("loc"),
+            Pick.chan_loc,
             Pick.phase,
             # Pick.ptime,
             # corr_col,
@@ -1355,10 +1446,11 @@ def make_pick_catalog_df(
     import pandas as pd
 
     df = pd.DataFrame(result, columns=col_names)
-    df["arrival_time"] = df.apply(lambda x: x["arrival_time"].timestamp(), axis=1)
+    if len(result) > 0:
+        df["arrival_time"] = df.apply(lambda x: x["arrival_time"].timestamp(), axis=1)
 
-    if min_width is not None:
-        df.loc[:, "uncertainty"] = df["uncertainty"].clip(lower=min_width)
+        if min_width is not None:
+            df.loc[:, "uncertainty"] = df["uncertainty"].clip(lower=min_width)
 
     return df
 
@@ -1405,7 +1497,12 @@ class Waveforms:
             .where(Pick.ptime < end)
             .where(WaveformSource.name.in_(sources))
             .order_by(
-                Station.id, Pick.chan_pref, Pick.id, source_priority, Channel.seed_code
+                Station.id,
+                Pick.chan_pref,
+                Pick.chan_loc,
+                Pick.id,
+                source_priority,
+                Channel.seed_code,
             )
         )
 

@@ -56,6 +56,7 @@ def contdatainfo_ex():
             "chan_pref": "HH",
             "ncomps": 3,
             "date": datetime(year=2024, month=10, day=1),
+            "chan_loc": "01",
             "samp_rate": 100.0,
             "dt": 0.01,
             "orig_npts": 86399,
@@ -124,6 +125,7 @@ def waveform_source_ex():
 def pick_ex():
     return deepcopy(
         {
+            "chan_loc": "01",
             "chan_pref": "HH",
             "phase": "P",
             "ptime": datetime.strptime("2024-01-02T10:11:12.13", dateformat),
@@ -432,7 +434,7 @@ def test_get_contdatainfo(db_session_with_contdatainfo, contdatainfo_ex):
     db_session.expunge_all()
 
     selected_info = services.get_contdatainfo(
-        db_session, sid, d["chan_pref"], d["ncomps"], d["date"]
+        db_session, sid, d["chan_pref"], d["ncomps"], d["date"], chan_loc=d["chan_loc"]
     )
 
     assert selected_info is not None, "no contdatainfo selected"
@@ -910,6 +912,7 @@ def db_session_with_waveform_info(
         ncomps=3,
         phase="P",
         wf_source_id=ids["wf_source"],
+        year=2024,
     )
     #
 
@@ -1025,6 +1028,7 @@ def test_insert_dldetector_output_pytable(
             ncomps=3,
             phase="P",
             det_method_id=ids["method"],
+            year=2024,
         )
 
         data = np.zeros(8640000).astype(np.uint8)
@@ -1285,7 +1289,8 @@ def test_insert_cis(db_session_with_pick_corr):
     assert cnt1 - cnt0 == 1, "Expected 1 CI to be inserted"
 
     cis = services.get_correction_cis(db_session, ids["corr"])
-    assert len(cis) == 1
+    print(cis)
+    assert len(cis) == 2, "Expected 2 cis - 60% and 90%"
     ci = cis[0]
     assert ci is not None
     assert ci.id is not None
@@ -1355,11 +1360,11 @@ def test_make_pick_catalog_max_width(
         os.remove(corr_storage.file_path)
         assert not os.path.exists(corr_storage.file_path), "the file was not removed"
 
-    result, _ = services.make_pick_catalog_df(
+    df = services.make_pick_catalog_df(
         db_session, "P", repick_dict["name"], cal_dict["name"], 90, max_width=2.0
     )
 
-    assert len(result) == 0, "expected 0 rows to be returned"
+    assert len(df) == 0, "expected 0 rows to be returned"
 
 
 def test_make_pick_catalog_min_width(
@@ -1412,14 +1417,14 @@ def test_get_waveform_storage_number_existing(db_session_with_waveform_info):
         db_session, wf_storage, ids = db_session_with_waveform_info
 
         storage_number, hdf_file, count = services.get_waveform_storage_number(
-            db_session, ids["chan"], ids["wf_source"], "P", 100
+            db_session, ids["chan"], ids["wf_source"], "P", 100, 2024
         )
 
         assert storage_number == 0, "expected the storage_number to be 0"
         assert count == 1, "expected 1 entry in the hdf_file"
         assert (
             hdf_file
-            == f"JK.TEST..HHZ.P.3C.2000samps.source{ids['wf_source']:02d}.000.h5"
+            == f"JK.TEST..HHZ.P.3C.2024.2000samps.source{ids['wf_source']:02d}.000.h5"
         ), "incorrect hdf_file name"
     finally:
         wf_storage.close()
@@ -1430,7 +1435,7 @@ def test_get_waveform_storage_number_next(db_session_with_waveform_info):
         db_session, wf_storage, ids = db_session_with_waveform_info
 
         storage_number, hdf_file, count = services.get_waveform_storage_number(
-            db_session, ids["chan"], ids["wf_source"], "P", 1
+            db_session, ids["chan"], ids["wf_source"], "P", 1, 2024
         )
 
         assert storage_number == 1, "expected the storage_number to be 1"
@@ -1445,7 +1450,7 @@ def test_get_waveform_storage_number_new(db_session_with_waveform_info):
         db_session, wf_storage, ids = db_session_with_waveform_info
 
         storage_number, hdf_file, count = services.get_waveform_storage_number(
-            db_session, 10, ids["wf_source"], "P", 1
+            db_session, 10, ids["wf_source"], "P", 1, 2024
         )
 
         assert storage_number == 0, "expected the storage_number to be 0"
@@ -1505,6 +1510,7 @@ class TestWaveforms:
         pick_cnt0 = db_session.execute(func.count(tables.Pick.id)).one()[0]
         p_dict = {
             "chan_pref": "HH",
+            "chan_loc": "01",
             "phase": "P",
             "ptime": datetime.strptime("2010-02-01T00:00:00.00", dateformat),
             "auth": "TEST",
@@ -1518,6 +1524,7 @@ class TestWaveforms:
         # Insert S Picks
         s_dict = {
             "chan_pref": "HH",
+            "chan_loc": "01",
             "phase": "S",
             "ptime": datetime.strptime("2010-02-01T12:00:00.00", dateformat),
             "auth": "TEST",
