@@ -522,12 +522,16 @@ class BasePytableReader(ABC):
         return result
 
     def select_row(self, id):
-        row = list(self._table.where(f"id == {id}"))
-        if len(row) == 0:
-            return None
+        # row = list(self._table.where(f"id == {id}"))
+        # if len(row) == 0:
+        #     return None
 
-        colnames = self._table.colnames
-        return dict(zip(colnames, row[0][:]))
+        # colnames = self._table.colnames
+        # return dict(zip(colnames, row[0][:]))
+        # Did this change becuase sometimes the row does not get copied from memory, otherwise
+        for row in self._table.where(f"id == {id}"):
+            return {col: deepcopy(row[col]) for col in self._table.colnames}
+        return None
 
     def close(self):
         if self._h5_file is not None and self._is_open:
