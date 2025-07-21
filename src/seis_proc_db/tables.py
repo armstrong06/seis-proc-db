@@ -303,6 +303,9 @@ class DailyContDataInfo(Base):
         Boolean(create_constraint=True, name="prev_app_bool")
     )
     error: Mapped[Optional[str]] = mapped_column(String(50))
+    expected_samp_rate: Mapped[float] = mapped_column(
+        Double, default=100.0, server_default=text("100.0")
+    )
     # Keep track of when the row was inserted/updated
     last_modified = mapped_column(
         TIMESTAMP,
@@ -347,6 +350,7 @@ class DailyContDataInfo(Base):
             f"orig_start={self.orig_start!r}, orig_end={self.orig_end!r}, "
             f"proc_npts={self.proc_npts!r}, proc_start={self.proc_start!r}, "
             f"proc_end={self.proc_end!r}, prev_appended={self.prev_appended!r}, "
+            f"expected_samp_rate={self.expected_samp_rate}, "
             f"error={self.error!r}, last_modified={self.last_modified!r})"
         )
 
@@ -621,7 +625,7 @@ class DLDetection(Base):
         select(
             func.date_add(
                 DailyContDataInfo.proc_start,
-                text("INTERVAL (sample / samp_rate * 1E6) MICROSECOND"),
+                text("INTERVAL (sample / expected_samp_rate * 1E6) MICROSECOND"),
             )
         )
         .where(DailyContDataInfo.id == data_id)
@@ -1093,7 +1097,7 @@ class Gap(Base):
                 )
                 / 1e6
             )
-            * DailyContDataInfo.samp_rate,
+            * DailyContDataInfo.expected_samp_rate,
         )
         .where(
             (DailyContDataInfo.id == data_id) & (DailyContDataInfo.proc_start != None)
@@ -1109,7 +1113,7 @@ class Gap(Base):
                 )
                 / 1e6
             )
-            * DailyContDataInfo.samp_rate,
+            * DailyContDataInfo.expected_samp_rate,
         )
         .where(
             (DailyContDataInfo.id == data_id) & (DailyContDataInfo.proc_start != None)
@@ -1294,7 +1298,7 @@ class WaveformInfo(Base):
                                 )
                                 / 1e6
                             )
-                            * DailyContDataInfo.samp_rate,
+                            * DailyContDataInfo.expected_samp_rate,
                             0,
                         ),
                         Integer,
@@ -1345,7 +1349,7 @@ class WaveformInfo(Base):
                             )
                             / 1e6
                         )
-                        * DailyContDataInfo.samp_rate
+                        * DailyContDataInfo.expected_samp_rate
                     )
                     .where(DailyContDataInfo.id == data_id)
                     .correlate_except(DailyContDataInfo)
