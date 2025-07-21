@@ -345,6 +345,7 @@ class WaveformStorage(BasePyTable):
         ncomps,
         phase,
         wf_source_id,
+        year=None,
         storage_number=0,
         # filt_low,
         # filt_high,
@@ -359,6 +360,7 @@ class WaveformStorage(BasePyTable):
         self.ncomps = ncomps
         self.phase = phase
         self.storage_number = storage_number
+        self.year = year
 
         self.wf_source_id = wf_source_id
         # self.filt_low = filt_low
@@ -377,7 +379,8 @@ class WaveformStorage(BasePyTable):
 
     def _make_filepath(self):
         # file_name = f"{self.filt_low!r}Hz_{self.filt_high!r}Hz_{self.expected_array_length}samps/{self.net}.{self.sta}.{self.loc}.{self.seed_code}.{self.phase}.{self.ncomps}C.h5"
-        file_name = f"{self.net}.{self.sta}.{self.loc}.{self.seed_code}.{self.phase}.{self.ncomps}C.{self.expected_array_length}samps.source{self.wf_source_id:02d}.{self.storage_number:03d}.h5"
+        file_name = f"{self.net}.{self.sta}.{self.loc}.{self.seed_code}.{self.phase}.{self.ncomps}C.{self.year}.{self.expected_array_length}samps.source{self.wf_source_id:02d}.{self.storage_number:03d}.h5"
+        # file_name = f"{self.net}.{self.sta}.{self.loc}.{self.seed_code}.{self.phase}.{self.ncomps}C.{self.expected_array_length}samps.source{self.wf_source_id:02d}.{self.storage_number:03d}.h5"
         return os.path.join(self._base_dir, file_name)
 
     def _make_h5_file_title(self):
@@ -406,6 +409,7 @@ class DLDetectorOutputStorage(BasePyTable):
         phase,
         ncomps,
         det_method_id,
+        year=None,
         on_event=None,
         expectedrows=150_000,
     ):
@@ -417,6 +421,7 @@ class DLDetectorOutputStorage(BasePyTable):
         self.ncomps = ncomps
         self.phase = phase
         self.det_method_id = det_method_id
+        self.year = year
 
         self._base_dir = os.path.join(HDF_BASE_PATH, HDF_UNET_SOFTMAX_DIR)
 
@@ -425,7 +430,8 @@ class DLDetectorOutputStorage(BasePyTable):
         )
 
     def _make_filepath(self):
-        file_name = f"{self.net}.{self.sta}.{self.loc}.{self.seed_code}.{self.phase}.{self.ncomps}C.detmethod{self.det_method_id:02d}.h5"
+        file_name = f"{self.net}.{self.sta}.{self.loc}.{self.seed_code}.{self.phase}.{self.ncomps}C.{self.year}.detmethod{self.det_method_id:02d}.h5"
+        # file_name = f"{self.net}.{self.sta}.{self.loc}.{self.seed_code}.{self.phase}.{self.ncomps}C.detmethod{self.det_method_id:02d}.h5"
         return os.path.join(self._base_dir, file_name)
 
     def _make_h5_file_title(self):

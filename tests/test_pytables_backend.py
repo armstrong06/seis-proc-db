@@ -67,20 +67,21 @@ class TestWaveformStorage:
             ncomps=3,
             phase="P",
             wf_source_id=1,
+            year=2023
         )
 
         try:
             file_name = wf_storage.file_name
             # Check that the filename is as would be expected
             assert (
-                file_name == "JK.TEST.01.HHZ.P.3C.1200samps.source01.000.h5"
+                file_name == "JK.TEST.01.HHZ.P.3C.2023.1200samps.source01.000.h5"
             ), "file name is not as expected"
             # assert (
             #     os.path.basename(os.path.dirname(wf_storage.file_path))
             #     == "NoneHz_NoneHz_1200samps"
             # ), "incorrect directory name"
             assert (
-                wf_storage.relative_path == "JK.TEST.01.HHZ.P.3C.1200samps.source01.000.h5"
+                wf_storage.relative_path == "JK.TEST.01.HHZ.P.3C.2023.1200samps.source01.000.h5"
             ), "incorrect relative path"
             # Check that the file was created
             assert os.path.exists(wf_storage.file_path), "the file was not created"
@@ -128,6 +129,7 @@ class TestWaveformStorage:
             ncomps=3,
             phase="P",
             wf_source_id=1,
+            year=2023,
             # filt_low=None,
             # filt_high=None,
             # proc_notes="raw waveforms",
@@ -177,6 +179,7 @@ class TestWaveformStorage:
             ncomps=3,
             phase="P",
             wf_source_id=1,
+            year=2023,
             # filt_low=None,
             # filt_high=None,
             # proc_notes="raw waveforms",
@@ -226,12 +229,13 @@ class TestDLDetectorOutputStorage:
                 ncomps=3,
                 phase="P",
                 det_method_id=1,
+                year=2023,
             )
 
             file_name = detout_storage.file_name
             # Check that the filename is as would be expected
             assert (
-                file_name == "JK.TEST.01.HHZ.P.3C.detmethod01.h5"
+                file_name == "JK.TEST.01.HHZ.P.3C.2023.detmethod01.h5"
             ), "file name is not as expected"
             # Check that the file was created
             assert os.path.exists(detout_storage.file_path), "the file was not created"
@@ -273,6 +277,7 @@ class TestDLDetectorOutputStorage:
             ncomps=3,
             phase="P",
             det_method_id=1,
+            year=2023,
         )
 
         try:
