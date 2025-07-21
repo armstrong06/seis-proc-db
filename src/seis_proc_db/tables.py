@@ -277,6 +277,8 @@ class DailyContDataInfo(Base):
     ncomps: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     date = mapped_column(Date, nullable=False)
     ##
+    # TODO: Add this into the PK
+    chan_loc: Mapped[str] = mapped_column(String(2), nullable=False)
     samp_rate: Mapped[Optional[float]] = mapped_column(Double)
     # TODO: Decide if need to store this...
     dt: Mapped[Optional[float]] = mapped_column(Double)
@@ -673,8 +675,6 @@ class Pick(Base):
         nullable=False,
     )
     chan_pref: Mapped[str] = mapped_column(String(3), nullable=False)
-    # TODO: I should add this in
-    #chan_loc: Mapped[str] = mapped_column(String(2), nullable=False)
     # TODO: Should phase be removed from the PK, in the case it was unknown?
     phase: Mapped[str] = mapped_column(String(4), nullable=False)
     ptime: Mapped[datetime] = mapped_column(
@@ -682,6 +682,9 @@ class Pick(Base):
     )
     auth: Mapped[str] = mapped_column(String(10), nullable=False)
     ##
+    # TODO: Add this in to the PK - did not do it yet because had trouble deleting
+    # the UQ constraint due to the sta_id FK
+    chan_loc: Mapped[str] = mapped_column(String(2), nullable=False)
     # From waveform info
     snr: Mapped[Optional[float]] = mapped_column(Double)
     amp: Mapped[Optional[float]] = mapped_column(Double)
