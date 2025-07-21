@@ -541,6 +541,12 @@ class BasePytableReader(ABC):
             self._h5_file.close()
             self._is_open = False
 
+class DLDetectorOutputStorageReader(BasePytableReader):
+    TABLE_NAME = "dldetector_output"
+
+    def __init__(self, stored_hdf_path):
+        base_dir = os.path.join(HDF_BASE_PATH, HDF_UNET_SOFTMAX_DIR)
+        super().__init__(stored_hdf_path, base_dir)
 
 class WaveformStorageReader(BasePytableReader):
     TABLE_NAME = "waveform"
