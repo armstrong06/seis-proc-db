@@ -738,7 +738,7 @@ def bulk_insert_dldetections_with_gap_check(session, dldets):
         TIMESTAMPADD(MICROSECOND, @buffer * 1E6, gap.end)
         )"""
     )
-    session.execute(textual_sql, dldets_dict)
+    session.execute(textual_sql, dldets)
 
     # CHATGPT on how to do this with ORM
     # from sqlalchemy import insert, select, literal_column, literal, func, table, column, text
@@ -1447,6 +1447,9 @@ def make_pick_catalog_df(
         "pick_identifier",
         "network",
         "station",
+        "latitude",
+        "longitude",
+        "elevation",
         "channel",
         "location_code",
         "phase_hint",
@@ -1466,6 +1469,93 @@ def make_pick_catalog_df(
             df.loc[:, "uncertainty"] = df["uncertainty"].clip(lower=min_width)
 
     return df
+
+
+def get_assoc_method(session, name):
+    return session.scalars(select(AssocMethod).where(AssocMethod.name == name)).first()
+
+
+def get_loc_method(session, name):
+    return session.scalars(select(LocMethod).where(LocMethod.name == name)).first()
+
+
+def insert_loc_method(
+    session,
+    name,
+    details=None,
+    path=None,
+):
+    loc_method = LocMethod(name=name, details=details, path=path)
+    session.add(loc_method)
+
+    return loc_method
+
+
+def insert_assoc_method(
+    session,
+    name,
+    details=None,
+    path=None,
+    p_min_width=None,
+    p_max_width=None,
+    s_min_width=None,
+    s_max_width=None,
+    repicker_name=None,
+    cal_name=None,
+    ci_perc=None,
+):
+
+    assoc_method = AssocMethod(
+        name=name,
+        details=details,
+        path=path,
+        p_min_ci_width=p_min_width,
+        p_max_ci_width=p_max_width,
+        s_min_ci_width=s_min_width,
+        s_max_ci_width=s_max_width,
+        repicker_name=repicker_name,
+        cal_name=cal_name,
+        ci_perc=ci_perc,
+    )
+    session.add(assoc_method)
+
+    return assoc_method
+
+
+def get_station_loc_info(session):
+    # stmt = (
+    #     select(
+    #         Station.net,
+    #         Station.sta,
+    #         Station.lat,
+    #         Station.lon,
+    #         Station.ondate,
+    #         Station.offdate,
+    #         Station.elev,
+    #         func.count().filter(Pick.phase == "P").label("p_count"),
+    #         func.count().filter(Pick.phase == "S").label("s_count"),
+    #     )
+    #     .join(Pick, Pick.sta_id == Station.id)
+    #     .group_by(
+    #         Station.id
+    #     )
+    # )
+    # result = session.execute(stmt).all()
+
+    # return result
+
+    stmt = text(
+        """select p_table.net, p_table.sta, p_table.lat, p_table.lon, p_table.elev, p_table.ondate, p_table.offdate, p_table.chan_pref, 
+            p_table.p_cnt, s_table.s_cnt, p_table.p_cnt/s_table.s_cnt as P_S_ratio, 
+            p_table.p_cnt + coalesce(s_table.s_cnt, 0) as total_cnt from (select net, sta, lat, lon, elev, ondate, offdate, 
+            chan_pref, COUNT(pick.id) as p_cnt 
+            from station join pick where station.id = pick.sta_id and phase = "P" group by sta, chan_pref) as p_table left 
+            join (select sta, chan_pref, COUNT(pick.id) as s_cnt from station join pick where station.id = pick.sta_id and 
+            phase = "S" group by sta, chan_pref) as s_table on p_table.sta = s_table.sta and p_table.chan_pref = s_table.chan_pref 
+            order by total_cnt;"""
+    )
+
+    return session.execute(stmt).all()
 
 
 class Waveforms:
