@@ -5,20 +5,7 @@ from seis_proc_db import database, tables
 """
 
 if __name__ == "__main__":
-    table_names = [
-        # "assoc_method",
-        # "loc_method",
-        "vel_model",
-        "mag_method",
-        # "event",
-        # "assoc_origin",
-        # "origin",
-        # "arr",
-        # "assoc_arr",
-        "arrmag",
-        "arr_wf_feat",
-        "netmag",
-    ]
+    table_names = ["uuss_event", "uuss_arr"]
     metadata = database.Base.metadata
     for table in table_names:
         print("Building", table)
