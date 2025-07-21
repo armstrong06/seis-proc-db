@@ -709,7 +709,20 @@ def get_or_insert_station(session, stat_dict):
     return stat
 
 
-def bulk_insert_dldetections_with_gap_check(session, dldets_dict):
+def bulk_insert_dldetections(session, dldets):
+
+    textual_sql = text(
+        """INSERT INTO dldetection (data_id, method_id, sample, phase, width, height, inference_id)
+        VALUES (
+            :data_id, :method_id, :sample, :phase, :width, :height, :inference_id
+        )"""
+    )
+    session.execute(textual_sql, dldets)
+
+
+def bulk_insert_dldetections_with_gap_check(session, dldets):
+
+    # SQL BULK INSERT - Ends up locking gaps too much
     session.execute(
         text("SET @buffer = :buffer"), {"buffer": DETECTION_GAP_BUFFER_SECONDS}
     )
